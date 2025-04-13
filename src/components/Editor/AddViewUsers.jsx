@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiChevronDown } from 'react-icons/fi';
+import axios from 'axios';
 
 const AddViewUsers = () => {
   const navigate = useNavigate();
@@ -9,12 +10,24 @@ const AddViewUsers = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'Editor',
+    role: 'journalist',
     phoneNumber: '',
     profilePicture: null,
     assignedState: 'बिहार | Bihar',
     assignedDistrict: ''
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+  const [availableDistricts, setAvailableDistricts] = useState([]);
+
+  // Role options
+  const roleOptions = [
+    { value: 'journalist', label: 'Journalist' }
+  ];
+
+  // API Base URL
+  const baseURL = 'http://13.234.42.114:3333';
 
   // State options as shown in the image
   const stateOptions = [
@@ -22,6 +35,107 @@ const AddViewUsers = () => {
     'उत्तर प्रदेश | Uttar Pradesh',
     'झारखंड | Jharkhand'
   ];
+
+  // District data for each state
+  const districtData = {
+    jharkhand: [
+      { hindi: "रांची", english: "Ranchi" },
+      { hindi: "जमशेदपुर", english: "Jamshedpur" },
+      { hindi: "धनबाद", english: "Dhanbad" },
+      { hindi: "बोकारो", english: "Bokaro" },
+      { hindi: "देवघर", english: "Deoghar" },
+      { hindi: "हजारीबाग", english: "Hazaribagh" },
+      { hindi: "गिरिडीह", english: "Giridih" },
+      { hindi: "कोडरमा", english: "Koderma" },
+      { hindi: "चतरा", english: "Chatra" },
+      { hindi: "गुमला", english: "Gumla" },
+      { hindi: "लातेहार", english: "Latehar" },
+      { hindi: "लोहरदगा", english: "Lohardaga" },
+      { hindi: "पाकुड़", english: "Pakur" },
+      { hindi: "पलामू", english: "Palamu" },
+      { hindi: "रामगढ़", english: "Ramgarh" },
+      { hindi: "साहिबगंज", english: "Sahibganj" },
+      { hindi: "सिमडेगा", english: "Simdega" },
+      { hindi: "सिंहभूम", english: "Singhbhum" },
+      { hindi: "सरायकेला खरसावां", english: "Seraikela Kharsawan" },
+      { hindi: "पूर्वी सिंहभूम", english: "East Singhbhum" },
+      { hindi: "पश्चिमी सिंहभूम", english: "West Singhbhum" }
+    ],
+    bihar: [
+      { hindi: "पटना", english: "Patna" },
+      { hindi: "गया", english: "Gaya" },
+      { hindi: "मुंगेर", english: "Munger" },
+      { hindi: "भागलपुर", english: "Bhagalpur" },
+      { hindi: "पूर्णिया", english: "Purnia" },
+      { hindi: "दरभंगा", english: "Darbhanga" },
+      { hindi: "मुजफ्फरपुर", english: "Muzaffarpur" },
+      { hindi: "सहरसा", english: "Saharsa" },
+      { hindi: "सीतामढ़ी", english: "Sitamarhi" },
+      { hindi: "वैशाली", english: "Vaishali" },
+      { hindi: "सिवान", english: "Siwan" },
+      { hindi: "सारण", english: "Saran" },
+      { hindi: "गोपालगंज", english: "Gopalganj" },
+      { hindi: "बेगूसराय", english: "Begusarai" },
+      { hindi: "समस्तीपुर", english: "Samastipur" },
+      { hindi: "मधुबनी", english: "Madhubani" },
+      { hindi: "सुपौल", english: "Supaul" },
+      { hindi: "अररिया", english: "Araria" },
+      { hindi: "किशनगंज", english: "Kishanganj" },
+      { hindi: "कटिहार", english: "Katihar" },
+      { hindi: "पूर्वी चंपारण", english: "East Champaran" },
+      { hindi: "पश्चिमी चंपारण", english: "West Champaran" },
+      { hindi: "शिवहर", english: "Sheohar" },
+      { hindi: "मधेपुरा", english: "Madhepura" }
+    ],
+    "uttar pradesh": [
+      { hindi: "लखनऊ", english: "Lucknow" },
+      { hindi: "कानपुर", english: "Kanpur" },
+      { hindi: "आगरा", english: "Agra" },
+      { hindi: "वाराणसी", english: "Varanasi" },
+      { hindi: "प्रयागराज", english: "Prayagraj" },
+      { hindi: "मेरठ", english: "Meerut" },
+      { hindi: "नोएडा", english: "Noida" },
+      { hindi: "गाजियाबाद", english: "Ghaziabad" },
+      { hindi: "बरेली", english: "Bareilly" },
+      { hindi: "अलीगढ़", english: "Aligarh" },
+      { hindi: "मुरादाबाद", english: "Moradabad" },
+      { hindi: "सहारनपुर", english: "Saharanpur" },
+      { hindi: "गोरखपुर", english: "Gorakhpur" },
+      { hindi: "फैजाबाद", english: "Faizabad" },
+      { hindi: "जौनपुर", english: "Jaunpur" },
+      { hindi: "मथुरा", english: "Mathura" },
+      { hindi: "बलिया", english: "Ballia" },
+      { hindi: "रायबरेली", english: "Rae Bareli" },
+      { hindi: "सुल्तानपुर", english: "Sultanpur" },
+      { hindi: "फतेहपुर", english: "Fatehpur" },
+      { hindi: "प्रतापगढ़", english: "Pratapgarh" },
+      { hindi: "कौशाम्बी", english: "Kaushambi" },
+      { hindi: "झांसी", english: "Jhansi" },
+      { hindi: "ललितपुर", english: "Lalitpur" }
+    ]
+  };
+
+  // Update available districts when state changes
+  useEffect(() => {
+    const updateDistricts = () => {
+      const stateName = formData.assignedState.toLowerCase();
+      let stateKey = "";
+      
+      if (stateName.includes("बिहार") || stateName.includes("bihar")) {
+        stateKey = "bihar";
+      } else if (stateName.includes("उत्तर प्रदेश") || stateName.includes("uttar pradesh")) {
+        stateKey = "uttar pradesh";
+      } else if (stateName.includes("झारखंड") || stateName.includes("jharkhand")) {
+        stateKey = "jharkhand";
+      }
+      
+      setAvailableDistricts(districtData[stateKey] || []);
+      // Reset district selection when state changes
+      setFormData(prev => ({ ...prev, assignedDistrict: '' }));
+    };
+    
+    updateDistricts();
+  }, [formData.assignedState]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -40,26 +154,95 @@ const AddViewUsers = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Here you would typically send the form data to your backend
-    console.log('Form submitted:', formData);
-    // Reset form after submission
-    setFormData({
-      username: '',
-      email: '',
-      password: '',
-      confirmPassword: '',
-      role: 'Editor',
-      phoneNumber: '',
-      profilePicture: null,
-      assignedState: '',
-      assignedDistrict: ''
-    });
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    
+    // Validate form
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      // Get the auth token
+      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
+      // Create FormData object for file upload
+      const formDataToSend = new FormData();
+      formDataToSend.append('username', formData.username);
+      formDataToSend.append('email', formData.email);
+      formDataToSend.append('password', formData.password);
+      formDataToSend.append('confirmPassword', formData.confirmPassword);
+      formDataToSend.append('mobile', formData.phoneNumber);
+      
+      if (formData.profilePicture) {
+        formDataToSend.append('profilePicture', formData.profilePicture);
+      }
+      
+      // Extract state and district based on format
+      const state = formData.assignedState.split('|')[1]?.trim() || formData.assignedState;
+      const district = formData.assignedDistrict.split('|')[1]?.trim() || formData.assignedDistrict;
+      
+      formDataToSend.append('assignState', state);
+      formDataToSend.append('assignDistrict', district);
+      
+      // Configure axios headers with the token
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        }
+      };
+      
+      // Send the request to create journalist
+      const response = await axios.post(`${baseURL}/api/auth/create-journalist`, formDataToSend, config);
+      
+      console.log('Journalist created successfully:', response.data);
+      setSuccess('Journalist created successfully!');
+      
+      // Reset form after submission
+      setFormData({
+        username: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        role: 'journalist',
+        phoneNumber: '',
+        profilePicture: null,
+        assignedState: 'बिहार | Bihar',
+        assignedDistrict: ''
+      });
+      
+    } catch (err) {
+      console.error('Error creating journalist:', err);
+      
+      if (err.response) {
+        setError(err.response.data?.message || 'Failed to create journalist. Please try again.');
+      } else if (err.request) {
+        setError('No response from server. Please check your connection.');
+      } else {
+        setError(`Error: ${err.message}`);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBackToProfile = () => {
     navigate('/editor/users');
+  };
+
+  // Format district for display
+  const formatDistrict = (district) => {
+    return `${district.hindi} | ${district.english}`;
   };
 
   return (
@@ -105,6 +288,30 @@ const AddViewUsers = () => {
         >
           Back to Profile
         </button>
+
+        {error && (
+          <div style={{ 
+            backgroundColor: '#fee2e2', 
+            color: '#b91c1c', 
+            padding: '12px', 
+            borderRadius: '8px', 
+            marginBottom: '20px' 
+          }}>
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div style={{ 
+            backgroundColor: '#d1fae5', 
+            color: '#047857', 
+            padding: '12px', 
+            borderRadius: '8px', 
+            marginBottom: '20px' 
+          }}>
+            {success}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div style={{ 
@@ -170,6 +377,7 @@ const AddViewUsers = () => {
                   borderRadius: '8px', 
                   fontSize: '16px' 
                 }}
+                required
               />
             </div>
 
@@ -200,6 +408,7 @@ const AddViewUsers = () => {
                   borderRadius: '8px', 
                   fontSize: '16px' 
                 }}
+                required
               />
             </div>
 
@@ -230,6 +439,7 @@ const AddViewUsers = () => {
                   borderRadius: '8px', 
                   fontSize: '16px' 
                 }}
+                required
               />
             </div>
           </div>
@@ -240,7 +450,7 @@ const AddViewUsers = () => {
             gap: '24px', 
             marginBottom: '24px' 
           }}>
-            {/* Role */}
+            {/* Role - Updated to dropdown */}
             <div>
               <label 
                 htmlFor="role"
@@ -253,21 +463,39 @@ const AddViewUsers = () => {
               >
                 Role:
               </label>
-              <input
-                type="text"
-                id="role"
-                name="role"
-                value={formData.role}
-                readOnly
-                style={{ 
-                  width: '100%', 
-                  padding: '12px 16px', 
-                  border: '1px solid #d1d5db', 
-                  borderRadius: '8px', 
-                  fontSize: '16px',
-                  backgroundColor: '#f3f4f6' 
-                }}
-              />
+              <div style={{ position: 'relative' }}>
+                <select
+                  id="role"
+                  name="role"
+                  value={formData.role}
+                  onChange={handleInputChange}
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px 16px', 
+                    border: '1px solid #d1d5db', 
+                    borderRadius: '8px', 
+                    fontSize: '16px',
+                    appearance: 'none',
+                    backgroundColor: '#fff'
+                  }}
+                >
+                  {roleOptions.map((role) => (
+                    <option key={role.value} value={role.value}>
+                      {role.label}
+                    </option>
+                  ))}
+                </select>
+                <FiChevronDown 
+                  style={{ 
+                    position: 'absolute', 
+                    right: '16px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    pointerEvents: 'none',
+                    color: '#6b7280'
+                  }} 
+                />
+              </div>
             </div>
 
             {/* Phone Number */}
@@ -409,7 +637,7 @@ const AddViewUsers = () => {
               </div>
             </div>
 
-            {/* Assigned District */}
+            {/* Assigned District - Updated to a dynamic dropdown */}
             <div>
               <label 
                 htmlFor="assignedDistrict"
@@ -422,37 +650,58 @@ const AddViewUsers = () => {
               >
                 Assigned District:
               </label>
-              <input
-                type="text"
-                id="assignedDistrict"
-                name="assignedDistrict"
-                value={formData.assignedDistrict}
-                onChange={handleInputChange}
-                style={{ 
-                  width: '100%', 
-                  padding: '12px 16px', 
-                  border: '1px solid #d1d5db', 
-                  borderRadius: '8px', 
-                  fontSize: '16px' 
-                }}
-              />
+              <div style={{ position: 'relative' }}>
+                <select
+                  id="assignedDistrict"
+                  name="assignedDistrict"
+                  value={formData.assignedDistrict}
+                  onChange={handleInputChange}
+                  style={{ 
+                    width: '100%', 
+                    padding: '12px 16px', 
+                    border: '1px solid #d1d5db', 
+                    borderRadius: '8px', 
+                    fontSize: '16px',
+                    appearance: 'none',
+                    backgroundColor: '#fff'
+                  }}
+                >
+                  <option value="">Select District</option>
+                  {availableDistricts.map((district, index) => (
+                    <option key={index} value={formatDistrict(district)}>
+                      {formatDistrict(district)}
+                    </option>
+                  ))}
+                </select>
+                <FiChevronDown 
+                  style={{ 
+                    position: 'absolute', 
+                    right: '16px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    pointerEvents: 'none',
+                    color: '#6b7280'
+                  }} 
+                />
+              </div>
             </div>
           </div>
 
           <button
             type="submit"
+            disabled={loading}
             style={{ 
-              backgroundColor: '#3b82f6', 
+              backgroundColor: loading ? '#93c5fd' : '#3b82f6', 
               color: 'white', 
               padding: '12px 24px', 
               borderRadius: '8px', 
               border: 'none', 
               fontSize: '16px', 
               fontWeight: '500', 
-              cursor: 'pointer' 
+              cursor: loading ? 'not-allowed' : 'pointer' 
             }}
           >
-            Create User
+            {loading ? 'Creating User...' : 'Create User'}
           </button>
         </form>
       </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaUser, FaCog, FaQuestionCircle, FaGlobe, FaUserPlus, FaSignOutAlt } from 'react-icons/fa';
+import { FaUser, FaCog, FaQuestionCircle, FaSignOutAlt } from 'react-icons/fa';
 import MenuItem from './MenuItem';
 
 const AccountDropdown = ({ isOpen, onClose, email }) => {
@@ -10,20 +10,75 @@ const AccountDropdown = ({ isOpen, onClose, email }) => {
 
   // Enhanced sign out function with better cleanup
   const handleSignOut = () => {
-    // First close the dropdown
+    try {
+      console.log('Logging out editor...');
+      
+      // Clear all authentication data from localStorage
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('username');
+      localStorage.removeItem('token');
+      localStorage.removeItem('jwtToken');
+      localStorage.removeItem('userToken');
+      localStorage.removeItem('accessToken');
+      
+      // Clear all authentication data from sessionStorage as well
+      sessionStorage.removeItem('authToken');
+      sessionStorage.removeItem('userRole');
+      sessionStorage.removeItem('username');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('jwtToken');
+      sessionStorage.removeItem('userToken');
+      sessionStorage.removeItem('accessToken');
+      
+      // Clear any additional items that might be set during editor operations
+      localStorage.removeItem('editNewsItem');
+      localStorage.removeItem('userAuthToken');
+      localStorage.removeItem('userType');
+      localStorage.removeItem('cached_approved_news');
+      localStorage.removeItem('cached_pending_news');
+      
+      // First close the dropdown
+      onClose();
+      
+      // Log the redirection
+      console.log('Authentication cleared. Redirecting to login...');
+      
+      // Direct navigation to login page, using replace to prevent back navigation
+      navigate('/', { replace: true });
+      
+      // Show success message
+      const successMessage = document.createElement('div');
+      successMessage.style.backgroundColor = '#ECFDF5';
+      successMessage.style.color = '#065F46';
+      successMessage.style.padding = '12px 16px';
+      successMessage.style.borderRadius = '6px';
+      successMessage.style.marginBottom = '16px';
+      successMessage.style.fontSize = '14px';
+      successMessage.style.position = 'fixed';
+      successMessage.style.top = '20px';
+      successMessage.style.right = '20px';
+      successMessage.style.zIndex = '1000';
+      successMessage.innerText = 'Successfully logged out!';
+      document.body.appendChild(successMessage);
+      
+      // Remove the message after 2 seconds
+      setTimeout(() => {
+        if (document.body.contains(successMessage)) {
+          document.body.removeChild(successMessage);
+        }
+      }, 2000);
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Still attempt to navigate even if there was an error
+      onClose();
+      navigate('/', { replace: true });
+    }
+  };
+
+  const handleProfileClick = () => {
     onClose();
-    
-    // Clear all authentication tokens
-    localStorage.removeItem('editorAuth');
-    sessionStorage.removeItem('editorAuth');
-    localStorage.removeItem('journalistAuth');
-    sessionStorage.removeItem('journalistAuth');
-    
-    // Use setTimeout to ensure the dropdown is fully closed before navigation
-    setTimeout(() => {
-      // Redirect to login page - use absolute path to ensure it works
-      navigate('/login', { replace: true });
-    }, 100);
+    navigate('/editor/profile');
   };
 
   // Base64 encoded question mark SVG
@@ -74,47 +129,22 @@ const AccountDropdown = ({ isOpen, onClose, email }) => {
           color: '#111827',
           textAlign: 'center'
         }}>
-          {email || 'rajesheditor@newztok.com'}
+          {email || 'Editor'}
         </div>
-      </div>
-      
-      {/* Status Update Section */}
-      <div style={{ padding: '16px 16px', borderBottom: '1px solid #e5e7eb' }}>
-        <input
-          type="text"
-          placeholder="Update your status"
-          style={{
-            width: '100%',
-            padding: '12px 16px',
-            border: '1px solid #d1d5db',
-            borderRadius: '8px',
-            fontSize: '16px',
-            color: '#6b7280'
-          }}
-        />
       </div>
       
       {/* Menu Items */}
       <div>
-        <MenuItem icon={<FaUser size={18} />} text="Profile" onClick={() => {}} />
+        <MenuItem icon={<FaUser size={18} />} text="Profile" onClick={handleProfileClick} />
         <MenuItem icon={<FaCog size={18} />} text="Settings & Privacy" onClick={() => {}} />
         <MenuItem icon={<FaQuestionCircle size={18} />} text="Help Center" onClick={() => {}} />
-        <MenuItem icon={<FaGlobe size={18} />} text="Language" onClick={() => {}} />
-      </div>
-      
-      {/* Divider */}
-      <div style={{ borderTop: '1px solid #e5e7eb' }}></div>
-      
-      {/* Add Another Account */}
-      <div>
-        <MenuItem icon={<FaUserPlus size={18} />} text="Add another account" onClick={() => {}} />
       </div>
       
       {/* Divider */}
       <div style={{ borderTop: '1px solid #e5e7eb' }}></div>
       
       {/* Sign Out Button */}
-      <div style={{ padding: '8px 16px' }}>
+      <div style={{ padding: '8px 16px 16px' }}>
         <button
           onClick={handleSignOut}
           style={{
@@ -133,22 +163,6 @@ const AccountDropdown = ({ isOpen, onClose, email }) => {
           <FaSignOutAlt style={{ marginRight: '12px' }} />
           Sign out
         </button>
-      </div>
-      
-      {/* Footer */}
-      <div style={{ 
-        padding: '16px', 
-        display: 'flex', 
-        justifyContent: 'center', 
-        gap: '8px', 
-        fontSize: '14px', 
-        color: '#6b7280' 
-      }}>
-        <span>Privacy policy</span>
-        <span>•</span>
-        <span>Terms</span>
-        <span>•</span>
-        <span>Cookies</span>
       </div>
     </div>
   );

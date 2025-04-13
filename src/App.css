@@ -4,8 +4,53 @@
   box-sizing: border-box;
 }
 
+/* Import fonts */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap');
+
+/* Proxima Nova font - fallback system if actual font isn't available */
+@font-face {
+  font-family: 'Proxima Nova';
+  src: local('Proxima Nova'), url('https://use.typekit.net/af/cebe0e/00000000000000003b9b3060/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n3&v=3') format('woff2'),
+       local('Proxima Nova'), url('https://use.typekit.net/af/cebe0e/00000000000000003b9b3060/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n3&v=3') format('woff');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Proxima Nova';
+  src: local('Proxima Nova'), url('https://use.typekit.net/af/576d53/00000000000000003b9b3066/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n6&v=3') format('woff2'),
+       local('Proxima Nova'), url('https://use.typekit.net/af/576d53/00000000000000003b9b3066/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n6&v=3') format('woff');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Proxima Nova';
+  src: local('Proxima Nova'), url('https://use.typekit.net/af/705e94/00000000000000003b9b3062/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3') format('woff2'),
+       local('Proxima Nova'), url('https://use.typekit.net/af/705e94/00000000000000003b9b3062/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n4&v=3') format('woff');
+  font-weight: 400;
+  font-style: normal;
+}
+
 body {
-  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  font-family: 'Proxima Nova', 'Montserrat', 'Poppins', 'Lora', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f8f8f8;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Proxima Nova', 'Montserrat', sans-serif;
+}
+
+p, a, button, div, span {
+  font-family: 'Poppins', 'Lora', sans-serif;
 }
 
 .App {

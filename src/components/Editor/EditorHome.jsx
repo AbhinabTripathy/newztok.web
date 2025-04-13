@@ -11,6 +11,7 @@ import PendingApprovals from './PendingApprovals';
 import Rejected from './Rejected';
 import Users from './Users';
 import AddViewUsers from './AddViewUsers';
+import Profile from './Profile';
 
 const EditorHome = () => {
   const [activeSection, setActiveSection] = useState('overview');
@@ -34,6 +35,8 @@ const EditorHome = () => {
       setActiveSection('users');
     } else if (path.includes('/editor/addViewUsers')) {
       setActiveSection('addViewUsers');
+    } else if (path.includes('/editor/profile')) {
+      setActiveSection('profile');
     } else {
       setActiveSection('overview');
     }
@@ -61,26 +64,33 @@ const EditorHome = () => {
         return <Users />;
       case 'addViewUsers':
         return <AddViewUsers />;
+      case 'profile':
+        return <Profile />;
       default:
         return <Overview />;
     }
   };
 
+  // Check if we should hide the header, sidebar, and footer
+  const shouldShowHeaderAndSidebar = activeSection !== 'profile';
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <EditorHeader />
+      {shouldShowHeaderAndSidebar && <EditorHeader />}
       
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <div style={{ width: '250px', backgroundColor: '#1e2029' }}>
-          <EditorSidebar onSectionChange={handleSectionChange} activeSection={activeSection} />
-        </div>
+        {shouldShowHeaderAndSidebar && (
+          <div style={{ width: '250px', backgroundColor: '#1e2029' }}>
+            <EditorSidebar onSectionChange={handleSectionChange} activeSection={activeSection} />
+          </div>
+        )}
         
         <main style={{ flex: 1, overflow: 'auto', backgroundColor: '#f8fafc' }}>
           {renderContent()}
         </main>
       </div>
       
-      <EditorFooter />
+      {shouldShowHeaderAndSidebar && <EditorFooter />}
     </div>
   );
 };

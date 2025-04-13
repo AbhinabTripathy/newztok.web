@@ -9,8 +9,17 @@ import AccountDropdown from './AccountDropdown';
 const EditorHeader = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
+  const [editorEmail, setEditorEmail] = useState('');
   const dropdownRef = useRef(null);
   
+  // Get editor information from localStorage or sessionStorage
+  useEffect(() => {
+    const storedUsername = localStorage.getItem('username') || sessionStorage.getItem('username');
+    if (storedUsername) {
+      setEditorEmail(storedUsername);
+    }
+  }, []);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -60,7 +69,7 @@ const EditorHeader = () => {
           <AccountDropdown 
             isOpen={accountDropdownOpen} 
             onClose={() => setAccountDropdownOpen(false)}
-            email="rajesheditor@newztok.com"
+            email={editorEmail}
           />
         </div>
       </div>

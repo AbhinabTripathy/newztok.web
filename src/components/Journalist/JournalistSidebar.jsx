@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { BsClockHistory } from 'react-icons/bs';
 import { BsJournalX } from 'react-icons/bs';
@@ -10,9 +10,19 @@ import { IoIosArrowDown, IoIosArrowForward } from 'react-icons/io';
 import { CgFileDocument } from 'react-icons/cg';
 import { FaVideo } from 'react-icons/fa';
 
-const JournalistSidebar = ({ onSectionChange }) => {
+const JournalistSidebar = ({ onSectionChange, activeSection }) => {
   const [showAddPostsSubmenu, setShowAddPostsSubmenu] = useState(false);
-  const [activeItem, setActiveItem] = useState('overview');
+  const [activeItem, setActiveItem] = useState(activeSection || 'overview');
+
+  // Update activeItem when activeSection prop changes
+  useEffect(() => {
+    if (activeSection) {
+      setActiveItem(activeSection);
+      if (activeSection === 'standardPost' || activeSection === 'videoPost') {
+        setShowAddPostsSubmenu(true);
+      }
+    }
+  }, [activeSection]);
 
   const handleItemClick = (item) => {
     setActiveItem(item);
