@@ -255,7 +255,7 @@ const StandardPost = () => {
         // Handle success
         handleDiscard();
         alert('🎉 Success! Your post has been created and is pending review.');
-        navigate('/journalist/overview');
+        navigate('/journalist/pendingApprovals');
         
       } catch (fetchError) {
         console.error('Fetch request failed:', fetchError);
@@ -322,7 +322,7 @@ const StandardPost = () => {
             setUploadProgress(100);
             handleDiscard();
             alert('🎉 Success! Your post has been created and is pending review.');
-            navigate('/journalist/overview');
+            navigate('/journalist/pendingApprovals');
             return; // Exit the function after successful submission
             
           } catch (fixedError) {
@@ -354,7 +354,7 @@ const StandardPost = () => {
             console.log('Post created with minimal fields:', response.data);
             handleDiscard();
             alert('Post created with minimal information. You may need to add the image later.');
-            navigate('/journalist/overview');
+            navigate('/journalist/pendingApprovals');
             
           } catch (minimalError) {
             console.error('Even minimal approach failed:', minimalError);

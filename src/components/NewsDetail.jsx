@@ -35,17 +35,110 @@ const NewsDetail = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [viewCount, setViewCount] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // API base URL
   const baseURL = 'http://13.234.42.114:3333';
   
   // Check if user is logged in (has auth token)
   const isLoggedIn = !!localStorage.getItem('userAuthToken');
+  
+  // Get the user token for API requests
+  const getUserToken = () => {
+    return localStorage.getItem('userAuthToken');
+  };
+
+  // Add a debug helper
+  const debug = (message, data) => {
+    console.log(`[NewsDetail ${id}] ${message}`, data !== undefined ? data : '');
+  };
 
   useEffect(() => {
+    debug('Component mounted with ID', id);
+    debug('User logged in?', isLoggedIn);
+    
     fetchNewsDetail();
-    // Track view count only after fetching data successfully
+    
+    // Increment view count immediately
+    incrementViewCount();
+    
+    // Fetch comments for this article
+    fetchComments();
+    
+    // Check if user has already liked the article when component mounts
+    if (isLoggedIn) {
+      checkLikeStatus();
+    }
   }, [id]);
+
+  // Re-check like status whenever login state changes
+  useEffect(() => {
+    if (isLoggedIn) {
+      debug('User login state changed, checking like status');
+      checkLikeStatus();
+    } else {
+      // Reset like status if user logs out
+      setIsLiked(false);
+    }
+  }, [isLoggedIn]);
+
+  // Add function to check if user has already liked the article
+  const checkLikeStatus = async () => {
+    try {
+      const token = getUserToken();
+      
+      if (!token) {
+        debug('No token found for like status check');
+        return;
+      }
+
+      debug('Checking like status with token');
+
+      // Create request headers
+      const myHeaders = new Headers();
+      myHeaders.append("Authorization", `Bearer ${token}`);
+      
+      const requestOptions = {
+        method: "GET",
+        headers: myHeaders,
+        redirect: "follow"
+      };
+
+      // Make the API call to check like status
+      const response = await fetch(
+        `http://13.234.42.114:3333/api/interaction/news/${id}/like/status`,
+        requestOptions
+      );
+
+      if (!response.ok) {
+        throw new Error(`Status check failed with status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      debug('Like status response received', result);
+
+      // Update like status based on response
+      if (result.liked || result.isLiked || result.hasLiked) {
+        debug('User has liked this article', true);
+        setIsLiked(true);
+      } else {
+        debug('User has not liked this article', false);
+        setIsLiked(false);
+      }
+
+      // Update like count from response if available
+      if (result.likesCount !== undefined) {
+        debug('Setting like count from API', result.likesCount);
+        setLikeCount(result.likesCount);
+      } else if (result.likeCount !== undefined) {
+        debug('Setting like count from API', result.likeCount);
+        setLikeCount(result.likeCount);
+      }
+      
+    } catch (error) {
+      console.error("Error checking like status:", error);
+    }
+  };
 
   const fetchNewsDetail = async () => {
     try {
@@ -174,7 +267,7 @@ const NewsDetail = () => {
           setViewCount(views);
           
           // Now that we have data, try to increment view count
-          incrementViewCount(foundEndpoint);
+          incrementViewCount();
         }
       }
       
@@ -196,17 +289,63 @@ const NewsDetail = () => {
     }
   };
 
-  const incrementViewCount = async (endpoint) => {
-    if (!endpoint) return;
-    
+  const incrementViewCount = async () => {
     try {
-      // Create view endpoint based on the working endpoint
-      const viewEndpoint = endpoint.replace(/\/$/, '') + '/view';
-      await axios.post(`${baseURL}${viewEndpoint}`, {});
+      // Create request headers (no auth token needed for views)
+      const myHeaders = new Headers();
+      
+      const requestOptions = {
+        method: "POST",
+        headers: myHeaders,
+        redirect: "follow"
+      };
+
+      // Make the API call to increment view count
+      debug('Sending view count increment request to API');
+      const response = await fetch(
+        `http://13.234.42.114:3333/api/interaction/news/${id}/view`,
+        requestOptions
+      );
+
+      if (!response.ok) {
+        throw new Error(`View increment failed with status: ${response.status}`);
+      }
+      
+      const resultText = await response.text();
+      debug('Received view count response', resultText);
+      
+      try {
+        if (resultText && resultText.trim()) {
+          const result = JSON.parse(resultText);
+          debug('Parsed view count response', result);
+          
+          // Update view count from server response if available
+          if (result && typeof result.viewsCount !== 'undefined') {
+            debug('Setting view count from API response', result.viewsCount);
+            setViewCount(result.viewsCount);
+          } else if (result && typeof result.viewCount !== 'undefined') {
+            debug('Setting view count from API response', result.viewCount);
+            setViewCount(result.viewCount);
+          } else if (result && typeof result.views !== 'undefined') {
+            debug('Setting view count from API response', result.views);
+            setViewCount(result.views);
+          } else {
+            // If no count returned, increment locally
+            setViewCount(prev => prev + 1);
+          }
+        } else {
+          // If no response body, increment locally
+          setViewCount(prev => prev + 1);
+        }
+      } catch (parseError) {
+        debug('Response is not valid JSON, incrementing view count locally', parseError.message);
+        setViewCount(prev => prev + 1);
+      }
+      
+    } catch (error) {
+      console.error("Error incrementing view count:", error);
+      // Still increment the view count locally as fallback
       setViewCount(prev => prev + 1);
-    } catch (err) {
-      console.error("Error incrementing view count:", err);
-      // Just silently fail, this is not critical
     }
   };
 
@@ -217,12 +356,84 @@ const NewsDetail = () => {
       return;
     }
 
+    // If already liked, don't allow re-liking
+    if (isLiked) {
+      debug('User already liked this article, ignoring click');
+      // You can show a message to the user if you want
+      // alert('You have already liked this article');
+      return;
+    }
+
     try {
-      // For now, simulate with local state
-      setIsLiked(!isLiked);
-      setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
-    } catch (err) {
-      console.error("Error toggling like:", err);
+      // Get the auth token
+      const token = getUserToken();
+      debug('Toggling like with token');
+      
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      // Track current state for optimistic updates
+      const currentLikeState = isLiked;
+      const currentLikeCount = likeCount;
+      
+      // Optimistically update UI - only allow liking, not unliking
+      setIsLiked(true);
+      setLikeCount(prevCount => prevCount + 1);
+      debug('Optimistically updated like state to liked');
+
+      // Create headers with auth token
+      const myHeaders = new Headers();
+      myHeaders.append("Authorization", `Bearer ${token}`);
+      
+      const requestOptions = {
+        method: "POST",
+        headers: myHeaders,
+        redirect: "follow"
+      };
+
+      // Make the API call
+      debug('Sending like request to API');
+      const response = await fetch(
+        `http://13.234.42.114:3333/api/interaction/news/${id}/like`,
+        requestOptions
+      );
+
+      if (!response.ok) {
+        throw new Error(`Like request failed with status: ${response.status}`);
+      }
+      
+      const resultText = await response.text();
+      debug('Received like response', resultText);
+      
+      try {
+        if (resultText && resultText.trim()) {
+          const result = JSON.parse(resultText);
+          debug('Parsed like response', result);
+          
+          // Update like count from server response if available
+          if (result && typeof result.likesCount !== 'undefined') {
+            debug('Setting like count from API response', result.likesCount);
+            setLikeCount(result.likesCount);
+          } else if (result && typeof result.likeCount !== 'undefined') {
+            debug('Setting like count from API response', result.likeCount);
+            setLikeCount(result.likeCount);
+          }
+          
+          // Always set isLiked to true after a successful like request
+          setIsLiked(true);
+        }
+      } catch (parseError) {
+        debug('Response is not valid JSON, keeping optimistic update', parseError.message);
+      }
+      
+    } catch (error) {
+      console.error("Error liking article:", error);
+      // If there was an error, revert to the previous state
+      setIsLiked(false);
+      setLikeCount(prevCount => Math.max(0, prevCount - 1));
+      // Alert the user of the failure
+      alert('Failed to like the article. Please try again.');
     }
   };
 
@@ -241,42 +452,231 @@ const NewsDetail = () => {
     }
   };
 
-  const handleCommentSubmit = async () => {
-    if (!comment.trim()) return;
-
+  // Function to get current user information from token
+  const getCurrentUser = () => {
     try {
-      // Get the auth token
-      const token = localStorage.getItem('userAuthToken');
+      const token = getUserToken();
+      if (!token) return null;
       
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      // Configure headers with the token
-      const config = {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      // For JWT tokens, try to decode, but don't fail if format is different
+      try {
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payload = JSON.parse(atob(parts[1]));
+          debug('Decoded token payload', payload);
+          
+          return {
+            id: payload.id || payload.userId || payload.user_id || payload.sub,
+            username: payload.username || payload.name || payload.displayName || 'User',
+            email: payload.email || ''
+          };
         }
+      } catch (parseError) {
+        console.error('Error parsing token:', parseError);
+      }
+      
+      // Return a default user if token can't be decoded
+      return {
+        id: 'unknown',
+        username: 'User',
+        email: ''
       };
-      
-      // In production, this would be a real API call
-      // const response = await axios.post(`${baseURL}/api/news/${id}/comment`, { content: comment }, config);
-      
-      // For now, simulate by adding to local state
-      const newComment = {
-        id: Date.now(),
+    } catch (error) {
+      console.error('Error decoding user token:', error);
+      return null;
+    }
+  };
+
+  const handleCommentSubmit = async (e) => {
+    if (e) e.preventDefault();
+    
+    if (!comment.trim()) {
+      alert("Comment cannot be empty");
+      return;
+    }
+    
+    // Get the auth token
+    const token = getUserToken();
+    
+    if (!token) {
+      alert("Please login to comment");
+      return;
+    }
+    
+    const currentUser = getCurrentUser();
+    if (!currentUser) {
+      alert("User information not available. Please login again");
+      return;
+    }
+    
+    try {
+      debug('Submitting comment', { newsId: id, comment, user: currentUser });
+      setIsSubmitting(true);
+
+      // Add comment optimistically to UI for better UX
+      const optimisticComment = {
+        id: `temp-${Date.now()}`,
         content: comment,
         createdAt: new Date().toISOString(),
         user: {
-          username: 'Current User' // This would come from API or state in production
+          id: currentUser.id || currentUser._id,
+          username: currentUser.username || currentUser.name || 'You'
         }
       };
       
-      setComments(prev => [newComment, ...prev]);
-      setComment('');
-    } catch (err) {
-      console.error("Error submitting comment:", err);
-      alert("Failed to submit comment. Please try again.");
+      setComments(prevComments => [optimisticComment, ...prevComments]);
+      
+      // Create headers with auth token
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      };
+      
+      // Use the exact format the server expects - simpler payload to start
+      const commentPayload = {
+        content: comment.trim(),
+        newsId: id
+      };
+      
+      debug('Attempting to post comment with payload:', commentPayload);
+      
+      const response = await fetch(
+        `http://13.234.42.114:3333/api/interaction/news/${id}/comment`,
+        {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify(commentPayload)
+        }
+      );
+      
+      const responseData = await response.text();
+      debug('Comment POST response:', responseData);
+      
+      if (!response.ok) {
+        debug('Comment POST failed with status:', response.status);
+        throw new Error(`Failed to post comment: ${responseData}`);
+      }
+      
+      // Clear the comment input
+      setComment("");
+      
+      // Fetch the latest comments to ensure we have the server version
+      fetchComments();
+      
+      alert("Comment added successfully!");
+    } catch (error) {
+      console.error("Error submitting comment:", error);
+      alert("Failed to add comment. Please try again.");
+      
+      // Remove optimistic comment on error
+      setComments(prevComments => prevComments.filter(c => !c.id.startsWith('temp-')));
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Add function to fetch comments with user information
+  const fetchComments = async () => {
+    try {
+      debug('Fetching comments for news ID', id);
+      
+      // Try multiple endpoints for fetching comments
+      const endpointsToTry = [
+        `http://13.234.42.114:3333/api/interaction/news/${id}/comments`,
+        `http://13.234.42.114:3333/api/news/${id}/comments`,
+        `http://13.234.42.114:3333/api/comments/news/${id}`,
+        `http://13.234.42.114:3333/api/comments/${id}`
+      ];
+      
+      let response;
+      let successEndpoint = '';
+      
+      // Try each endpoint until one works
+      for (const endpoint of endpointsToTry) {
+        try {
+          debug('Trying to fetch comments from:', endpoint);
+          const resp = await fetch(endpoint);
+          if (resp.ok) {
+            response = resp;
+            successEndpoint = endpoint;
+            debug('Successfully fetched comments from:', endpoint);
+            break;
+          }
+        } catch (endpointErr) {
+          debug('Comments endpoint failed:', endpoint);
+        }
+      }
+      
+      if (!response || !response.ok) {
+        debug('Could not fetch comments from any endpoint, using empty array');
+        setComments([]);
+        return;
+      }
+      
+      const result = await response.json();
+      debug('Received comments from API at ' + successEndpoint, result);
+      
+      let fetchedComments = [];
+      
+      // Handle various API response formats
+      if (result && Array.isArray(result)) {
+        fetchedComments = result;
+      } else if (result && result.comments && Array.isArray(result.comments)) {
+        fetchedComments = result.comments;
+      } else if (result && result.data && Array.isArray(result.data)) {
+        fetchedComments = result.data;
+      } else if (result && typeof result === 'object') {
+        // If the response is an object with comment-like properties
+        // Try to extract individual comments based on common property patterns
+        const possibleArrayProps = Object.keys(result).filter(key => 
+          Array.isArray(result[key]) && 
+          result[key].length > 0 &&
+          (key.includes('comment') || key.includes('responses'))
+        );
+        
+        if (possibleArrayProps.length > 0) {
+          fetchedComments = result[possibleArrayProps[0]];
+        }
+      }
+      
+      debug('Extracted comments array', fetchedComments);
+      
+      // Ensure all comments have user information
+      const processedComments = fetchedComments.map(comment => {
+        // Default values if data is missing
+        const processedComment = {
+          id: comment.id || comment._id || Date.now() + Math.random().toString(36).substring(7),
+          content: comment.content || comment.text || comment.message || comment.comment || 'No content',
+          createdAt: comment.createdAt || comment.created_at || comment.timestamp || new Date().toISOString(),
+        };
+        
+        // Handle various user data formats
+        if (comment.user) {
+          processedComment.user = {
+            id: comment.user.id || comment.user._id || 'unknown',
+            username: comment.user.username || comment.user.name || comment.user.displayName || 'Anonymous'
+          };
+        } else if (comment.userId || comment.username) {
+          processedComment.user = {
+            id: comment.userId || comment.user_id || 'unknown',
+            username: comment.username || comment.userName || comment.authorName || 'Anonymous'
+          };
+        } else {
+          // If no user information at all, use 'Anonymous'
+          processedComment.user = {
+            id: 'unknown',
+            username: 'Anonymous'
+          };
+        }
+        
+        return processedComment;
+      });
+      
+      debug('Processed comments with user data', processedComments);
+      setComments(processedComments);
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      // Keep existing comments on error
     }
   };
 
@@ -308,7 +708,7 @@ const NewsDetail = () => {
     }
   };
 
-  // Get image or video URL
+  // Get image or video URL and add watermark for downloads
   const getMediaUrl = (item) => {
     if (!item) return null;
     
@@ -354,6 +754,67 @@ const NewsDetail = () => {
     
     console.log("No media URL found in the item");
     return 'https://via.placeholder.com/800x400?text=News+Image';
+  };
+
+  // Function to download image with watermark
+  const downloadImageWithWatermark = async () => {
+    if (!mediaUrl || isYoutubeVideo) {
+      alert('No image available to download');
+      return;
+    }
+
+    try {
+      // Create a new image element to load the image
+      const img = new Image();
+      img.crossOrigin = 'Anonymous'; // This allows working with images from other domains
+      
+      // Wait for the image to load
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = mediaUrl;
+      });
+
+      // Create a canvas element to manipulate the image
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Set canvas dimensions to match the image
+      canvas.width = img.width;
+      canvas.height = img.height;
+      
+      // Draw the original image on the canvas
+      ctx.drawImage(img, 0, 0);
+      
+      // Add watermark text
+      ctx.font = 'bold 40px Arial';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      // Draw the diagonal watermark
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(-Math.PI / 6); // Rotate text slightly
+      ctx.fillText('NewzTok', 0, 0);
+      ctx.restore();
+      
+      // Convert canvas to data URL
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+      
+      // Create a download link and trigger it
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `NewzTok-${newsData.title?.replace(/[^a-z0-9]/gi, '-').toLowerCase() || 'image'}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      alert('Image downloaded with NewzTok watermark');
+    } catch (error) {
+      console.error('Error downloading image with watermark:', error);
+      alert('Failed to download image. Please try again.');
+    }
   };
 
   // Capitalize text
@@ -468,7 +929,7 @@ const NewsDetail = () => {
         
         {/* Media (Image or Video) */}
         {mediaUrl && (
-          <Box sx={{ width: '100%', mb: 3, borderRadius: 2, overflow: 'hidden' }}>
+          <Box sx={{ width: '100%', mb: 3, borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
             {isYoutubeVideo ? (
               <Box sx={{ position: 'relative', paddingTop: '56.25%' /* 16:9 Aspect Ratio */ }}>
                 <iframe
@@ -490,32 +951,91 @@ const NewsDetail = () => {
                 />
               </Box>
             ) : (
-              <Box 
-                component="img"
-                src={mediaUrl}
-                alt={newsData.title}
-                sx={{
-                  width: '100%',
-                  maxHeight: '500px',
-                  objectFit: 'cover',
-                  borderRadius: '8px',
-                }}
-                onError={(e) => {
-                  e.target.onerror = null;
-                  e.target.src = 'https://via.placeholder.com/800x400?text=Image+Not+Available';
-                }}
-              />
+              <Box sx={{ position: 'relative' }}>
+                <Box 
+                  component="img"
+                  src={mediaUrl}
+                  alt={newsData.title}
+                  sx={{
+                    width: '100%',
+                    maxHeight: '500px',
+                    objectFit: 'cover',
+                    borderRadius: '8px',
+                  }}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'https://via.placeholder.com/800x400?text=Image+Not+Available';
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  onClick={downloadImageWithWatermark}
+                  sx={{ 
+                    position: 'absolute',
+                    bottom: '16px',
+                    right: '16px',
+                    bgcolor: 'rgba(231, 57, 82, 0.8)',
+                    '&:hover': { 
+                      bgcolor: 'rgba(231, 57, 82, 1)' 
+                    },
+                    borderRadius: 2,
+                    fontSize: '12px',
+                    textTransform: 'none',
+                    padding: '4px 12px',
+                    opacity: 0.9,
+                    transition: 'opacity 0.3s',
+                    '&:hover': {
+                      opacity: 1,
+                      bgcolor: 'rgba(231, 57, 82, 0.9)'
+                    }
+                  }}
+                >
+                  Download with Watermark
+                </Button>
+              </Box>
             )}
           </Box>
         )}
         
         {/* Action Buttons (Like, View, Share) */}
         <Box sx={{ py: 2, display: 'flex', alignItems: 'center', gap: 4, borderBottom: '1px solid #eee', mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={handleLikeToggle}>
-            <IconButton color={isLiked ? 'error' : 'default'} size="small">
-              {isLiked ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              cursor: isLiked ? 'default' : 'pointer',
+              opacity: isLiked ? 1 : 0.9,
+              '&:hover': {
+                opacity: isLiked ? 1 : 1
+              }
+            }} 
+            onClick={handleLikeToggle}
+          >
+            <IconButton 
+              color={isLiked ? 'error' : 'default'} 
+              size="small"
+              disabled={isLiked}
+              sx={{
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  transform: isLiked ? 'none' : 'scale(1.1)',
+                },
+                '&.Mui-disabled': {
+                  opacity: 1,
+                  color: 'error.main'
+                }
+              }}
+            >
+              {isLiked ? <FavoriteIcon color="error" /> : <FavoriteBorderIcon />}
             </IconButton>
-            <Typography variant="body2" sx={{ ml: 0.5 }}>
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                ml: 0.5,
+                color: isLiked ? 'error.main' : 'text.primary',
+                fontWeight: isLiked ? 'medium' : 'regular'
+              }}
+            >
               {likeCount} {likeCount === 1 ? 'Like' : 'Likes'}
             </Typography>
           </Box>

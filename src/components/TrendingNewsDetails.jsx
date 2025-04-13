@@ -42,9 +42,96 @@ const TrendingNewsDetails = () => {
   // Check if user is logged in (has auth token)
   const isLoggedIn = !!localStorage.getItem('userAuthToken');
 
+  // Get the user token for API requests
+  const getUserToken = () => {
+    return localStorage.getItem('userAuthToken');
+  };
+
+  // Add a debug helper
+  const debug = (message, data) => {
+    console.log(`[TrendingNewsDetails ${id}] ${message}`, data !== undefined ? data : '');
+  };
+
   useEffect(() => {
+    debug('Component mounted with ID', id);
+    debug('User logged in?', isLoggedIn);
+    
     fetchTrendingNewsDetail();
+    
+    // Check if user has already liked the article when component mounts
+    if (isLoggedIn) {
+      checkLikeStatus();
+    }
   }, [id]);
+
+  // Re-check like status whenever login state changes
+  useEffect(() => {
+    if (isLoggedIn) {
+      debug('User login state changed, checking like status');
+      checkLikeStatus();
+    } else {
+      // Reset like status if user logs out
+      setIsLiked(false);
+    }
+  }, [isLoggedIn]);
+
+  // Add function to check if user has already liked the article
+  const checkLikeStatus = async () => {
+    try {
+      const token = getUserToken();
+      
+      if (!token) {
+        debug('No token found for like status check');
+        return;
+      }
+
+      debug('Checking like status with token');
+
+      // Create request headers
+      const myHeaders = new Headers();
+      myHeaders.append("Authorization", `Bearer ${token}`);
+      
+      const requestOptions = {
+        method: "GET",
+        headers: myHeaders,
+        redirect: "follow"
+      };
+
+      // Make the API call to check like status
+      const response = await fetch(
+        `http://13.234.42.114:3333/api/interaction/news/${id}/like/status`,
+        requestOptions
+      );
+
+      if (!response.ok) {
+        throw new Error(`Status check failed with status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      debug('Like status response received', result);
+
+      // Update like status based on response
+      if (result.liked || result.isLiked || result.hasLiked) {
+        debug('User has liked this article', true);
+        setIsLiked(true);
+      } else {
+        debug('User has not liked this article', false);
+        setIsLiked(false);
+      }
+
+      // Update like count from response if available
+      if (result.likesCount !== undefined) {
+        debug('Setting like count from API', result.likesCount);
+        setLikeCount(result.likesCount);
+      } else if (result.likeCount !== undefined) {
+        debug('Setting like count from API', result.likeCount);
+        setLikeCount(result.likeCount);
+      }
+      
+    } catch (error) {
+      console.error("Error checking like status:", error);
+    }
+  };
 
   const fetchTrendingNewsDetail = async () => {
     try {
@@ -148,7 +235,17 @@ const TrendingNewsDetails = () => {
             setComments(response.data.comments || response.data.data.comments || []);
           }
           // Initialize like count from API if available
-          const likes = response.data.likes || (response.data.data && response.data.data.likes) || 0;
+          const likes = response.data.likesCount || 
+            response.data.likes || 
+            (response.data.data && response.data.data.likesCount) || 
+            (response.data.data && response.data.data.likes) || 
+            (response.data.likeCount) || 
+            (response.data.data && response.data.data.likeCount) ||
+            (response.data.interactions && response.data.interactions.likes) ||
+            (response.data.interactions && response.data.interactions.likesCount) ||
+            (response.data.data && response.data.data.interactions && response.data.data.interactions.likes) ||
+            (response.data.data && response.data.data.interactions && response.data.data.interactions.likesCount) ||
+            0;
           setLikeCount(likes);
           // Initialize view count from API if available
           const views = response.data.views || (response.data.data && response.data.data.views) || 0;
@@ -182,23 +279,28 @@ const TrendingNewsDetails = () => {
     if (!endpoint) return;
     
     try {
-      // Instead of modifying the endpoint path, use a standardized view endpoint with the ID
-      const viewEndpoint = `/api/news/view/${id}`;
+      const myHeaders = new Headers();
       
-      console.log(`Attempting to increment view count with endpoint: ${baseURL}${viewEndpoint}`);
+      const requestOptions = {
+        method: "POST",
+        headers: myHeaders,
+        redirect: "follow"
+      };
       
-      // Add a proper request body with the news ID
-      await axios.post(`${baseURL}${viewEndpoint}`, { newsId: id });
+      // Use direct URL format
+      fetch(`http://13.234.42.114:3333/api/interaction/news/${id}/view`, requestOptions)
+        .then((response) => response.text())
+        .then((result) => {
+          console.log(result);
+          // Increment view count locally
+          setViewCount(prev => prev + 1);
+        })
+        .catch((error) => console.error(error));
       
-      // For now, increment the view locally regardless of API success
-      setViewCount(prev => prev + 1);
-      console.log(`View count incremented locally to: ${viewCount + 1}`);
     } catch (err) {
       console.error("Error incrementing view count:", err);
-      // Increment locally anyway as fallback
+      // Still increment the view count locally as fallback
       setViewCount(prev => prev + 1);
-      console.log(`View count incremented locally (after API failure) to: ${viewCount + 1}`);
-      // Just silently fail, this is not critical
     }
   };
 
@@ -209,12 +311,84 @@ const TrendingNewsDetails = () => {
       return;
     }
 
+    // If already liked, don't allow re-liking
+    if (isLiked) {
+      debug('User already liked this article, ignoring click');
+      // You can show a message to the user if you want
+      // alert('You have already liked this article');
+      return;
+    }
+
     try {
-      // For now, simulate with local state
-      setIsLiked(!isLiked);
-      setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
-    } catch (err) {
-      console.error("Error toggling like:", err);
+      // Get the auth token
+      const token = getUserToken();
+      debug('Toggling like with token');
+      
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      // Track current state for optimistic updates
+      const currentLikeState = isLiked;
+      const currentLikeCount = likeCount;
+      
+      // Optimistically update UI - only allow liking, not unliking
+      setIsLiked(true);
+      setLikeCount(prevCount => prevCount + 1);
+      debug('Optimistically updated like state to liked');
+
+      // Create headers with auth token
+      const myHeaders = new Headers();
+      myHeaders.append("Authorization", `Bearer ${token}`);
+      
+      const requestOptions = {
+        method: "POST",
+        headers: myHeaders,
+        redirect: "follow"
+      };
+
+      // Make the API call
+      debug('Sending like request to API');
+      const response = await fetch(
+        `http://13.234.42.114:3333/api/interaction/news/${id}/like`,
+        requestOptions
+      );
+
+      if (!response.ok) {
+        throw new Error(`Like request failed with status: ${response.status}`);
+      }
+      
+      const resultText = await response.text();
+      debug('Received like response', resultText);
+      
+      try {
+        if (resultText && resultText.trim()) {
+          const result = JSON.parse(resultText);
+          debug('Parsed like response', result);
+          
+          // Update like count from server response if available
+          if (result && typeof result.likesCount !== 'undefined') {
+            debug('Setting like count from API response', result.likesCount);
+            setLikeCount(result.likesCount);
+          } else if (result && typeof result.likeCount !== 'undefined') {
+            debug('Setting like count from API response', result.likeCount);
+            setLikeCount(result.likeCount);
+          }
+          
+          // Always set isLiked to true after a successful like request
+          setIsLiked(true);
+        }
+      } catch (parseError) {
+        debug('Response is not valid JSON, keeping optimistic update', parseError.message);
+      }
+      
+    } catch (error) {
+      console.error("Error liking article:", error);
+      // If there was an error, revert to the previous state
+      setIsLiked(false);
+      setLikeCount(prevCount => Math.max(0, prevCount - 1));
+      // Alert the user of the failure
+      alert('Failed to like the article. Please try again.');
     }
   };
 
@@ -549,11 +723,43 @@ const TrendingNewsDetails = () => {
         
         {/* Action Buttons (Like, View, Share) */}
         <Box sx={{ py: 2, display: 'flex', alignItems: 'center', gap: 4, borderBottom: '1px solid #eee', mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={handleLikeToggle}>
-            <IconButton color={isLiked ? 'error' : 'default'} size="small">
-              {isLiked ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              cursor: isLiked ? 'default' : 'pointer',
+              opacity: isLiked ? 1 : 0.9,
+              '&:hover': {
+                opacity: isLiked ? 1 : 1
+              }
+            }} 
+            onClick={handleLikeToggle}
+          >
+            <IconButton 
+              color={isLiked ? 'error' : 'default'} 
+              size="small"
+              disabled={isLiked}
+              sx={{
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  transform: isLiked ? 'none' : 'scale(1.1)',
+                },
+                '&.Mui-disabled': {
+                  opacity: 1,
+                  color: 'error.main'
+                }
+              }}
+            >
+              {isLiked ? <FavoriteIcon color="error" /> : <FavoriteBorderIcon />}
             </IconButton>
-            <Typography variant="body2" sx={{ ml: 0.5 }}>
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                ml: 0.5,
+                color: isLiked ? 'error.main' : 'text.primary',
+                fontWeight: isLiked ? 'medium' : 'regular'
+              }}
+            >
               {likeCount} {likeCount === 1 ? 'Like' : 'Likes'}
             </Typography>
           </Box>
