@@ -12,6 +12,8 @@ import {
   Alert,
 } from '@mui/material';
 import axios from 'axios';
+import { useStateContext } from './Header'; // Import state context
+import { Link } from 'react-router-dom';
 
 const TrendingNews = () => {
   const [newsItems, setNewsItems] = useState([]);
@@ -21,6 +23,13 @@ const TrendingNews = () => {
   const [fifthSectionNews, setFifthSectionNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { selectedState } = useStateContext(); // Get selected state from context
+
+  // Helper function to capitalize first letter
+  const capitalize = (str) => {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  };
 
   // Category tabs data
   const categoryTabs = [
@@ -40,7 +49,7 @@ const TrendingNews = () => {
 
   useEffect(() => {
     fetchTrendingNews();
-  }, []);
+  }, [selectedState]); // Re-fetch when selected state changes
 
   const fetchTrendingNews = async () => {
     setLoading(true);
@@ -67,6 +76,32 @@ const TrendingNews = () => {
         fetchedNews = [];
       }
       
+      // Filter news by selected state if one is selected
+      if (selectedState) {
+        console.log(`Filtering trending news by state: ${selectedState}`);
+        
+        // First, try to match exact state name
+        let filteredNews = fetchedNews.filter(item => 
+          item.state && (item.state.includes(selectedState) || selectedState.includes(item.state))
+        );
+        
+        // If no exact matches, check if state is mentioned in the content or title
+        if (filteredNews.length === 0) {
+          filteredNews = fetchedNews.filter(item => 
+            (item.content && item.content.includes(selectedState)) || 
+            (item.title && item.title.includes(selectedState))
+          );
+        }
+        
+        // If we found filtered results, use them; otherwise, fall back to all news
+        if (filteredNews.length > 0) {
+          console.log(`Found ${filteredNews.length} trending news items for state: ${selectedState}`);
+          fetchedNews = filteredNews;
+        } else {
+          console.log(`No trending news items found for state: ${selectedState}, showing all trending news`);
+        }
+      }
+      
       // Log each fetched news item to debug
       fetchedNews.forEach((item, index) => {
         console.log(`News item ${index + 1}:`, {
@@ -75,7 +110,9 @@ const TrendingNews = () => {
           featuredImage: item.featuredImage,
           image: item.image,
           images: item.images,
-          category: item.category
+          category: item.category,
+          state: item.state,
+          district: item.district
         });
       });
       
@@ -171,8 +208,20 @@ const TrendingNews = () => {
         id: item.id,
         featuredImage: item.featuredImage,
         image: item.image,
-        images: item.images
+        images: item.images,
+        youtubeUrl: item.youtubeUrl
       });
+      
+      // If item has YouTube URL, use YouTube thumbnail
+      if (item.youtubeUrl) {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = item.youtubeUrl.match(regExp);
+        if (match && match[2].length === 11) {
+          const videoId = match[2];
+          console.log(`Using YouTube thumbnail for "${item.title}": ${videoId}`);
+          return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+        }
+      }
       
       // If item has images array with content
       if (item.images && item.images.length > 0) {
@@ -215,106 +264,173 @@ const TrendingNews = () => {
     
     const imageUrl = getImageUrl();
     
+    // Check if it's a YouTube video
+    const isYouTubeVideo = !!item.youtubeUrl;
+    
     return (
       <Box sx={{ position: 'relative', height: '100%', mb: 2 }}>
-        <Card 
-          sx={{ 
-            position: 'relative',
-            borderRadius: 2,
-            overflow: 'hidden',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            height: 360,
-            display: 'flex',
-            flexDirection: 'column',
-            cursor: 'pointer',
-            backgroundColor: 'white',
-          }}
+        <Link 
+          to={`/trending/${item.id}`}
+          style={{ textDecoration: 'none', color: 'inherit' }}
         >
-          {!imageError ? (
-            <CardMedia
-              component="img"
-              height="360"
-              image={imageUrl}
-              alt={item.title}
-              onError={handleImageError}
-              sx={{
-                objectFit: 'cover',
-              }}
-            />
-          ) : (
-            <Box
-              sx={{
-                height: 360,
-                backgroundColor: '#f0f0f0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#999'
-              }}
-            >
-              Image not available
-            </Box>
-          )}
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 16,
-              left: 16,
-              zIndex: 2,
-              backgroundColor: '#0039CB',
-              color: 'white',
-              fontWeight: 'bold',
-              fontSize: '0.75rem',
-              padding: '6px 16px',
-              borderRadius: '4px',
-              letterSpacing: '0.5px',
-              textTransform: 'uppercase',
+          <Card 
+            sx={{ 
+              position: 'relative',
+              borderRadius: 2,
+              overflow: 'hidden',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              height: 360,
+              display: 'flex',
+              flexDirection: 'column',
+              cursor: 'pointer',
+              backgroundColor: 'white',
+              transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-5px)',
+                boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+              }
             }}
           >
-            {item.category || 'TRENDING'}
-          </Box>
-        </Card>
+            {!imageError ? (
+              <Box sx={{ position: 'relative' }}>
+                <CardMedia
+                  component="img"
+                  height="360"
+                  image={imageUrl}
+                  alt={item.title}
+                  onError={handleImageError}
+                  sx={{
+                    objectFit: 'cover',
+                  }}
+                />
+                {isYouTubeVideo && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: '60px',
+                      height: '60px',
+                      backgroundColor: 'rgba(255, 0, 0, 0.8)',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      zIndex: 2,
+                    }}
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </Box>
+                )}
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  height: 360,
+                  backgroundColor: '#f0f0f0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#999'
+                }}
+              >
+                Image not available
+              </Box>
+            )}
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 16,
+                left: 16,
+                zIndex: 2,
+                backgroundColor: '#0039CB',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '0.75rem',
+                padding: '6px 16px',
+                borderRadius: '4px',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase',
+              }}
+            >
+              {item.category || 'TRENDING'}
+            </Box>
+          </Card>
         
-        <Box sx={{ pt: 2 }}>
-          <Typography
-            variant="h6"
-            sx={{
-              color: 'black',
-              fontWeight: '700',
-              mb: 1,
-              lineHeight: 1.3,
-              fontSize: '1rem',
-            }}
-          >
-            {item.title}
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Box
-              component="span"
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mr: 1.5,
-                color: '#777',
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2C6.5 2 2 6.5 2 12C2 17.5 6.5 22 12 22C17.5 22 22 17.5 22 12C22 6.5 17.5 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="#888888"/>
-                <path d="M12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z" fill="#888888"/>
-              </svg>
-            </Box>
+          <Box sx={{ pt: 2 }}>
             <Typography
-              variant="caption"
+              variant="h6"
               sx={{
-                color: '#666',
-                fontSize: '0.8rem',
+                color: 'black',
+                fontWeight: '700',
+                mb: 1,
+                lineHeight: 1.3,
+                fontSize: '1rem',
               }}
             >
-              {formatDate(item.createdAt || item.publishedAt || item.updatedAt)}
+              {item.title}
             </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box
+                component="span"
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mr: 1.5,
+                  color: '#777',
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2C6.5 2 2 6.5 2 12C2 17.5 6.5 22 12 22C17.5 22 22 17.5 22 12C22 6.5 17.5 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="#888888"/>
+                  <path d="M12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z" fill="#888888"/>
+                </svg>
+              </Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: '#666',
+                  fontSize: '0.8rem',
+                }}
+              >
+                {formatDate(item.createdAt || item.publishedAt || item.updatedAt)}
+              </Typography>
+            </Box>
+            
+            {/* Show state and district if available */}
+            {(item.state || item.district) && (
+              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                <Box
+                  component="span"
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mr: 1.5,
+                    color: '#777',
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#888888"/>
+                  </svg>
+                </Box>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: '#666',
+                    fontSize: '0.8rem',
+                  }}
+                >
+                  {[item.state ? capitalize(item.state) : '', item.district ? capitalize(item.district) : ''].filter(Boolean).join(', ')}
+                </Typography>
+              </Box>
+            )}
           </Box>
-        </Box>
+        </Link>
       </Box>
     );
   };
@@ -330,6 +446,16 @@ const TrendingNews = () => {
     
     // Get image URL with proper handling
     const getImageUrl = () => {
+      // If item has YouTube URL, use YouTube thumbnail
+      if (item.youtubeUrl) {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = item.youtubeUrl.match(regExp);
+        if (match && match[2].length === 11) {
+          const videoId = match[2];
+          return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+        }
+      }
+      
       // If item has images array with content
       if (item.images && item.images.length > 0) {
         return item.images[0];
@@ -362,105 +488,172 @@ const TrendingNews = () => {
     };
     
     const imageUrl = getImageUrl();
+    
+    // Check if it's a YouTube video
+    const isYouTubeVideo = !!item.youtubeUrl;
       
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', mb: 4, height: '100%' }}>
-        <Card 
-          sx={{ 
-            position: 'relative',
-            borderRadius: 2,
-            overflow: 'hidden',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            height: 280,
-            backgroundColor: 'white',
-          }}
+        <Link 
+          to={`/trending/${item.id}`}
+          style={{ textDecoration: 'none', color: 'inherit' }}
         >
-          {!imageError ? (
-            <CardMedia
-              component="img"
-              height="280"
-              image={imageUrl}
-              alt={item.title}
-              onError={handleImageError}
-              sx={{
-                objectFit: 'cover',
-              }}
-            />
-          ) : (
-            <Box
-              sx={{
-                height: 280,
-                backgroundColor: '#f0f0f0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#999'
-              }}
-            >
-              Image not available
-            </Box>
-          )}
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 16,
-              left: 16,
-              zIndex: 2,
-              backgroundColor: '#0039CB',
-              color: 'white',
-              fontWeight: 'bold',
-              fontSize: '0.75rem',
-              padding: '6px 16px',
-              borderRadius: '4px',
-              letterSpacing: '0.5px',
-              textTransform: 'uppercase',
-            }}
-          >
-            {item.category || 'TRENDING'}
-          </Box>
-        </Card>
-        
-        <Box sx={{ pt: 2 }}>
-          <Typography
-            variant="h6"
-            sx={{
-              color: 'black',
-              fontWeight: '700',
-              mb: 1,
-              lineHeight: 1.3,
-              fontSize: '1rem',
-              height: '2.6rem',
+          <Card 
+            sx={{ 
+              position: 'relative',
+              borderRadius: 2,
               overflow: 'hidden',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              height: 280,
+              backgroundColor: 'white',
+              transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-5px)',
+                boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+              }
             }}
           >
-            {item.title}
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            {!imageError ? (
+              <Box sx={{ position: 'relative' }}>
+                <CardMedia
+                  component="img"
+                  height="280"
+                  image={imageUrl}
+                  alt={item.title}
+                  onError={handleImageError}
+                  sx={{
+                    objectFit: 'cover',
+                  }}
+                />
+                {isYouTubeVideo && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: '60px',
+                      height: '60px',
+                      backgroundColor: 'rgba(255, 0, 0, 0.8)',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      zIndex: 2,
+                    }}
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </Box>
+                )}
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  height: 280,
+                  backgroundColor: '#f0f0f0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#999'
+                }}
+              >
+                Image not available
+              </Box>
+            )}
             <Box
-              component="img"
-              src="https://cdn-icons-png.flaticon.com/512/3524/3524636.png"
-              alt="clock"
-              sx={{ 
-                width: 16,
-                height: 16,
-                mr: 1,
-                opacity: 0.7
-              }}
-            />
-            <Typography
-              variant="caption"
               sx={{
-                color: '#666',
-                fontSize: '0.8rem',
+                position: 'absolute',
+                top: 16,
+                left: 16,
+                zIndex: 2,
+                backgroundColor: '#0039CB',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '0.75rem',
+                padding: '6px 16px',
+                borderRadius: '4px',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase',
               }}
             >
-              {formatDate(item.createdAt || item.publishedAt || item.updatedAt)}
+              {item.category || 'TRENDING'}
+            </Box>
+          </Card>
+        
+          <Box sx={{ pt: 2 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                color: 'black',
+                fontWeight: '700',
+                mb: 1,
+                lineHeight: 1.3,
+                fontSize: '1rem',
+                height: '2.6rem',
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+              }}
+            >
+              {item.title}
             </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Box
+                component="img"
+                src="https://cdn-icons-png.flaticon.com/512/3524/3524636.png"
+                alt="clock"
+                sx={{ 
+                  width: 16,
+                  height: 16,
+                  mr: 1,
+                  opacity: 0.7
+                }}
+              />
+              <Typography
+                variant="caption"
+                sx={{
+                  color: '#666',
+                  fontSize: '0.8rem',
+                }}
+              >
+                {formatDate(item.createdAt || item.publishedAt || item.updatedAt)}
+              </Typography>
+            </Box>
+            
+            {/* Show state and district if available */}
+            {(item.state || item.district) && (
+              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                <Box
+                  component="span"
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mr: 1,
+                    opacity: 0.7
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#888888"/>
+                  </svg>
+                </Box>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: '#666',
+                    fontSize: '0.8rem',
+                  }}
+                >
+                  {[item.state ? capitalize(item.state) : '', item.district ? capitalize(item.district) : ''].filter(Boolean).join(', ')}
+                </Typography>
+              </Box>
+            )}
           </Box>
-        </Box>
+        </Link>
       </Box>
     );
   };

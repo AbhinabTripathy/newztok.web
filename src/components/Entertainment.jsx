@@ -12,6 +12,7 @@ import {
   Alert,
 } from '@mui/material';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const Entertainment = () => {
   const [newsItems, setNewsItems] = useState([]);
@@ -21,6 +22,7 @@ const Entertainment = () => {
   const [fifthSectionNews, setFifthSectionNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   // Category tabs data
   const categoryTabs = [
@@ -164,6 +166,10 @@ const Entertainment = () => {
       setImageError(true);
     };
     
+    const handleCardClick = () => {
+      navigate(`/entertainment/${item.id}`);
+    };
+    
     // Get image URL with proper handling
     const getImageUrl = () => {
       console.log(`Getting image URL for item with title "${item.title}":`, {
@@ -220,7 +226,7 @@ const Entertainment = () => {
     }, [imageUrl, item.title]);
     
     return (
-      <Box sx={{ position: 'relative', height: '100%', mb: 2 }}>
+      <Box sx={{ position: 'relative', height: '100%', mb: 2 }} onClick={handleCardClick}>
         <Card 
           sx={{ 
             position: 'relative',
@@ -232,6 +238,11 @@ const Entertainment = () => {
             flexDirection: 'column',
             cursor: 'pointer',
             backgroundColor: 'white',
+            transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+            '&:hover': {
+              transform: 'translateY(-5px)',
+              boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+            }
           }}
         >
           {!imageError ? (
@@ -288,6 +299,11 @@ const Entertainment = () => {
               mb: 1,
               lineHeight: 1.3,
               fontSize: '1rem',
+              cursor: 'pointer',
+              transition: 'color 0.2s ease',
+              '&:hover': { 
+                color: '#8E24AA' 
+              }
             }}
           >
             {item.title}
@@ -326,10 +342,15 @@ const Entertainment = () => {
   // Second section news card component with different style
   const SecondSectionNewsCard = ({ item }) => {
     const [imageError, setImageError] = useState(false);
+    const navigate = useNavigate();
     
     const handleImageError = () => {
       console.error(`Error loading image for "${item.title}"`);
       setImageError(true);
+    };
+    
+    const handleCardClick = () => {
+      navigate(`/entertainment/${item.id}`);
     };
     
     // Get image URL with proper handling
@@ -378,21 +399,21 @@ const Entertainment = () => {
     const imageUrl = getImageUrl();
     
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', mb: 4, height: '100%' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', mb: 4, height: '100%' }} onClick={handleCardClick}>
         <Card 
           sx={{ 
             position: 'relative',
             borderRadius: 2,
             overflow: 'hidden',
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            height: 280,
+            height: 360,
             backgroundColor: 'white',
           }}
         >
           {!imageError ? (
             <CardMedia
               component="img"
-              height="280"
+              height="360"
               image={imageUrl}
               alt={item.title}
               onError={handleImageError}
@@ -403,7 +424,7 @@ const Entertainment = () => {
           ) : (
             <Box
               sx={{
-                height: 280,
+                height: 360,
                 backgroundColor: '#f0f0f0',
                 display: 'flex',
                 alignItems: 'center',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -12,16 +12,18 @@ import {
   CircularProgress,
 } from '@mui/material';
 import axios from 'axios';
+import { useStateContext } from './Header'; // Import state context
 
 const StateNews = () => {
   const { state, district } = useParams();
   const [newsItems, setNewsItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { selectedState } = useStateContext(); // Get selected state from context
 
   useEffect(() => {
     fetchDistrictNews();
-  }, []);
+  }, [selectedState]); // Re-fetch when selected state changes
 
   const fetchDistrictNews = async () => {
     try {
@@ -35,6 +37,32 @@ const StateNews = () => {
         fetchedNews = response.data;
       } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
         fetchedNews = response.data.data;
+      }
+      
+      // Filter news by selected state if one is selected
+      if (selectedState) {
+        console.log(`Filtering district news by state: ${selectedState}`);
+        
+        // First, try to match exact state name
+        let filteredNews = fetchedNews.filter(item => 
+          item.state && (item.state.includes(selectedState) || selectedState.includes(item.state))
+        );
+        
+        // If no exact matches, check if state is mentioned in the content or title
+        if (filteredNews.length === 0) {
+          filteredNews = fetchedNews.filter(item => 
+            (item.content && item.content.includes(selectedState)) || 
+            (item.title && item.title.includes(selectedState))
+          );
+        }
+        
+        // If we found filtered results, use them; otherwise, fall back to all news
+        if (filteredNews.length > 0) {
+          console.log(`Found ${filteredNews.length} district news items for state: ${selectedState}`);
+          fetchedNews = filteredNews;
+        } else {
+          console.log(`No district news items found for state: ${selectedState}, showing all district news`);
+        }
       }
       
       setNewsItems(fetchedNews);
@@ -136,76 +164,95 @@ const StateNews = () => {
 
     return (
       <Box sx={{ position: 'relative', height: '100%', mb: 2 }}>
-        <Card 
-          sx={{ 
-            position: 'relative',
-            borderRadius: 2,
-            overflow: 'hidden',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            height: 360,
-            display: 'flex',
-            flexDirection: 'column',
-            cursor: 'pointer',
-            backgroundColor: 'white',
-          }}
+        <Link 
+          to={`/state/${item.state ? item.state.toLowerCase() : 'all'}/${item.id}`}
+          style={{ textDecoration: 'none', color: 'inherit' }}
         >
-          {isVideo && youtubeEmbedUrl ? (
-            <iframe
-              width="100%"
-              height="360"
-              src={youtubeEmbedUrl}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              title={item.title}
-            />
-          ) : (
-            <CardMedia
-              component="img"
-              height="360"
-              image={mediaUrl}
-              alt={item.title}
-              sx={{
-                objectFit: 'cover',
-              }}
-              onError={(e) => {
-                e.target.src = 'https://via.placeholder.com/400x300?text=Error+Loading+Image';
-              }}
-            />
-          )}
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 16,
-              left: 16,
-              zIndex: 2,
-              backgroundColor: '#673AB7',
-              color: 'white',
-              fontWeight: 'bold',
-              fontSize: '0.75rem',
-              padding: '6px 16px',
-              borderRadius: '4px',
-              letterSpacing: '0.5px',
-              textTransform: 'uppercase',
+          <Card 
+            sx={{ 
+              position: 'relative',
+              borderRadius: 2,
+              overflow: 'hidden',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              height: 360,
+              display: 'flex',
+              flexDirection: 'column',
+              cursor: 'pointer',
+              backgroundColor: 'white',
+              transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-5px)',
+                boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+              }
             }}
           >
-            {item.category || 'STATE'}
-          </Box>
-        </Card>
+            {isVideo && youtubeEmbedUrl ? (
+              <iframe
+                width="100%"
+                height="360"
+                src={youtubeEmbedUrl}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={item.title}
+              />
+            ) : (
+              <CardMedia
+                component="img"
+                height="360"
+                image={mediaUrl}
+                alt={item.title}
+                sx={{
+                  objectFit: 'cover',
+                }}
+                onError={(e) => {
+                  e.target.src = 'https://via.placeholder.com/400x300?text=Error+Loading+Image';
+                }}
+              />
+            )}
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 16,
+                left: 16,
+                zIndex: 2,
+                backgroundColor: '#673AB7',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '0.75rem',
+                padding: '6px 16px',
+                borderRadius: '4px',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase',
+              }}
+            >
+              {item.category || 'STATE'}
+            </Box>
+          </Card>
+        </Link>
         
         <Box sx={{ pt: 2 }}>
-          <Typography
-            variant="h6"
-            sx={{
-              color: 'black',
-              fontWeight: '700',
-              mb: 1,
-              lineHeight: 1.3,
-              fontSize: '1rem',
-            }}
+          <Link 
+            to={`/state/${item.state ? item.state.toLowerCase() : 'all'}/${item.id}`}
+            style={{ textDecoration: 'none', color: 'inherit' }}
           >
-            {item.title || 'No title available'}
-          </Typography>
+            <Typography
+              variant="h6"
+              sx={{
+                color: 'black',
+                fontWeight: '700',
+                mb: 1,
+                lineHeight: 1.3,
+                fontSize: '1rem',
+                transition: 'color 0.2s ease',
+                '&:hover': { 
+                  color: '#3f51b5' 
+                }
+              }}
+            >
+              {item.title || 'No title available'}
+            </Typography>
+          </Link>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Box
               component="span"
@@ -232,6 +279,35 @@ const StateNews = () => {
               {formatDate(item.createdAt || item.updatedAt || item.publishedAt)}
             </Typography>
           </Box>
+          
+          {/* Show state and district if available */}
+          {(item.state || item.district) && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+              <Box
+                component="span"
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mr: 1.5,
+                  color: '#777',
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#888888"/>
+                </svg>
+              </Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: '#666',
+                  fontSize: '0.8rem',
+                }}
+              >
+                {[item.state, item.district].filter(Boolean).join(', ')}
+              </Typography>
+            </Box>
+          )}
         </Box>
       </Box>
     );
@@ -282,78 +358,97 @@ const StateNews = () => {
 
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', mb: 4, height: '100%' }}>
-        <Card 
-          sx={{ 
-            position: 'relative',
-            borderRadius: 2,
-            overflow: 'hidden',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            height: 280,
-            backgroundColor: 'white',
-          }}
+        <Link 
+          to={`/state/${item.state ? item.state.toLowerCase() : 'all'}/${item.id}`}
+          style={{ textDecoration: 'none', color: 'inherit' }}
         >
-          {isVideo && youtubeEmbedUrl ? (
-            <iframe
-              width="100%"
-              height="280"
-              src={youtubeEmbedUrl}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              title={item.title}
-            />
-          ) : (
-            <CardMedia
-              component="img"
-              height="280"
-              image={mediaUrl}
-              alt={item.title}
-              sx={{
-                objectFit: 'cover',
-              }}
-              onError={(e) => {
-                e.target.src = 'https://via.placeholder.com/400x300?text=Error+Loading+Image';
-              }}
-            />
-          )}
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 16,
-              left: 16,
-              zIndex: 2,
-              backgroundColor: '#673AB7',
-              color: 'white',
-              fontWeight: 'bold',
-              fontSize: '0.75rem',
-              padding: '6px 16px',
-              borderRadius: '4px',
-              letterSpacing: '0.5px',
-              textTransform: 'uppercase',
+          <Card 
+            sx={{ 
+              position: 'relative',
+              borderRadius: 2,
+              overflow: 'hidden',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              height: 280,
+              backgroundColor: 'white',
+              transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-5px)',
+                boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+              }
             }}
           >
-            {item.category || 'STATE'}
-          </Box>
-        </Card>
+            {isVideo && youtubeEmbedUrl ? (
+              <iframe
+                width="100%"
+                height="280"
+                src={youtubeEmbedUrl}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={item.title}
+              />
+            ) : (
+              <CardMedia
+                component="img"
+                height="280"
+                image={mediaUrl}
+                alt={item.title}
+                sx={{
+                  objectFit: 'cover',
+                }}
+                onError={(e) => {
+                  e.target.src = 'https://via.placeholder.com/400x300?text=Error+Loading+Image';
+                }}
+              />
+            )}
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 16,
+                left: 16,
+                zIndex: 2,
+                backgroundColor: '#673AB7',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '0.75rem',
+                padding: '6px 16px',
+                borderRadius: '4px',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase',
+              }}
+            >
+              {item.category || 'STATE'}
+            </Box>
+          </Card>
+        </Link>
         
         <Box sx={{ pt: 2 }}>
-          <Typography
-            variant="h6"
-            sx={{
-              color: 'black',
-              fontWeight: '700',
-              mb: 1,
-              lineHeight: 1.3,
-              fontSize: '1rem',
-              height: '2.6rem',
-              overflow: 'hidden',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-            }}
+          <Link 
+            to={`/state/${item.state ? item.state.toLowerCase() : 'all'}/${item.id}`}
+            style={{ textDecoration: 'none', color: 'inherit' }}
           >
-            {item.title || 'No title available'}
-          </Typography>
+            <Typography
+              variant="h6"
+              sx={{
+                color: 'black',
+                fontWeight: '700',
+                mb: 1,
+                lineHeight: 1.3,
+                fontSize: '1rem',
+                height: '2.6rem',
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                transition: 'color 0.2s ease',
+                '&:hover': { 
+                  color: '#3f51b5' 
+                }
+              }}
+            >
+              {item.title || 'No title available'}
+            </Typography>
+          </Link>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Box
               component="img"
@@ -376,6 +471,35 @@ const StateNews = () => {
               {formatDate(item.createdAt || item.updatedAt || item.publishedAt)}
             </Typography>
           </Box>
+          
+          {/* Show state and district if available */}
+          {(item.state || item.district) && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+              <Box
+                component="span"
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mr: 1,
+                  opacity: 0.7
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#888888"/>
+                </svg>
+              </Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: '#666',
+                  fontSize: '0.8rem',
+                }}
+              >
+                {[item.state, item.district].filter(Boolean).join(', ')}
+              </Typography>
+            </Box>
+          )}
         </Box>
       </Box>
     );
@@ -422,8 +546,24 @@ const StateNews = () => {
   // Render the main content for a particular state
   const renderStateContent = (stateName, districtName = null) => {
     const stateData = states.find(s => s.en.toLowerCase() === stateName.toLowerCase());
+    
+    // Add null check to prevent accessing properties on undefined
+    if (!stateData) {
+      console.error(`State not found: ${stateName}`);
+      return (
+        <Box sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="h5" color="error">
+            State information not found
+          </Typography>
+          <Typography variant="body1" sx={{ mt: 2 }}>
+            The requested state "{stateName}" could not be found in our database.
+          </Typography>
+        </Box>
+      );
+    }
+    
     const districtData = districtName ? 
-      stateData?.districts.find(d => d.en.toLowerCase() === districtName.toLowerCase()) :
+      stateData.districts.find(d => d.en.toLowerCase() === districtName.toLowerCase()) :
       null;
     
     const subtitle = districtData ? 

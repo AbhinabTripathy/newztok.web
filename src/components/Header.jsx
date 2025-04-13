@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, createContext, useContext } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -23,6 +23,10 @@ import {
   Card,
   CardContent,
   CardMedia,
+  Menu,
+  MenuItem,
+  Avatar,
+  Divider,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import YouTubeIcon from '@mui/icons-material/YouTube';
@@ -33,10 +37,24 @@ import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import SearchIcon from '@mui/icons-material/Search';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import CloseIcon from '@mui/icons-material/Close';
+import LogoutIcon from '@mui/icons-material/Logout';
+import PermIdentityIcon from '@mui/icons-material/PermIdentity';
+import PrivacyTipIcon from '@mui/icons-material/PrivacyTip';
+import DescriptionIcon from '@mui/icons-material/Description';
 import Logo from '../assets/images/NewzTok logo-2.svg';
+
+// Create a context for the selected state
+export const StateContext = createContext({
+  selectedState: '',
+  setSelectedState: () => {}
+});
+
+// Custom hook to use the state context
+export const useStateContext = () => useContext(StateContext);
 
 const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(() => {
     const path = location.pathname;
     if (path === '/') return '';
@@ -49,9 +67,19 @@ const Header = () => {
   const [userLocation, setUserLocation] = useState('Location not available');
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedState, setSelectedState] = useState('');
+  const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+  const [anchorEl, setAnchorEl] = useState(null);
+  const accountMenuOpen = Boolean(anchorEl);
 
   const navItems = ['Trending', 'International', 'National', 'State', 'Entertainment', 'Sports'];
   const stateItems = ['उत्तर प्रदेश', 'बिहार', 'झारखंड'];
+
+  // Check if user is logged in
+  useEffect(() => {
+    const userAuthToken = localStorage.getItem('userAuthToken');
+    setIsUserLoggedIn(!!userAuthToken);
+  }, [location.pathname]); // Re-check when route changes
 
   // Sample search results for demonstration
   const searchResults = [
@@ -172,6 +200,67 @@ const Header = () => {
     setSearchQuery(e.target.value);
   };
 
+  // Account menu handlers
+  const handleAccountClick = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleAccountClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = async () => {
+    try {
+      // Get the auth token
+      const userAuthToken = localStorage.getItem('userAuthToken');
+      
+      if (userAuthToken) {
+        // Create request headers
+        const myHeaders = new Headers();
+        myHeaders.append("Authorization", `Bearer ${userAuthToken}`);
+        
+        const requestOptions = {
+          method: "GET",
+          headers: myHeaders,
+          redirect: "follow"
+        };
+        
+        // Make API call to logout endpoint
+        await fetch("http://13.234.42.114:3333/api/auth/logout", requestOptions);
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      // Clear all auth tokens and user data
+      localStorage.removeItem('userAuthToken');
+      localStorage.removeItem('userType');
+      
+      // Close the menu
+      handleAccountClose();
+      
+      // Redirect to home page
+      navigate('/', { replace: true });
+      
+      // Update login state
+      setIsUserLoggedIn(false);
+    }
+  };
+
+  const handleProfileClick = () => {
+    navigate('/profile');
+    handleAccountClose();
+  };
+
+  const handlePrivacyClick = () => {
+    navigate('/privacy-policy');
+    handleAccountClose();
+  };
+
+  const handleTermsClick = () => {
+    navigate('/terms-conditions');
+    handleAccountClose();
+  };
+
   const SearchResultItem = ({ item }) => (
     <Grid item xs={12} sm={6}>
       <Box sx={{ display: 'flex', mb: 3, cursor: 'pointer' }}>
@@ -239,8 +328,21 @@ const Header = () => {
     </Grid>
   );
 
+  // Handle state selection
+  const handleStateSelect = (state) => {
+    setSelectedState(state);
+    
+    // Navigate to the state page with the selected state
+    navigate(`/state/${state}`);
+    
+    // Close drawer if open
+    if (drawerOpen) {
+      handleDrawerClose();
+    }
+  };
+
   return (
-    <>
+    <StateContext.Provider value={{ selectedState, setSelectedState }}>
       {/* States Bar - Purple Bar */}
       <AppBar position="static" sx={{ bgcolor: '#5448c8', width: '100%', boxShadow: 'none' }}>
         <Container maxWidth="xl" disableGutters>
@@ -258,13 +360,16 @@ const Header = () => {
               {stateItems.map((state) => (
                 <Typography 
                   key={state} 
-                  component={Link} 
-                  to={`/state/${state}`}
+                  onClick={() => handleStateSelect(state)}
                   sx={{ 
-                    color: 'white', 
+                    color: selectedState === state ? '#ffcc00' : 'white', 
                     textDecoration: 'none',
                     fontSize: '0.9rem',
-                    fontWeight: 500
+                    fontWeight: selectedState === state ? 700 : 500,
+                    cursor: 'pointer',
+                    '&:hover': {
+                      color: '#ffcc00'
+                    }
                   }}
                 >
                   {state}
@@ -272,22 +377,78 @@ const Header = () => {
               ))}
             </Stack>
             
-            {/* Account Icon */}
-            <Tooltip title="Login">
-              <IconButton 
-                component={Link}
-                to="/user/login"
-                size="small" 
-                sx={{ 
-                  color: 'white',
-                  '&:hover': {
-                    bgcolor: 'rgba(255, 255, 255, 0.1)'
-                  }
-                }}
-              >
-                <AccountCircleIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+            {/* Account Icon with Dropdown */}
+            {isUserLoggedIn ? (
+              <>
+                <Tooltip title="Account">
+                  <IconButton 
+                    size="small" 
+                    onClick={handleAccountClick}
+                    sx={{ 
+                      color: 'white',
+                      '&:hover': {
+                        bgcolor: 'rgba(255, 255, 255, 0.1)'
+                      }
+                    }}
+                  >
+                    <AccountCircleIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <Menu
+                  anchorEl={anchorEl}
+                  open={accountMenuOpen}
+                  onClose={handleAccountClose}
+                  PaperProps={{
+                    elevation: 3,
+                    sx: {
+                      overflow: 'visible',
+                      filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.15))',
+                      mt: 1.5,
+                      width: 200,
+                      '& .MuiMenuItem-root': {
+                        py: 1,
+                      },
+                    },
+                  }}
+                  transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                  anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                >
+                  <MenuItem onClick={handleProfileClick}>
+                    <PermIdentityIcon sx={{ mr: 1.5, fontSize: '1.2rem', color: '#666' }} />
+                    <Typography variant="body2">Profile</Typography>
+                  </MenuItem>
+                  <MenuItem onClick={handlePrivacyClick}>
+                    <PrivacyTipIcon sx={{ mr: 1.5, fontSize: '1.2rem', color: '#666' }} />
+                    <Typography variant="body2">Privacy Policy</Typography>
+                  </MenuItem>
+                  <MenuItem onClick={handleTermsClick}>
+                    <DescriptionIcon sx={{ mr: 1.5, fontSize: '1.2rem', color: '#666' }} />
+                    <Typography variant="body2">Terms & Conditions</Typography>
+                  </MenuItem>
+                  <Divider sx={{ my: 1 }} />
+                  <MenuItem onClick={handleLogout}>
+                    <LogoutIcon sx={{ mr: 1.5, fontSize: '1.2rem', color: '#e73952' }} />
+                    <Typography variant="body2" color="#e73952">Logout</Typography>
+                  </MenuItem>
+                </Menu>
+              </>
+            ) : (
+              <Tooltip title="Login">
+                <IconButton 
+                  component={Link}
+                  to="/user/login"
+                  size="small" 
+                  sx={{ 
+                    color: 'white',
+                    '&:hover': {
+                      bgcolor: 'rgba(255, 255, 255, 0.1)'
+                    }
+                  }}
+                >
+                  <AccountCircleIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
           </Toolbar>
         </Container>
       </AppBar>
@@ -890,7 +1051,7 @@ const Header = () => {
           </Box>
         </Box>
       </Drawer>
-    </>
+    </StateContext.Provider>
   );
 };
 

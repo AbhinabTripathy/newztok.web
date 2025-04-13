@@ -12,6 +12,14 @@ import StateNews from './components/State';
 import Footer from './components/Footer';
 import Login from './components/Login';
 import Register from './components/Register';
+import Profile from './components/Profile';
+import NewsDetail from './components/NewsDetail';
+import TrendingNewsDetails from './components/TrendingNewsDetails';
+import InternationalNewsDetails from './components/InternationalNewsDetails';
+import NationalNewsDetails from './components/NationalNewsDetails';
+import StateNewsDetails from './components/StateNewsDetails';
+import EntertainmentNewsDetails from './components/EntertainmentNewsDetails';
+import SportsNewsDetails from './components/SportsNewsDetails';
 import JournalistHome from './components/Journalist/JournalistHome';
 import ProtectedRoute from './components/Journalist/ProtectedRoute';
 import EditPost from './components/Journalist/EditPost';
@@ -58,6 +66,14 @@ function App() {
   const isLoginPage = location.pathname === '/user/login';
   const isRegisterPage = location.pathname === '/register';
   const isJournalistPage = location.pathname.startsWith('/journalist');
+  const isProfilePage = location.pathname === '/profile';
+  const isNewsDetailPage = location.pathname.startsWith('/news/');
+  const isTrendingDetailPage = location.pathname.startsWith('/trending/') && location.pathname !== '/trending';
+  const isInternationalDetailPage = location.pathname.startsWith('/international/') && location.pathname !== '/international';
+  const isNationalDetailPage = location.pathname.startsWith('/national/') && location.pathname !== '/national';
+  const isStateDetailPage = location.pathname.match(/^\/state\/[^/]+\/\d+/);
+  const isEntertainmentDetailPage = location.pathname.startsWith('/entertainment/') && location.pathname !== '/entertainment';
+  const isSportsDetailPage = location.pathname.startsWith('/sports/') && location.pathname !== '/sports';
 
   // Define the activeTab state and its setter function
   const [activeTab, setActiveTab] = useState('');
@@ -98,12 +114,36 @@ function App() {
           } 
         />
 
+        {/* Profile Route - Without Header and Footer */}
+        <Route path="/profile" element={<Profile />} />
+        
+        {/* News Detail Route - Without Header and Footer */}
+        <Route path="/news/:id" element={<NewsDetail />} />
+        
+        {/* Trending News Detail Route - Without Header and Footer */}
+        <Route path="/trending/:id" element={<TrendingNewsDetails />} />
+        
+        {/* International News Detail Route - Without Header and Footer */}
+        <Route path="/international/:id" element={<InternationalNewsDetails />} />
+        
+        {/* National News Detail Route - Without Header and Footer */}
+        <Route path="/national/:id" element={<NationalNewsDetails />} />
+        
+        {/* State News Detail Route - Without Header and Footer */}
+        <Route path="/state/:state/:id" element={<StateNewsDetails />} />
+        
+        {/* Entertainment News Detail Route - Without Header and Footer */}
+        <Route path="/entertainment/:id" element={<EntertainmentNewsDetails />} />
+        
+        {/* Sports News Detail Route - Without Header and Footer */}
+        <Route path="/sports/:id" element={<SportsNewsDetails />} />
+
         {/* User Routes */}
         <Route
           path="/*"
           element={
             <>
-              {!isLoginPage && !isRegisterPage && !isJournalistPage && <Header />}
+              {!isLoginPage && !isRegisterPage && !isJournalistPage && !isProfilePage && !isNewsDetailPage && !isTrendingDetailPage && !isInternationalDetailPage && !isNationalDetailPage && !isStateDetailPage && !isEntertainmentDetailPage && !isSportsDetailPage && <Header />}
               <Box component="main" sx={{ flexGrow: 1 }}>
                 <Routes>
                   <Route
@@ -123,7 +163,7 @@ function App() {
                   <Route path="/register" element={<Register />} />
                 </Routes>
               </Box>
-              {!isLoginPage && !isRegisterPage && !isJournalistPage && <Footer />}
+              {!isLoginPage && !isRegisterPage && !isJournalistPage && !isProfilePage && !isNewsDetailPage && !isTrendingDetailPage && !isInternationalDetailPage && !isNationalDetailPage && !isStateDetailPage && !isEntertainmentDetailPage && !isSportsDetailPage && <Footer />}
             </>
           }
         />

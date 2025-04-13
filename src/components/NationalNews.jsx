@@ -11,15 +11,18 @@ import {
   CircularProgress,
 } from '@mui/material';
 import axios from 'axios';
+import { useStateContext } from './Header'; // Import the state context
+import { Link } from 'react-router-dom';
 
 const NationalNews = () => {
   const [newsItems, setNewsItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { selectedState } = useStateContext(); // Get the selected state from context
 
   useEffect(() => {
     fetchNationalNews();
-  }, []);
+  }, [selectedState]); // Re-fetch when selected state changes
 
   const fetchNationalNews = async () => {
     try {
@@ -33,6 +36,32 @@ const NationalNews = () => {
         fetchedNews = response.data;
       } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
         fetchedNews = response.data.data;
+      }
+      
+      // Filter news by selected state if one is selected
+      if (selectedState) {
+        console.log(`Filtering national news by state: ${selectedState}`);
+        
+        // First, try to match exact state name
+        let filteredNews = fetchedNews.filter(item => 
+          item.state && (item.state.includes(selectedState) || selectedState.includes(item.state))
+        );
+        
+        // If no exact matches, check if state is mentioned in the content or title
+        if (filteredNews.length === 0) {
+          filteredNews = fetchedNews.filter(item => 
+            (item.content && item.content.includes(selectedState)) || 
+            (item.title && item.title.includes(selectedState))
+          );
+        }
+        
+        // If we found filtered results, use them; otherwise, fall back to all news
+        if (filteredNews.length > 0) {
+          console.log(`Found ${filteredNews.length} news items for state: ${selectedState}`);
+          fetchedNews = filteredNews;
+        } else {
+          console.log(`No news items found for state: ${selectedState}, showing all national news`);
+        }
       }
       
       setNewsItems(fetchedNews);
@@ -60,6 +89,15 @@ const NationalNews = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to capitalize first letter of each word
+  const capitalizeFirstLetter = (string) => {
+    if (!string) return '';
+    return string
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
   };
 
   // Category tabs data
@@ -131,95 +169,136 @@ const NationalNews = () => {
 
     return (
       <Box sx={{ position: 'relative', height: '100%', mb: 2 }}>
-        <Card 
-          sx={{ 
-            position: 'relative',
-            borderRadius: 2,
-            overflow: 'hidden',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            height: 360,
-            display: 'flex',
-            flexDirection: 'column',
-            cursor: 'pointer',
-            backgroundColor: 'white',
-          }}
+        <Link 
+          to={`/national/${item.id}`}
+          style={{ textDecoration: 'none', color: 'inherit' }}
         >
-          {isVideo && youtubeEmbedUrl ? (
-            <iframe
-              width="100%"
-              height="360"
-              src={youtubeEmbedUrl}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              title={item.title}
-            />
-          ) : (
-            <>
-              {!imageLoaded && !imageError && (
-                <Box 
-                  sx={{ 
-                    height: 360, 
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    bgcolor: '#f0f0f0'
-                  }}
-                >
-                  <CircularProgress size={40} />
-                </Box>
-              )}
-              <CardMedia
-                component="img"
-                height="360"
-                image={imageError ? 'https://via.placeholder.com/400x300?text=Image+Not+Available' : mediaUrl}
-                alt={item.title}
-                sx={{
-                  objectFit: 'cover',
-                  display: imageLoaded || imageError ? 'block' : 'none'
-                }}
-                onLoad={() => setImageLoaded(true)}
-                onError={(e) => {
-                  console.error(`Error loading image for "${item.title}": ${mediaUrl}`);
-                  setImageError(true);
-                  setImageLoaded(true);
-                }}
-              />
-            </>
-          )}
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 16,
-              left: 16,
-              zIndex: 2,
-              backgroundColor: '#D32F2F',
-              color: 'white',
-              fontWeight: 'bold',
-              fontSize: '0.75rem',
-              padding: '6px 16px',
-              borderRadius: '4px',
-              letterSpacing: '0.5px',
-              textTransform: 'uppercase',
+          <Card 
+            sx={{ 
+              position: 'relative',
+              borderRadius: 2,
+              overflow: 'hidden',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              height: 360,
+              display: 'flex',
+              flexDirection: 'column',
+              cursor: 'pointer',
+              backgroundColor: 'white',
+              transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-5px)',
+                boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+              }
             }}
           >
-            {item.category || 'NATIONAL'}
-          </Box>
-        </Card>
+            {isVideo && youtubeEmbedUrl ? (
+              <iframe
+                width="100%"
+                height="360"
+                src={youtubeEmbedUrl}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={item.title}
+              />
+            ) : (
+              <>
+                {!imageLoaded && !imageError && (
+                  <Box 
+                    sx={{ 
+                      height: 360, 
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: '#f0f0f0',
+                      color: '#777'
+                    }}
+                  >
+                    <CircularProgress size={30} sx={{ color: '#FF6F00' }} />
+                  </Box>
+                )}
+                <CardMedia
+                  component="img"
+                  height="360"
+                  image={mediaUrl}
+                  alt={item.title}
+                  sx={{
+                    objectFit: 'cover',
+                    display: !imageLoaded && !imageError ? 'none' : 'block',
+                  }}
+                  onLoad={() => setImageLoaded(true)}
+                  onError={() => {
+                    console.error(`Error loading image for "${item.title}"`);
+                    setImageError(true);
+                  }}
+                />
+                {imageError && (
+                  <Box 
+                    sx={{ 
+                      height: 360, 
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: '#f0f0f0',
+                      color: '#777',
+                      flexDirection: 'column',
+                      padding: 2,
+                      textAlign: 'center'
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      Image not available
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {item.title || 'National News'}
+                    </Typography>
+                  </Box>
+                )}
+              </>
+            )}
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 16,
+                left: 16,
+                zIndex: 2,
+                backgroundColor: '#FF6F00',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '0.75rem',
+                padding: '6px 16px',
+                borderRadius: '4px',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase',
+              }}
+            >
+              {item.category || 'National'}
+            </Box>
+          </Card>
+        </Link>
         
         <Box sx={{ pt: 2 }}>
-          <Typography
-            variant="h6"
-            sx={{
-              color: 'black',
-              fontWeight: '700',
-              mb: 1,
-              lineHeight: 1.3,
-              fontSize: '1rem',
-            }}
+          <Link 
+            to={`/national/${item.id}`}
+            style={{ textDecoration: 'none', color: 'inherit' }}
           >
-            {item.title || 'No title available'}
-          </Typography>
+            <Typography
+              variant="h6"
+              sx={{
+                color: 'black',
+                fontWeight: '700',
+                mb: 1,
+                lineHeight: 1.3,
+                fontSize: '1rem',
+                transition: 'color 0.2s ease',
+                '&:hover': { 
+                  color: '#FF6F00' 
+                }
+              }}
+            >
+              {item.title || 'No title available'}
+            </Typography>
+          </Link>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Box
               component="span"
@@ -246,6 +325,35 @@ const NationalNews = () => {
               {formatDate(item.createdAt || item.updatedAt || item.publishedAt)}
             </Typography>
           </Box>
+          
+          {/* Show state and district if available */}
+          {(item.state || item.district) && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+              <Box
+                component="span"
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mr: 1.5,
+                  color: '#777',
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#888888"/>
+                </svg>
+              </Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: '#666',
+                  fontSize: '0.8rem',
+                }}
+              >
+                {[capitalizeFirstLetter(item.state), capitalizeFirstLetter(item.district)].filter(Boolean).join(', ')}
+              </Typography>
+            </Box>
+          )}
         </Box>
       </Box>
     );
@@ -305,97 +413,138 @@ const NationalNews = () => {
 
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', mb: 4, height: '100%' }}>
-        <Card 
-          sx={{ 
-            position: 'relative',
-            borderRadius: 2,
-            overflow: 'hidden',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-            height: 280,
-            backgroundColor: 'white',
-          }}
+        <Link 
+          to={`/national/${item.id}`}
+          style={{ textDecoration: 'none', color: 'inherit' }}
         >
-          {isVideo && youtubeEmbedUrl ? (
-            <iframe
-              width="100%"
-              height="280"
-              src={youtubeEmbedUrl}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              title={item.title}
-            />
-          ) : (
-            <>
-              {!imageLoaded && !imageError && (
-                <Box 
-                  sx={{ 
-                    height: 280, 
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    bgcolor: '#f0f0f0'
-                  }}
-                >
-                  <CircularProgress size={40} />
-                </Box>
-              )}
-              <CardMedia
-                component="img"
-                height="280"
-                image={imageError ? 'https://via.placeholder.com/400x300?text=Image+Not+Available' : mediaUrl}
-                alt={item.title}
-                sx={{
-                  objectFit: 'cover',
-                  display: imageLoaded || imageError ? 'block' : 'none'
-                }}
-                onLoad={() => setImageLoaded(true)}
-                onError={(e) => {
-                  console.error(`Error loading image for "${item.title}": ${mediaUrl}`);
-                  setImageError(true);
-                  setImageLoaded(true);
-                }}
-              />
-            </>
-          )}
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 16,
-              left: 16,
-              zIndex: 2,
-              backgroundColor: '#D32F2F',
-              color: 'white',
-              fontWeight: 'bold',
-              fontSize: '0.75rem',
-              padding: '6px 16px',
-              borderRadius: '4px',
-              letterSpacing: '0.5px',
-              textTransform: 'uppercase',
+          <Card 
+            sx={{ 
+              position: 'relative',
+              borderRadius: 2,
+              overflow: 'hidden',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              height: 280,
+              backgroundColor: 'white',
+              transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-5px)',
+                boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+              }
             }}
           >
-            {item.category || 'NATIONAL'}
-          </Box>
-        </Card>
+            {isVideo && youtubeEmbedUrl ? (
+              <iframe
+                width="100%"
+                height="280"
+                src={youtubeEmbedUrl}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={item.title}
+              />
+            ) : (
+              <>
+                {!imageLoaded && !imageError && (
+                  <Box 
+                    sx={{ 
+                      height: 280, 
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: '#f0f0f0',
+                      color: '#777'
+                    }}
+                  >
+                    <CircularProgress size={30} sx={{ color: '#FF6F00' }} />
+                  </Box>
+                )}
+                <CardMedia
+                  component="img"
+                  height="280"
+                  image={mediaUrl}
+                  alt={item.title}
+                  sx={{
+                    objectFit: 'cover',
+                    display: !imageLoaded && !imageError ? 'none' : 'block'
+                  }}
+                  onLoad={() => setImageLoaded(true)}
+                  onError={() => {
+                    console.error(`Error loading image for "${item.title}"`);
+                    setImageError(true);
+                  }}
+                />
+                {imageError && (
+                  <Box 
+                    sx={{ 
+                      height: 280, 
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      bgcolor: '#f0f0f0',
+                      color: '#777',
+                      flexDirection: 'column',
+                      padding: 2,
+                      textAlign: 'center'
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      Image not available
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {item.title || 'National News'}
+                    </Typography>
+                  </Box>
+                )}
+              </>
+            )}
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 16,
+                left: 16,
+                zIndex: 2,
+                backgroundColor: '#FF6F00',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '0.75rem',
+                padding: '6px 16px',
+                borderRadius: '4px',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase',
+              }}
+            >
+              {item.category || 'National'}
+            </Box>
+          </Card>
+        </Link>
         
         <Box sx={{ pt: 2 }}>
-          <Typography
-            variant="h6"
-            sx={{
-              color: 'black',
-              fontWeight: '700',
-              mb: 1,
-              lineHeight: 1.3,
-              fontSize: '1rem',
-              height: '2.6rem',
-              overflow: 'hidden',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-            }}
+          <Link 
+            to={`/national/${item.id}`}
+            style={{ textDecoration: 'none', color: 'inherit' }}
           >
-            {item.title || 'No title available'}
-          </Typography>
+            <Typography
+              variant="h6"
+              sx={{
+                color: 'black',
+                fontWeight: '700',
+                mb: 1,
+                lineHeight: 1.3,
+                fontSize: '1rem',
+                height: '2.6rem',
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                transition: 'color 0.2s ease',
+                '&:hover': { 
+                  color: '#FF6F00' 
+                }
+              }}
+            >
+              {item.title || 'No title available'}
+            </Typography>
+          </Link>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Box
               component="img"
@@ -418,6 +567,35 @@ const NationalNews = () => {
               {formatDate(item.createdAt || item.updatedAt || item.publishedAt)}
             </Typography>
           </Box>
+          
+          {/* Show state and district if available */}
+          {(item.state || item.district) && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+              <Box
+                component="span"
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mr: 1,
+                  opacity: 0.7
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#888888"/>
+                </svg>
+              </Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: '#666',
+                  fontSize: '0.8rem',
+                }}
+              >
+                {[capitalizeFirstLetter(item.state), capitalizeFirstLetter(item.district)].filter(Boolean).join(', ')}
+              </Typography>
+            </Box>
+          )}
         </Box>
       </Box>
     );

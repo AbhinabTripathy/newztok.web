@@ -182,10 +182,40 @@ const Login = () => {
         throw new Error('Please enter your password');
       }
 
-      // TODO: Replace with actual user login API call
-      // Mocking success for now
-      localStorage.setItem('userAuthToken', 'mock-token');
-      localStorage.setItem('userType', 'reader');
+      // Create request headers and body
+      const myHeaders = new Headers();
+      myHeaders.append("Content-Type", "application/json");
+      
+      const raw = JSON.stringify({
+        mobile: mobileNumber,
+        password: userPassword
+      });
+
+      const requestOptions = {
+        method: "POST",
+        headers: myHeaders,
+        body: raw,
+        redirect: "follow"
+      };
+
+      // Make API call to user login endpoint
+      const response = await fetch("http://13.234.42.114:3333/api/auth/login/audience", requestOptions);
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'Login failed. Please try again.');
+      }
+      
+      console.log("User login successful:", result);
+      
+      // Store auth token
+      if (result.token) {
+        localStorage.setItem('userAuthToken', result.token);
+        localStorage.setItem('userType', 'audience');
+      } else if (result.data?.token) {
+        localStorage.setItem('userAuthToken', result.data.token);
+        localStorage.setItem('userType', 'audience');
+      }
       
       // Redirect to home page
       navigate('/', { replace: true }); // Redirects to HomeScreen.jsx

@@ -11,15 +11,22 @@ import {
   CircularProgress,
 } from '@mui/material';
 import axios from 'axios';
+import { useStateContext } from './Header'; // Import state context
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import { useNavigate } from 'react-router-dom';
 
 const Sports = () => {
   const [newsItems, setNewsItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { selectedState } = useStateContext(); // Get selected state from context
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchSportsNews();
-  }, []);
+  }, [selectedState]); // Re-fetch when selected state changes
 
   const fetchSportsNews = async () => {
     try {
@@ -35,6 +42,32 @@ const Sports = () => {
         fetchedNews = response.data.data;
       }
       
+      // Filter news by selected state if one is selected
+      if (selectedState) {
+        console.log(`Filtering sports news by state: ${selectedState}`);
+        
+        // First, try to match exact state name
+        let filteredNews = fetchedNews.filter(item => 
+          item.state && (item.state.includes(selectedState) || selectedState.includes(item.state))
+        );
+        
+        // If no exact matches, check if state is mentioned in the content or title
+        if (filteredNews.length === 0) {
+          filteredNews = fetchedNews.filter(item => 
+            (item.content && item.content.includes(selectedState)) || 
+            (item.title && item.title.includes(selectedState))
+          );
+        }
+        
+        // If we found filtered results, use them; otherwise, fall back to all news
+        if (filteredNews.length > 0) {
+          console.log(`Found ${filteredNews.length} sports news items for state: ${selectedState}`);
+          fetchedNews = filteredNews;
+        } else {
+          console.log(`No sports news items found for state: ${selectedState}, showing all sports news`);
+        }
+      }
+      
       setNewsItems(fetchedNews);
     } catch (err) {
       console.error('Error fetching sports news:', err);
@@ -42,6 +75,29 @@ const Sports = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'No date';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    } catch (e) {
+      return dateString;
+    }
+  };
+
+  const capitalizeFirstLetter = (string) => {
+    if (!string) return '';
+    return string
+      .toLowerCase()
+      .split(' ')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
   };
 
   // Social media stats
@@ -56,6 +112,10 @@ const Sports = () => {
   const NewsCard = ({ item }) => {
     // Check if item has youtubeUrl for video content
     const isVideo = item.youtubeUrl || item.contentType === 'video';
+    
+    const handleCardClick = () => {
+      navigate(`/sports/${item.id}`);
+    };
     
     // Add base URL to image path if it's a relative path
     const getFullImageUrl = (imagePath) => {
@@ -96,7 +156,7 @@ const Sports = () => {
     };
 
     return (
-      <Box sx={{ position: 'relative', height: '100%', mb: 2 }}>
+      <Box sx={{ position: 'relative', height: '100%', mb: 2 }} onClick={handleCardClick}>
         <Card 
           sx={{ 
             position: 'relative',
@@ -108,6 +168,11 @@ const Sports = () => {
             flexDirection: 'column',
             cursor: 'pointer',
             backgroundColor: 'white',
+            transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+            '&:hover': {
+              transform: 'translateY(-5px)',
+              boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+            }
           }}
         >
           {isVideo && youtubeEmbedUrl ? (
@@ -163,34 +228,29 @@ const Sports = () => {
               mb: 1,
               lineHeight: 1.3,
               fontSize: '1rem',
+              cursor: 'pointer',
+              transition: 'color 0.2s ease',
+              '&:hover': { 
+                color: '#2E7D32' 
+              }
             }}
           >
             {item.title || 'No title available'}
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Box
-              component="span"
-              sx={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                mr: 1.5,
-                color: '#777',
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2C6.5 2 2 6.5 2 12C2 17.5 6.5 22 12 22C17.5 22 22 17.5 22 12C22 6.5 17.5 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="#888888"/>
-                <path d="M12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z" fill="#888888"/>
-              </svg>
-            </Box>
-            <Typography
-              variant="caption"
-              sx={{
-                color: '#666',
-                fontSize: '0.8rem',
-              }}
-            >
-              {formatDate(item.createdAt || item.updatedAt || item.publishedAt)}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#888' }}>
+            {(item.state || item.district) && (
+              <>
+                <LocationOnIcon sx={{ fontSize: 14 }} />
+                <Typography variant="caption" sx={{ color: '#888' }}>
+                  {[item.state && capitalizeFirstLetter(item.state), 
+                    item.district && capitalizeFirstLetter(item.district)].filter(Boolean).join(', ')}
+                </Typography>
+                <FiberManualRecordIcon sx={{ fontSize: 6, mx: 0.5 }} />
+              </>
+            )}
+            <AccessTimeIcon sx={{ fontSize: 14 }} />
+            <Typography variant="caption" sx={{ color: '#888' }}>
+              {formatDate(item.createdAt)}
             </Typography>
           </Box>
         </Box>
@@ -202,6 +262,10 @@ const Sports = () => {
   const SecondSectionNewsCard = ({ item }) => {
     // Check if item has youtubeUrl for video content
     const isVideo = item.youtubeUrl || item.contentType === 'video';
+    
+    const handleCardClick = () => {
+      navigate(`/sports/${item.id}`);
+    };
     
     // Add base URL to image path if it's a relative path
     const getFullImageUrl = (imagePath) => {
@@ -242,7 +306,7 @@ const Sports = () => {
     };
 
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', mb: 4, height: '100%' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', mb: 4, height: '100%' }} onClick={handleCardClick}>
         <Card 
           sx={{ 
             position: 'relative',
@@ -251,6 +315,12 @@ const Sports = () => {
             boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
             height: 280,
             backgroundColor: 'white',
+            cursor: 'pointer',
+            transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+            '&:hover': {
+              transform: 'translateY(-5px)',
+              boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+            }
           }}
         >
           {isVideo && youtubeEmbedUrl ? (
@@ -311,6 +381,11 @@ const Sports = () => {
               display: '-webkit-box',
               WebkitLineClamp: 2,
               WebkitBoxOrient: 'vertical',
+              cursor: 'pointer',
+              transition: 'color 0.2s ease',
+              '&:hover': { 
+                color: '#2E7D32' 
+              }
             }}
           >
             {item.title || 'No title available'}
@@ -337,6 +412,35 @@ const Sports = () => {
               {formatDate(item.createdAt || item.updatedAt || item.publishedAt)}
             </Typography>
           </Box>
+          
+          {/* Show state and district if available */}
+          {(item.state || item.district) && (
+            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+              <Box
+                component="span"
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mr: 1,
+                  opacity: 0.7
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#888888"/>
+                </svg>
+              </Box>
+              <Typography
+                variant="caption"
+                sx={{
+                  color: '#666',
+                  fontSize: '0.8rem',
+                }}
+              >
+                {[capitalizeFirstLetter(item.state), capitalizeFirstLetter(item.district)].filter(Boolean).join(', ')}
+              </Typography>
+            </Box>
+          )}
         </Box>
       </Box>
     );

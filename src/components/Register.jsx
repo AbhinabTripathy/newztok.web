@@ -19,13 +19,11 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Logo from '../assets/images/NewzTok logo-2.svg';
 
 const Register = () => {
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [mobileNumber, setMobileNumber] = useState('');
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
@@ -60,10 +58,6 @@ const Register = () => {
     setShowPassword(!showPassword);
   };
 
-  const handleClickShowConfirmPassword = () => {
-    setShowConfirmPassword(!showConfirmPassword);
-  };
-
   const handleMouseDownPassword = (event) => {
     event.preventDefault();
   };
@@ -79,39 +73,68 @@ const Register = () => {
 
     try {
       // Validation
-      if (!firstName.trim()) {
-        throw new Error('Please enter your first name');
+      if (!username.trim()) {
+        throw new Error('Please enter your username');
       }
       
-      if (!lastName.trim()) {
-        throw new Error('Please enter your last name');
+      if (!email.trim()) {
+        throw new Error('Please enter your email');
       }
       
-      if (!mobileNumber || mobileNumber.length < 10) {
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error('Please enter a valid email address');
+      }
+      
+      if (!mobile || mobile.length < 10) {
         throw new Error('Please enter a valid mobile number');
       }
       
       if (!password) {
         throw new Error('Please enter a password');
       }
-      
-      if (password !== confirmPassword) {
-        throw new Error('Passwords do not match');
-      }
 
-      // TODO: Replace with actual registration API call
-      // Mocking success for now
+      // Create request body
+      const myHeaders = new Headers();
+      myHeaders.append("Content-Type", "application/json");
       
-      // Simulate API call delay
-      setTimeout(() => {
-        // On successful registration, redirect to login
-        navigate('/user/login', { 
-          state: { 
-            registrationSuccess: true,
-            message: 'Registration successful! Please login with your credentials.'
-          }
-        });
-      }, 1500);
+      const raw = JSON.stringify({
+        username,
+        email,
+        mobile,
+        password
+      });
+
+      const requestOptions = {
+        method: "POST",
+        headers: myHeaders,
+        body: raw,
+        redirect: "follow"
+      };
+
+      // Make API call to register endpoint
+      const response = await fetch("http://13.234.42.114:3333/api/auth/register", requestOptions);
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'Registration failed. Please try again.');
+      }
+      
+      console.log("Registration successful:", result);
+      
+      // Store auth token if provided in response
+      if (result.token) {
+        localStorage.setItem('authToken', result.token);
+      }
+      
+      // On successful registration, redirect to login page
+      navigate('/user/login', { 
+        state: { 
+          registrationSuccess: true,
+          message: 'Registration successful! Please login with your new account.'
+        }
+      });
       
     } catch (error) {
       console.error("Registration failed:", error);
@@ -191,30 +214,31 @@ const Register = () => {
         )}
 
         <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
-          {/* First and Last Name row */}
+          {/* Username and Email row */}
           <Box sx={{ mb: 4 }}>
             <Box sx={{ display: 'flex', width: '100%' }}>
               <Box sx={{ flex: 1, mr: 1 }}>
                 <Typography variant="caption" sx={{ mb: 1.5, display: 'block', fontWeight: 600, color: '#555', fontSize: '0.85rem' }}>
-                  FIRST NAME
+                  USERNAME
                 </Typography>
                 <TextField
                   fullWidth
-                  placeholder="First name"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   sx={textFieldStyle}
                 />
               </Box>
               <Box sx={{ flex: 1 }}>
                 <Typography variant="caption" sx={{ mb: 1.5, display: 'block', fontWeight: 600, color: '#555', fontSize: '0.85rem' }}>
-                  LAST NAME
+                  EMAIL
                 </Typography>
                 <TextField
                   fullWidth
-                  placeholder="Last name"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  type="email"
                   sx={textFieldStyle}
                 />
               </Box>
@@ -228,8 +252,8 @@ const Register = () => {
             <TextField
               fullWidth
               placeholder="Enter your mobile number"
-              value={mobileNumber}
-              onChange={(e) => setMobileNumber(e.target.value)}
+              value={mobile}
+              onChange={(e) => setMobile(e.target.value)}
               type="tel"
               inputProps={{ maxLength: 10 }}
               sx={textFieldStyle}
@@ -257,34 +281,6 @@ const Register = () => {
                       edge="end"
                     >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </Box>
-
-          <Box sx={{ mb: 4 }}>  {/* Increased margin */}
-            <Typography variant="caption" sx={{ mb: 1.5, display: 'block', fontWeight: 600, color: '#555', fontSize: '0.85rem' }}>
-              CONFIRM PASSWORD
-            </Typography>
-            <TextField
-              fullWidth
-              type={showConfirmPassword ? 'text' : 'password'}
-              placeholder="Confirm your password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              sx={textFieldStyle}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      aria-label="toggle password visibility"
-                      onClick={handleClickShowConfirmPassword}
-                      onMouseDown={handleMouseDownPassword}
-                      edge="end"
-                    >
-                      {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
                     </IconButton>
                   </InputAdornment>
                 ),

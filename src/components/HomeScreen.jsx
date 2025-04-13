@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Box,
@@ -8,14 +8,46 @@ import {
   Card,
   CardMedia,
   Divider,
+  CircularProgress,
 } from '@mui/material';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import InstagramIcon from '@mui/icons-material/Instagram';
 import TwitterIcon from '@mui/icons-material/Twitter';
 import YouTubeIcon from '@mui/icons-material/YouTube';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import axios from 'axios';
+import { useStateContext } from './Header'; // Import state context
 
 const HomeScreen = () => {
+  // State variables for each news section
+  const [trendingNews, setTrendingNews] = useState([]);
+  const [nationalNews, setNationalNews] = useState([]);
+  const [internationalNews, setInternationalNews] = useState([]);
+  const [sportsNews, setSportsNews] = useState([]);
+  const [entertainmentNews, setEntertainmentNews] = useState([]);
+  const [stateNews, setStateNews] = useState([]);
+  const { selectedState } = useStateContext(); // Get selected state from context
+  
+  // Loading and error states for each section
+  const [loading, setLoading] = useState({
+    trending: true,
+    national: true,
+    international: true,
+    sports: true,
+    entertainment: true,
+    state: true
+  });
+  
+  const [error, setError] = useState({
+    trending: null,
+    national: null,
+    international: null,
+    sports: null,
+    entertainment: null,
+    state: null
+  });
+
   // Social media stats exactly as in the image
   const socialMedia = [
     { icon: <FacebookIcon sx={{ fontSize: 28, color: '#4267B2' }} />, count: '20.5k', label: 'likes' },
@@ -31,12 +63,274 @@ const HomeScreen = () => {
     { name: 'Crazy', count: '5' },
   ];
 
+  // Base URL for API
+  const baseUrl = 'http://13.234.42.114:3333';
+
+  // Format date function
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true
+      });
+    } catch (err) {
+      console.error('Date formatting error:', err);
+      return dateString;
+    }
+  };
+
+  // Helper function to capitalize first letter of each word
+  const capitalizeFirstLetter = (string) => {
+    if (!string) return '';
+    return string
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
+  // Helper function to process API response and filter by selected state
+  const processApiResponse = (response, category) => {
+    let news = [];
+    
+    if (response.data && Array.isArray(response.data)) {
+      news = response.data;
+    } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+      news = response.data.data;
+    } else if (response.data && response.data.posts && Array.isArray(response.data.posts)) {
+      news = response.data.posts;
+    }
+    
+    // Filter news by selected state if one is selected
+    if (selectedState) {
+      console.log(`Filtering ${category} news by state: ${selectedState}`);
+      
+      // First, try to match exact state name
+      let filteredNews = news.filter(item => 
+        item.state && (item.state.includes(selectedState) || selectedState.includes(item.state))
+      );
+      
+      // If no exact matches, check if state is mentioned in the content or title
+      if (filteredNews.length === 0) {
+        filteredNews = news.filter(item => 
+          (item.content && item.content.includes(selectedState)) || 
+          (item.title && item.title.includes(selectedState))
+        );
+      }
+      
+      // If we found filtered results, use them; otherwise, fall back to all news
+      if (filteredNews.length > 0) {
+        console.log(`Found ${filteredNews.length} ${category} news items for state: ${selectedState}`);
+        news = filteredNews;
+      } else {
+        console.log(`No ${category} news items found for state: ${selectedState}, showing all ${category} news`);
+      }
+    }
+    
+    // Limit to 5 posts per section
+    return news.slice(0, 5);
+  };
+
+  // Fetch trending news
+  const fetchTrendingNews = async () => {
+    setLoading(prev => ({ ...prev, trending: true }));
+    setError(prev => ({ ...prev, trending: null }));
+    
+    try {
+      console.log('Fetching trending news...');
+      const response = await axios.get(`${baseUrl}/api/news/trending`);
+      const news = processApiResponse(response, 'trending');
+      console.log('Trending news:', news);
+      setTrendingNews(news);
+    } catch (err) {
+      console.error('Error fetching trending news:', err);
+      setError(prev => ({ 
+        ...prev, 
+        trending: err.response?.data?.message || err.message || 'Failed to fetch trending news' 
+      }));
+    } finally {
+      setLoading(prev => ({ ...prev, trending: false }));
+    }
+  };
+
+  // Fetch national news
+  const fetchNationalNews = async () => {
+    setLoading(prev => ({ ...prev, national: true }));
+    setError(prev => ({ ...prev, national: null }));
+    
+    try {
+      console.log('Fetching national news...');
+      const response = await axios.get(`${baseUrl}/api/news/category/national`);
+      const news = processApiResponse(response, 'national');
+      console.log('National news:', news);
+      setNationalNews(news);
+    } catch (err) {
+      console.error('Error fetching national news:', err);
+      setError(prev => ({ 
+        ...prev, 
+        national: err.response?.data?.message || err.message || 'Failed to fetch national news' 
+      }));
+    } finally {
+      setLoading(prev => ({ ...prev, national: false }));
+    }
+  };
+
+  // Fetch international news
+  const fetchInternationalNews = async () => {
+    setLoading(prev => ({ ...prev, international: true }));
+    setError(prev => ({ ...prev, international: null }));
+    
+    try {
+      console.log('Fetching international news...');
+      const response = await axios.get(`${baseUrl}/api/news/category/international`);
+      const news = processApiResponse(response, 'international');
+      console.log('International news:', news);
+      setInternationalNews(news);
+    } catch (err) {
+      console.error('Error fetching international news:', err);
+      setError(prev => ({ 
+        ...prev, 
+        international: err.response?.data?.message || err.message || 'Failed to fetch international news' 
+      }));
+    } finally {
+      setLoading(prev => ({ ...prev, international: false }));
+    }
+  };
+
+  // Fetch sports news
+  const fetchSportsNews = async () => {
+    setLoading(prev => ({ ...prev, sports: true }));
+    setError(prev => ({ ...prev, sports: null }));
+    
+    try {
+      console.log('Fetching sports news...');
+      const response = await axios.get(`${baseUrl}/api/news/category/sports`);
+      const news = processApiResponse(response, 'sports');
+      console.log('Sports news:', news);
+      setSportsNews(news);
+    } catch (err) {
+      console.error('Error fetching sports news:', err);
+      setError(prev => ({ 
+        ...prev, 
+        sports: err.response?.data?.message || err.message || 'Failed to fetch sports news' 
+      }));
+    } finally {
+      setLoading(prev => ({ ...prev, sports: false }));
+    }
+  };
+
+  // Fetch entertainment news
+  const fetchEntertainmentNews = async () => {
+    setLoading(prev => ({ ...prev, entertainment: true }));
+    setError(prev => ({ ...prev, entertainment: null }));
+    
+    try {
+      console.log('Fetching entertainment news...');
+      const response = await axios.get(`${baseUrl}/api/news/category/entertainment`);
+      const news = processApiResponse(response, 'entertainment');
+      console.log('Entertainment news:', news);
+      setEntertainmentNews(news);
+    } catch (err) {
+      console.error('Error fetching entertainment news:', err);
+      setError(prev => ({ 
+        ...prev, 
+        entertainment: err.response?.data?.message || err.message || 'Failed to fetch entertainment news' 
+      }));
+    } finally {
+      setLoading(prev => ({ ...prev, entertainment: false }));
+    }
+  };
+
+  // Fetch state news
+  const fetchStateNews = async () => {
+    setLoading(prev => ({ ...prev, state: true }));
+    setError(prev => ({ ...prev, state: null }));
+    
+    try {
+      console.log('Fetching state news...');
+      const response = await axios.get(`${baseUrl}/api/news/category/district`);
+      const news = processApiResponse(response, 'state');
+      console.log('State news:', news);
+      setStateNews(news);
+    } catch (err) {
+      console.error('Error fetching state news:', err);
+      setError(prev => ({ 
+        ...prev, 
+        state: err.response?.data?.message || err.message || 'Failed to fetch state news' 
+      }));
+    } finally {
+      setLoading(prev => ({ ...prev, state: false }));
+    }
+  };
+
+  // Fetch all news on component mount and when selectedState changes
+  useEffect(() => {
+    fetchTrendingNews();
+    fetchNationalNews();
+    fetchInternationalNews();
+    fetchSportsNews();
+    fetchEntertainmentNews();
+    fetchStateNews();
+  }, [selectedState]); // Re-fetch when selected state changes
+
+  // Get image URL with proper handling
+  const getImageUrl = (item) => {
+    // If item has images array with content
+    if (item.images && item.images.length > 0) {
+      return item.images[0];
+    }
+    
+    // If item has featuredImage
+    if (item.featuredImage) {
+      // Check if it's a full URL or just a path
+      if (item.featuredImage.startsWith('http')) {
+        return item.featuredImage;
+      } else {
+        // Add base URL for relative paths
+        return `${baseUrl}${item.featuredImage}`;
+      }
+    }
+    
+    // If item has image property
+    if (item.image) {
+      // Check if it's a full URL or just a path
+      if (item.image.startsWith('http')) {
+        return item.image;
+      } else {
+        // Add base URL for relative paths
+        return `${baseUrl}${item.image}`;
+      }
+    }
+    
+    // Fallback to placeholder
+    return 'https://via.placeholder.com/400x300?text=No+Image';
+  };
+
   // News card component (single card with specific styling)
-  const NewsCard = ({ category, title, image, time, isLarge = false, categoryColor = '#FF5722' }) => {
+  const NewsCard = ({ item, categoryLabel, categoryColor = '#FF5722', isLarge = false }) => {
+    const [imageError, setImageError] = useState(false);
+    
+    if (!item) return null;
+    
+    const handleImageError = () => {
+      setImageError(true);
+    };
+    
+    const imageUrl = getImageUrl(item);
+    const title = item.title || "No Title";
+    const category = categoryLabel || item.category || "NEWS";
+    const time = formatDate(item.createdAt || item.publishedAt || item.updatedAt);
+    
     return (
       <Box
         component={Link}
-        to={`/news/1`}
+        to={`/news/${item.id}`}
         sx={{
           display: 'block',
           height: isLarge ? { xs: 350, md: 400 } : { xs: 200, md: 240 },
@@ -53,20 +347,42 @@ const HomeScreen = () => {
         }}
       >
         {/* Background image */}
-        <Box
-          className="news-bg"
-          sx={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundImage: `url(${image})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            transition: 'transform 0.3s ease',
-          }}
-        />
+        {!imageError ? (
+          <Box
+            className="news-bg"
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              backgroundImage: `url(${imageUrl})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              transition: 'transform 0.3s ease',
+            }}
+            onError={handleImageError}
+          />
+        ) : (
+          <Box
+            className="news-bg"
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#f0f0f0',
+              color: '#999',
+              transition: 'transform 0.3s ease',
+            }}
+          >
+            Image not available
+          </Box>
+        )}
         
         {/* Dark overlay */}
         <Box
@@ -131,28 +447,66 @@ const HomeScreen = () => {
             {title}
           </Typography>
           
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <AccessTimeIcon 
-              sx={{ 
-                fontSize: '16px', 
-                mr: 1, 
-                color: 'rgba(255,255,255,0.8)' 
-              }} 
-            />
-            <Typography
-              variant="caption"
-              sx={{
-                color: 'rgba(255,255,255,0.8)',
-                fontSize: '0.8rem',
-              }}
-            >
-              {time}
-            </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <AccessTimeIcon 
+                sx={{ 
+                  fontSize: '16px', 
+                  mr: 1, 
+                  color: 'rgba(255,255,255,0.8)' 
+                }} 
+              />
+              <Typography
+                variant="caption"
+                sx={{
+                  color: 'rgba(255,255,255,0.8)',
+                  fontSize: '0.8rem',
+                }}
+              >
+                {time}
+              </Typography>
+            </Box>
+            
+            {/* Show state and district if available */}
+            {(item.state || item.district) && (
+              <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                <LocationOnIcon 
+                  sx={{ 
+                    fontSize: '16px', 
+                    mr: 1, 
+                    color: 'rgba(255,255,255,0.8)' 
+                  }} 
+                />
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: 'rgba(255,255,255,0.8)',
+                    fontSize: '0.8rem',
+                  }}
+                >
+                  {[item.state, item.district].filter(Boolean).map(capitalizeFirstLetter).join(', ')}
+                </Typography>
+              </Box>
+            )}
           </Box>
         </Box>
       </Box>
     );
   };
+
+  // Loading section component
+  const LoadingSection = () => (
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+      <CircularProgress />
+    </Box>
+  );
+
+  // Error section component
+  const ErrorSection = ({ message }) => (
+    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200, color: 'error.main' }}>
+      <Typography variant="body1">{message}</Typography>
+    </Box>
+  );
 
   // Category tab component
   const CategoryTab = ({ name, count }) => (
@@ -284,103 +638,107 @@ const HomeScreen = () => {
           TRENDING NEWS
         </Typography>
 
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 }, mb: 3 }}>
-          {/* Left Side - News Cards */}
-          <Box sx={{ flex: 7, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
-            {/* First News Card */}
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                category="TRENDING"
-                title="मौसम विभाग ने जारी किया अलर्ट, इन राज्यों में भारी बारिश की चेतावनी"
-                image="https://static.toiimg.com/thumb/msid-101386088,width-1280,height-720,resizemode-4/101386088.jpg"
-                time="April 10, 2025, 8:45 A.M."
-                isLarge={true}
-                categoryColor="#FF5722"
-              />
+        {loading.trending ? (
+          <LoadingSection />
+        ) : error.trending ? (
+          <ErrorSection message={error.trending} />
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 }, mb: 3 }}>
+            {/* Left Side - News Cards */}
+            <Box sx={{ flex: 7, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
+              {trendingNews.length > 0 && (
+                <Box sx={{ flex: 1 }}>
+                  <NewsCard 
+                    item={trendingNews[0]} 
+                    categoryLabel="TRENDING"
+                    categoryColor="#FF5722"
+                    isLarge={true}
+                  />
+                </Box>
+              )}
+              
+              {trendingNews.length > 1 && (
+                <Box sx={{ flex: 1 }}>
+                  <NewsCard 
+                    item={trendingNews[1]}
+                    categoryLabel="TRENDING"
+                    categoryColor="#FF5722" 
+                    isLarge={true}
+                  />
+                </Box>
+              )}
             </Box>
             
-            {/* Second News Card */}
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                category="TRENDING"
-                title="पटना में अचानक बदला मौसम, तेज हवाओं के साथ बारिश का अनुमान"
-                image="https://images.indianexpress.com/2023/06/weather-5.jpg"
-                time="April 10, 2025, 8:30 A.M."
-                isLarge={true}
-                categoryColor="#FF5722"
-              />
+            {/* Right Side - Sidebar */}
+            <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {/* Advertisement */}
+              <SideAd />
+              
+              {/* Category Tabs */}
+              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                {categoryTabs.map((tab, index) => (
+                  <CategoryTab key={index} name={tab.name} count={tab.count} />
+                ))}
+              </Box>
             </Box>
           </Box>
-          
-          {/* Right Side - Sidebar */}
-          <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {/* Advertisement */}
-            <SideAd />
-            
-            {/* Category Tabs */}
-            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-              {categoryTabs.map((tab, index) => (
-                <CategoryTab key={index} name={tab.name} count={tab.count} />
-              ))}
-            </Box>
-          </Box>
-        </Box>
+        )}
 
         {/* Advertisement after Trending */}
         <LargeAd />
         
         {/* First Section - Top Grid (First Image Layout) */}
-        <Grid container spacing={2} sx={{ mb: 0 }}>
+        <Grid container spacing={2} sx={{ mb: -40 }}>
           {/* Large card on left */}
           <Grid item xs={12} md={6}>
-            <NewsCard 
-              category="TRENDING"
-              title="जदयू नेता नायब गुलाम रसूल बलियावी भी पार्टी को कहेंगे अलविदा, कहा- सीएम नीतीश से हुई है चूक"
-              image="https://images.indianexpress.com/2023/05/bihar-politics.jpg"
-              time="April 10, 2025, 8:19 P.M."
-              isLarge={true}
-              categoryColor="#FF5722"
-            />
+            {trendingNews.length > 2 && (
+              <NewsCard 
+                item={trendingNews[2]}
+                categoryLabel="TRENDING"
+                categoryColor="#FF5722"
+                isLarge={true}
+              />
+            )}
           </Grid>
           
           {/* 2x2 grid on right */}
           <Grid item xs={12} md={6}>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
-                <NewsCard 
-                  category="SPORTS"
-                  title="IPL 2025 में धोनी बने चेन्नई के कप्तान, हुआ ऐलान"
-                  image="https://cdn.dnaindia.com/sites/default/files/styles/full/public/2023/05/23/2591711-2558075-ms-dhoni.jpg"
-                  time="April 10, 2025, 7:48 P.M."
-                  categoryColor="#4CAF50"
-                />
+                {sportsNews.length > 0 && (
+                  <NewsCard 
+                    item={sportsNews[0]}
+                    categoryLabel="SPORTS"
+                    categoryColor="#4CAF50"
+                  />
+                )}
               </Grid>
               <Grid item xs={12} sm={6}>
-                <NewsCard 
-                  category="SPORTS"
-                  title="ओलंपिक में 128 साल बाद क्रिकेट की वापसी, छह ..."
-                  image="https://img1.hscicdn.com/image/upload/f_auto,t_ds_w_1280,q_70/lsci/db/PICTURES/CMS/371800/371825.jpg"
-                  time="April 10, 2025, 7:39 P.M."
-                  categoryColor="#4CAF50"
-                />
+                {sportsNews.length > 1 && (
+                  <NewsCard 
+                    item={sportsNews[1]}
+                    categoryLabel="SPORTS"
+                    categoryColor="#4CAF50"
+                  />
+                )}
               </Grid>
               <Grid item xs={12} sm={6}>
-                <NewsCard 
-                  category="TRENDING"
-                  title="महाकुंभ में अपने सास-ससुर को स्नान कराने न ले ..."
-                  image="https://images.news18.com/hindi/uploads/2023/12/indian-railway.jpg"
-                  time="April 10, 2025, 7:11 P.M."
-                  categoryColor="#FF5722"
-                />
+                {trendingNews.length > 3 && (
+                  <NewsCard 
+                    item={trendingNews[3]}
+                    categoryLabel="TRENDING"
+                    categoryColor="#FF5722"
+                  />
+                )}
               </Grid>
               <Grid item xs={12} sm={6}>
-                <NewsCard 
-                  category="NATIONAL"
-                  title="भारत लाया गया मुंबई आतंकी हमले का मास्टरमाइंड तहव्वुर ..."
-                  image="https://images.hindustantimes.com/img/2023/01/25/1600x900/tahawwur_rana_1674642197045_1674642197296_1674642197296.JPG"
-                  time="April 10, 2025, 7:01 P.M."
-                  categoryColor="#D32F2F"
-                />
+                {nationalNews.length > 0 && (
+                  <NewsCard 
+                    item={nationalNews[0]}
+                    categoryLabel="NATIONAL"
+                    categoryColor="#D32F2F"
+                  />
+                )}
               </Grid>
             </Grid>
           </Grid>
@@ -392,7 +750,6 @@ const HomeScreen = () => {
           component="h2" 
           sx={{ 
             mb: 2, 
-            mt: -45,
             fontWeight: 'bold',
             position: 'relative',
             pl: 2,
@@ -411,75 +768,79 @@ const HomeScreen = () => {
           NATIONAL NEWS
         </Typography>
 
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 }, mb: 3 }}>
-          {/* Left Side - News Cards */}
-          <Box sx={{ flex: 7, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
-            {/* First News Card */}
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                category="NATIONAL"
-                title="पीएम मोदी ने की महाराष्ट्र विधानसभा चुनाव प्रचार की शुरुआत..."
-                image="https://i.ibb.co/NtpjxXK/pm-modi.jpg"
-                time="April 10, 2025, 6:30 P.M."
-                isLarge={true}
-                categoryColor="#D32F2F"
-              />
+        {loading.national ? (
+          <LoadingSection />
+        ) : error.national ? (
+          <ErrorSection message={error.national} />
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 }, mb: 1 }}>
+            {/* Left Side - News Cards */}
+            <Box sx={{ flex: 7, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
+              {nationalNews.length > 1 && (
+                <Box sx={{ flex: 1 }}>
+                  <NewsCard 
+                    item={nationalNews[1]}
+                    categoryLabel="NATIONAL"
+                    categoryColor="#D32F2F"
+                    isLarge={true}
+                  />
+                </Box>
+              )}
+              
+              {nationalNews.length > 2 && (
+                <Box sx={{ flex: 1 }}>
+                  <NewsCard 
+                    item={nationalNews[2]}
+                    categoryLabel="NATIONAL"
+                    categoryColor="#D32F2F"
+                    isLarge={true}
+                  />
+                </Box>
+              )}
             </Box>
             
-            {/* Second News Card */}
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                category="NATIONAL"
-                title="लखीमपुर खीरी के कबीरधाम सत्संग में बोले मोहन भागवत - 'महापुरुषों ने की भारतीय संस्कृति की रक्षा'"
-                image="https://images.news18.com/hindi/uploads/2022/10/RSS-Chief-Mohan-Bhagwat.jpg"
-                time="April 9, 2025, 10:07 A.M."
-                isLarge={true}
-                categoryColor="#D32F2F"
-              />
+            {/* Right Side - Social Media and Recent Posts */}
+            <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {/* Social Media Stats Box */}
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  flexWrap: 'wrap',
+                  border: '1px solid #eee',
+                  borderRadius: 1,
+                  overflow: 'hidden',
+                  mb: 3,
+                  backgroundColor: 'white',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                }}
+              >
+                {socialMedia.map((item, index) => (
+                  <Box 
+                    key={index}
+                    sx={{ 
+                      width: '50%', 
+                      p: 2, 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRight: index % 2 === 0 ? '1px solid #eee' : 'none',
+                      borderBottom: index < 2 ? '1px solid #eee' : 'none',
+                    }}
+                  >
+                    {item.icon}
+                    <Typography sx={{ fontWeight: 'bold', fontSize: '1.1rem', mt: 1 }}>
+                      {item.count}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#666', fontSize: '0.8rem' }}>
+                      {item.label}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
             </Box>
           </Box>
-          
-          {/* Right Side - Social Media and Recent Posts */}
-          <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {/* Social Media Stats Box */}
-            <Box 
-              sx={{ 
-                display: 'flex', 
-                flexWrap: 'wrap',
-                border: '1px solid #eee',
-                borderRadius: 1,
-                overflow: 'hidden',
-                mb: 3,
-                backgroundColor: 'white',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-              }}
-            >
-              {socialMedia.map((item, index) => (
-                <Box 
-                  key={index}
-                  sx={{ 
-                    width: '50%', 
-                    p: 2, 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRight: index % 2 === 0 ? '1px solid #eee' : 'none',
-                    borderBottom: index < 2 ? '1px solid #eee' : 'none',
-                  }}
-                >
-                  {item.icon}
-                  <Typography sx={{ fontWeight: 'bold', fontSize: '1.1rem', mt: 1 }}>
-                    {item.count}
-                  </Typography>
-                  <Typography variant="body2" sx={{ color: '#666', fontSize: '0.8rem' }}>
-                    {item.label}
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
-          </Box>
-        </Box>
+        )}
 
         {/* Advertisement after National */}
         <LargeAd />
@@ -508,39 +869,43 @@ const HomeScreen = () => {
           INTERNATIONAL NEWS
         </Typography>
 
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 }, mb: 3 }}>
-          {/* Left Side - News Cards */}
-          <Box sx={{ flex: 7, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
-            {/* First News Card */}
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                category="INTERNATIONAL"
-                title="अमेरिकी राष्ट्रपति ने किया नए विदेश नीति का ऐलान, चीन पर बढ़ाया दबाव..."
-                image="https://i.ibb.co/XCkDXbL/us-president.jpg"
-                time="April 10, 2025, 5:45 P.M."
-                isLarge={true}
-                categoryColor="#1976D2"
-              />
+        {loading.international ? (
+          <LoadingSection />
+        ) : error.international ? (
+          <ErrorSection message={error.international} />
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 }, mb: 3 }}>
+            {/* Left Side - News Cards */}
+            <Box sx={{ flex: 7, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
+              {internationalNews.length > 0 && (
+                <Box sx={{ flex: 1 }}>
+                  <NewsCard 
+                    item={internationalNews[0]}
+                    categoryLabel="INTERNATIONAL"
+                    categoryColor="#1976D2"
+                    isLarge={true}
+                  />
+                </Box>
+              )}
+              
+              {internationalNews.length > 1 && (
+                <Box sx={{ flex: 1 }}>
+                  <NewsCard 
+                    item={internationalNews[1]}
+                    categoryLabel="INTERNATIONAL"
+                    categoryColor="#1976D2"
+                    isLarge={true}
+                  />
+                </Box>
+              )}
             </Box>
             
-            {/* Second News Card */}
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                category="INTERNATIONAL"
-                title="रूस-यूक्रेन संघर्ष में नया मोड़, यूरोपीय संघ ने बताई शांति की शर्तें"
-                image="https://static.toiimg.com/thumb/msid-100139171,width-1280,height-720,resizemode-4/100139171.jpg"
-                time="April 10, 2025, 5:30 P.M."
-                isLarge={true}
-                categoryColor="#1976D2"
-              />
+            {/* Right Side - Advertisement */}
+            <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <SideAd />
             </Box>
           </Box>
-          
-          {/* Right Side - Advertisement */}
-          <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <SideAd />
-          </Box>
-        </Box>
+        )}
 
         {/* Advertisement after International */}
         <LargeAd />
@@ -569,39 +934,43 @@ const HomeScreen = () => {
           SPORTS NEWS
         </Typography>
 
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 }, mb: 3 }}>
-          {/* Left Side - News Cards */}
-          <Box sx={{ flex: 7, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
-            {/* First News Card */}
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                category="SPORTS"
-                title="IPL 2025 में धोनी बने चेन्नई के कप्तान, हुआ ऐलान"
-                image="https://cdn.dnaindia.com/sites/default/files/styles/full/public/2023/05/23/2591711-2558075-ms-dhoni.jpg"
-                time="April 10, 2025, 7:48 P.M."
-                isLarge={true}
-                categoryColor="#4CAF50"
-              />
+        {loading.sports ? (
+          <LoadingSection />
+        ) : error.sports ? (
+          <ErrorSection message={error.sports} />
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 }, mb: 3 }}>
+            {/* Left Side - News Cards */}
+            <Box sx={{ flex: 7, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
+              {sportsNews.length > 2 && (
+                <Box sx={{ flex: 1 }}>
+                  <NewsCard 
+                    item={sportsNews[2]}
+                    categoryLabel="SPORTS"
+                    categoryColor="#4CAF50"
+                    isLarge={true}
+                  />
+                </Box>
+              )}
+              
+              {sportsNews.length > 3 && (
+                <Box sx={{ flex: 1 }}>
+                  <NewsCard 
+                    item={sportsNews[3]}
+                    categoryLabel="SPORTS"
+                    categoryColor="#4CAF50"
+                    isLarge={true}
+                  />
+                </Box>
+              )}
             </Box>
             
-            {/* Second News Card */}
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                category="SPORTS"
-                title="ओलंपिक में 128 साल बाद क्रिकेट की वापसी, छह टीमों के बीच होगा मुकाबला"
-                image="https://img1.hscicdn.com/image/upload/f_auto,t_ds_w_1280,q_70/lsci/db/PICTURES/CMS/371800/371825.jpg"
-                time="April 10, 2025, 7:39 P.M."
-                isLarge={true}
-                categoryColor="#4CAF50"
-              />
+            {/* Right Side - Advertisement */}
+            <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <SideAd />
             </Box>
           </Box>
-          
-          {/* Right Side - Advertisement */}
-          <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <SideAd />
-          </Box>
-        </Box>
+        )}
 
         {/* Advertisement after Sports */}
         <LargeAd />
@@ -630,39 +999,43 @@ const HomeScreen = () => {
           STATE NEWS
         </Typography>
 
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 }, mb: 3 }}>
-          {/* Left Side - News Cards */}
-          <Box sx={{ flex: 7, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
-            {/* First News Card */}
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                category="STATE"
-                title="बिहार: पटना में सड़क हादसा, दो की मौत, पांच घायल"
-                image="https://images.news18.com/hindi/uploads/2023/07/Road-accident-3.jpg"
-                time="April 10, 2025, 5:15 P.M."
-                isLarge={true}
-                categoryColor="#FFC107"
-              />
+        {loading.state ? (
+          <LoadingSection />
+        ) : error.state ? (
+          <ErrorSection message={error.state} />
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 }, mb: 3 }}>
+            {/* Left Side - News Cards */}
+            <Box sx={{ flex: 7, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
+              {stateNews.length > 0 && (
+                <Box sx={{ flex: 1 }}>
+                  <NewsCard 
+                    item={stateNews[0]}
+                    categoryLabel="STATE"
+                    categoryColor="#FFC107"
+                    isLarge={true}
+                  />
+                </Box>
+              )}
+              
+              {stateNews.length > 1 && (
+                <Box sx={{ flex: 1 }}>
+                  <NewsCard 
+                    item={stateNews[1]}
+                    categoryLabel="STATE"
+                    categoryColor="#FFC107"
+                    isLarge={true}
+                  />
+                </Box>
+              )}
             </Box>
             
-            {/* Second News Card */}
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                category="STATE"
-                title="बिहार के मुख्यमंत्री ने शुरू की नई योजना, युवाओं को मिलेगा रोजगार का अवसर"
-                image="https://images.tv9hindi.com/wp-content/uploads/2023/03/bihar-cm-nitish-kumar.jpg"
-                time="April 10, 2025, 5:00 P.M."
-                isLarge={true}
-                categoryColor="#FFC107"
-              />
+            {/* Right Side - Advertisement */}
+            <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <SideAd />
             </Box>
           </Box>
-          
-          {/* Right Side - Advertisement */}
-          <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <SideAd />
-          </Box>
-        </Box>
+        )}
 
         {/* Last Advertisement */}
         <LargeAd />
@@ -691,39 +1064,43 @@ const HomeScreen = () => {
           ENTERTAINMENT NEWS
         </Typography>
 
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 }, mb: 3 }}>
-          {/* Left Side - News Cards */}
-          <Box sx={{ flex: 7, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
-            {/* First News Card */}
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                category="ENTERTAINMENT"
-                title="अनुष्का शर्मा और विराट कोहली ने शेयर की बेटी वामिका की पहली तस्वीर..."
-                image="https://i.ibb.co/YQJTgqy/virat-anushka.jpg"
-                time="April 10, 2025, 6:15 P.M."
-                isLarge={true}
-                categoryColor="#9C27B0"
-              />
+        {loading.entertainment ? (
+          <LoadingSection />
+        ) : error.entertainment ? (
+          <ErrorSection message={error.entertainment} />
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 }, mb: 3 }}>
+            {/* Left Side - News Cards */}
+            <Box sx={{ flex: 7, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
+              {entertainmentNews.length > 0 && (
+                <Box sx={{ flex: 1 }}>
+                  <NewsCard 
+                    item={entertainmentNews[0]}
+                    categoryLabel="ENTERTAINMENT"
+                    categoryColor="#9C27B0"
+                    isLarge={true}
+                  />
+                </Box>
+              )}
+              
+              {entertainmentNews.length > 1 && (
+                <Box sx={{ flex: 1 }}>
+                  <NewsCard 
+                    item={entertainmentNews[1]}
+                    categoryLabel="ENTERTAINMENT"
+                    categoryColor="#9C27B0"
+                    isLarge={true}
+                  />
+                </Box>
+              )}
             </Box>
             
-            {/* Second News Card */}
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                category="ENTERTAINMENT"
-                title="रणबीर कपूर की अगली फिल्म का हुआ ऐलान, निर्देशक संजय लीला भंसाली के साथ पहली बार करेंगे काम"
-                image="https://i.ibb.co/3yqNRXd/ranbir-kapoor.jpg"
-                time="April 10, 2025, 6:00 P.M."
-                isLarge={true}
-                categoryColor="#9C27B0"
-              />
+            {/* Right Side - Advertisement */}
+            <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <SideAd />
             </Box>
           </Box>
-          
-          {/* Right Side - Advertisement */}
-          <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <SideAd />
-          </Box>
-        </Box>
+        )}
 
         {/* Final Advertisement */}
         <LargeAd />
