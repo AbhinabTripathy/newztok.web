@@ -64,7 +64,7 @@ const HomeScreen = () => {
   ];
 
   // Base URL for API
-  const baseUrl = 'http://13.234.42.114:3333';
+  const baseUrl = 'https://newztok.in';
 
   // Format date function
   const formatDate = (dateString) => {

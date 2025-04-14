@@ -6,7 +6,7 @@ import JournalistHeader from './JournalistHeader';
 import JournalistSidebar from './JournalistSidebar';
 import JournalistFooter from './JournalistFooter';
 
-const API_BASE_URL = 'http://13.234.42.114:3333';
+const API_BASE_URL = 'https://newztok.in';
 
 const EditPost = () => {
   const { id } = useParams();
@@ -99,7 +99,7 @@ const EditPost = () => {
       
       // 1. First attempt: Try to get all pending news and find our ID
       try {
-        const allPendingNewsUrl = 'http://13.234.42.114:3333/api/news/my-pending-news';
+        const allPendingNewsUrl = 'https://newztok.in/api/news/my-pending-news';
         console.log('Fetching all pending news from:', allPendingNewsUrl);
         
         const listResponse = await axios.get(allPendingNewsUrl, config);
@@ -144,16 +144,16 @@ const EditPost = () => {
       
       // 2. Second attempt: Try the individual endpoints if list approach failed
       const endpoints = [
-        `http://13.234.42.114:3333/api/news/my-pending-news`,  // Try base endpoint
-        `http://13.234.42.114:3333/api/news/my-pending-news/${id}`, // Try with ID
-        `http://13.234.42.114:3333/api/news/detail/${id}`,
-        `http://13.234.42.114:3333/api/news/${id}`,
-        `http://13.234.42.114:3333/api/news/view/${id}`,
-        `http://13.234.42.114:3333/api/my-pending-news/${id}`,
-        `http://13.234.42.114:3333/api/news/pending-news/${id}`,
-        `http://13.234.42.114:3333/api/news/pending/${id}`,
-        `http://13.234.42.114:3333/api/news/my-news/${id}`,
-        `http://13.234.42.114:3333/api/news/get/${id}`
+        `https://newztok.in/api/news/my-pending-news`,  // Try base endpoint
+        `https://newztok.in/api/news/my-pending-news/${id}`, // Try with ID
+        `https://newztok.in/api/news/detail/${id}`,
+        `https://newztok.in/api/news/${id}`,
+        `https://newztok.in/api/news/view/${id}`,
+        `https://newztok.in/api/my-pending-news/${id}`,
+        `https://newztok.in/api/news/pending-news/${id}`,
+        `https://newztok.in/api/news/pending/${id}`,
+        `https://newztok.in/api/news/my-news/${id}`,
+        `https://newztok.in/api/news/get/${id}`
       ];
       
       let apiData = null;
@@ -172,7 +172,7 @@ const EditPost = () => {
             console.log(`Success with endpoint: ${endpoint}`, response.data);
             
             // If this is the base endpoint, we need to find our news in the list
-            if (endpoint === 'http://13.234.42.114:3333/api/news/my-pending-news') {
+            if (endpoint === 'https://newztok.in/api/news/my-pending-news') {
               const dataList = response.data.data || response.data;
               if (Array.isArray(dataList)) {
                 const found = dataList.find(item => item.id === parseInt(id));
@@ -658,7 +658,7 @@ const EditPost = () => {
                       <img 
                         src={featuredImage.startsWith('http') || featuredImage.startsWith('blob:') 
                           ? featuredImage 
-                          : `http://13.234.42.114:3333${featuredImage.startsWith('/') ? featuredImage : '/' + featuredImage}`
+                          : `https://newztok.in${featuredImage.startsWith('/') ? featuredImage : '/' + featuredImage}`
                         }
                         alt="Featured" 
                         style={{ 

@@ -37,7 +37,7 @@ const EntertainmentNewsDetails = () => {
   const [viewCount, setViewCount] = useState(0);
   
   // API base URL
-  const baseURL = 'http://13.234.42.114:3333';
+  const baseURL = 'https://newztok.in';
   
   // Primary color for entertainment theme
   const themeColor = '#9C27B0'; // Purple color for entertainment

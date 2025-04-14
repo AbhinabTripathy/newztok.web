@@ -20,7 +20,7 @@ const Profile = () => {
   const navigate = useNavigate();
 
   // API Base URL
-  const baseURL = 'http://13.234.42.114:3333';
+  const baseURL = 'https://newztok.in';
 
   // Function to decode JWT token
   const decodeToken = (token) => {

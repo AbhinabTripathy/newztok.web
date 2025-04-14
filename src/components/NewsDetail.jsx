@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
   Box,
   Container,
   Typography,
-  Divider,
   Avatar,
   Button,
   TextField,
   CircularProgress,
   IconButton,
-  Grid,
 } from '@mui/material';
 import {
   AccessTime as AccessTimeIcon,
@@ -29,7 +27,6 @@ const NewsDetail = () => {
   const navigate = useNavigate();
   const [newsData, setNewsData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [comment, setComment] = useState('');
   const [comments, setComments] = useState([]);
   const [isLiked, setIsLiked] = useState(false);
@@ -38,7 +35,7 @@ const NewsDetail = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // API base URL
-  const baseURL = 'http://13.234.42.114:3333';
+  const baseURL = 'https://newztok.in';
   
   // Check if user is logged in (has auth token)
   const isLoggedIn = !!localStorage.getItem('userAuthToken');
@@ -69,6 +66,7 @@ const NewsDetail = () => {
     if (isLoggedIn) {
       checkLikeStatus();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // Re-check like status whenever login state changes
@@ -80,6 +78,7 @@ const NewsDetail = () => {
       // Reset like status if user logs out
       setIsLiked(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn]);
 
   // Add function to check if user has already liked the article
@@ -106,7 +105,7 @@ const NewsDetail = () => {
 
       // Make the API call to check like status
       const response = await fetch(
-        `http://13.234.42.114:3333/api/interaction/news/${id}/like/status`,
+        `https://newztok.in/api/interaction/news/${id}/like/status`,
         requestOptions
       );
 
@@ -271,7 +270,6 @@ const NewsDetail = () => {
         }
       }
       
-      setError(null);
     } catch (err) {
       console.error("Error fetching news details:", err);
       // Use mock data in case of error
@@ -303,7 +301,7 @@ const NewsDetail = () => {
       // Make the API call to increment view count
       debug('Sending view count increment request to API');
       const response = await fetch(
-        `http://13.234.42.114:3333/api/interaction/news/${id}/view`,
+        `https://newztok.in/api/interaction/news/${id}/view`,
         requestOptions
       );
 
@@ -372,10 +370,6 @@ const NewsDetail = () => {
       if (!token) {
         throw new Error('No authentication token found');
       }
-
-      // Track current state for optimistic updates
-      const currentLikeState = isLiked;
-      const currentLikeCount = likeCount;
       
       // Optimistically update UI - only allow liking, not unliking
       setIsLiked(true);
@@ -395,7 +389,7 @@ const NewsDetail = () => {
       // Make the API call
       debug('Sending like request to API');
       const response = await fetch(
-        `http://13.234.42.114:3333/api/interaction/news/${id}/like`,
+        `https://newztok.in/api/interaction/news/${id}/like`,
         requestOptions
       );
 
@@ -541,7 +535,7 @@ const NewsDetail = () => {
       debug('Attempting to post comment with payload:', commentPayload);
       
       const response = await fetch(
-        `http://13.234.42.114:3333/api/interaction/news/${id}/comment`,
+        `https://newztok.in/api/interaction/news/${id}/comment`,
         {
           method: 'POST',
           headers: headers,
@@ -582,10 +576,10 @@ const NewsDetail = () => {
       
       // Try multiple endpoints for fetching comments
       const endpointsToTry = [
-        `http://13.234.42.114:3333/api/interaction/news/${id}/comments`,
-        `http://13.234.42.114:3333/api/news/${id}/comments`,
-        `http://13.234.42.114:3333/api/comments/news/${id}`,
-        `http://13.234.42.114:3333/api/comments/${id}`
+        `https://newztok.in/api/interaction/news/${id}/comments`,
+        `https://newztok.in/api/news/${id}/comments`,
+        `https://newztok.in/api/comments/news/${id}`,
+        `https://newztok.in/api/comments/${id}`
       ];
       
       let response;
@@ -975,9 +969,6 @@ const NewsDetail = () => {
                     bottom: '16px',
                     right: '16px',
                     bgcolor: 'rgba(231, 57, 82, 0.8)',
-                    '&:hover': { 
-                      bgcolor: 'rgba(231, 57, 82, 1)' 
-                    },
                     borderRadius: 2,
                     fontSize: '12px',
                     textTransform: 'none',

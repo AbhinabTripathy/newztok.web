@@ -36,7 +36,7 @@ const Overview = () => {
         };
 
         // Set the correct base URL
-        const baseURL = 'http://13.234.42.114:3333';
+        const baseURL = 'https://newztok.in';
 
         // Fetch user profile data
         try {

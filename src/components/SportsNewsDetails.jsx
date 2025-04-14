@@ -37,7 +37,7 @@ const SportsNewsDetails = () => {
   const [viewCount, setViewCount] = useState(0);
   
   // API base URL
-  const baseURL = 'http://13.234.42.114:3333';
+  const baseURL = 'https://newztok.in';
   
   // Primary color for sports theme
   const themeColor = '#2E7D32'; // Green color for sports

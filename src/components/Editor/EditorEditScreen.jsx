@@ -8,7 +8,7 @@ import EditorSidebar from './EditorSidebar';
 import './editor.css';
 
 // API base URL configuration
-const API_BASE_URL = 'http://13.234.42.114:3333';
+const API_BASE_URL = 'https://newztok.in';
 
 // Define the state and district data structure
 const locationData = {

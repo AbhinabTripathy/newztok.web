@@ -27,7 +27,7 @@ const AddViewUsers = () => {
   ];
 
   // API Base URL
-  const baseURL = 'http://13.234.42.114:3333';
+  const baseURL = 'https://newztok.in';
 
   // State options as shown in the image
   const stateOptions = [

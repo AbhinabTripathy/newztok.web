@@ -99,7 +99,7 @@ const PendingApprovals = () => {
       
       console.log('Fetching pending posts from API with token');
       // Using the correct working URL
-      const response = await axios.get(`http://13.234.42.114:3333/api/news/my-pending-news`, config);
+      const response = await axios.get(`https://newztok.in/api/news/my-pending-news`, config);
       
       console.log('API Response:', response.data);
       
@@ -254,14 +254,14 @@ const PendingApprovals = () => {
       // Updated endpoint list based on user's requirements
       const endpoints = [
         // Primary endpoint should be /api/news/pending as specified by the user
-        `http://13.234.42.114:3333/api/news/pending/${newsId}`,
+        `https://newztok.in/api/news/pending/${newsId}`,
         
         // Fallback endpoints
-        `http://13.234.42.114:3333/api/news/${newsId}`,
-        `http://13.234.42.114:3333/api/news/pending-news/${newsId}`,
-        `http://13.234.42.114:3333/api/news/detail/${newsId}`,
-        `http://13.234.42.114:3333/api/news/view/${newsId}`,
-        `http://13.234.42.114:3333/api/news/get/${newsId}`
+        `https://newztok.in/api/news/${newsId}`,
+        `https://newztok.in/api/news/pending-news/${newsId}`,
+        `https://newztok.in/api/news/detail/${newsId}`,
+        `https://newztok.in/api/news/view/${newsId}`,
+        `https://newztok.in/api/news/get/${newsId}`
       ];
       
       let apiData = null;

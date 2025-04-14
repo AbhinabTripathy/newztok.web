@@ -25,7 +25,7 @@ const Overview = () => {
   const navigate = useNavigate();
 
   // API Base URL
-  const baseURL = 'http://13.234.42.114:3333';
+  const baseURL = 'https://newztok.in';
 
   // Add this token management utility within the component or nearby
   const getAuthToken = () => {
@@ -113,7 +113,7 @@ const Overview = () => {
       // First attempt with current token
       try {
         console.log(`Making API request to ${endpoint} with token`);
-        const response = await axios.get(`http://13.234.42.114:3333${endpoint}`, config);
+        const response = await axios.get(`https://newztok.in${endpoint}`, config);
         
         if (response.data) {
           console.log(`API request successful for ${endpoint}:`, response.data);
@@ -144,7 +144,7 @@ const Overview = () => {
         if (initialError.response?.status === 401 || initialError.response?.status === 403) {
           try {
             // Try a simpler endpoint as a token check
-            const testResponse = await axios.get('http://13.234.42.114:3333/api/users/my-profile', config);
+            const testResponse = await axios.get('https://newztok.in/api/users/my-profile', config);
             
             if (testResponse.status === 200) {
               console.log('Token is valid, original endpoint might be the issue');

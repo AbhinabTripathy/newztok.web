@@ -28,7 +28,7 @@ const StateNews = () => {
   const fetchDistrictNews = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://13.234.42.114:3333/api/news/category/district');
+      const response = await axios.get('https://newztok.in/api/news/category/district');
       console.log('District news API response:', response.data);
       
       // Process data from API
@@ -128,7 +128,7 @@ const StateNews = () => {
     const getFullImageUrl = (imagePath) => {
       if (!imagePath) return 'https://via.placeholder.com/400x300?text=No+Image';
       if (imagePath.startsWith('http')) return imagePath;
-      return `http://13.234.42.114:3333${imagePath}`;
+      return `https://newztok.in${imagePath}`;
     };
     
     const mediaUrl = getFullImageUrl(item.featuredImage || item.image);
@@ -322,7 +322,7 @@ const StateNews = () => {
     const getFullImageUrl = (imagePath) => {
       if (!imagePath) return 'https://via.placeholder.com/400x300?text=No+Image';
       if (imagePath.startsWith('http')) return imagePath;
-      return `http://13.234.42.114:3333${imagePath}`;
+      return `https://newztok.in${imagePath}`;
     };
     
     const mediaUrl = getFullImageUrl(item.featuredImage || item.image);

@@ -37,7 +37,7 @@ const TrendingNewsDetails = () => {
   const [viewCount, setViewCount] = useState(0);
   
   // API base URL
-  const baseURL = 'http://13.234.42.114:3333';
+  const baseURL = 'https://newztok.in';
   
   // Check if user is logged in (has auth token)
   const isLoggedIn = !!localStorage.getItem('userAuthToken');
