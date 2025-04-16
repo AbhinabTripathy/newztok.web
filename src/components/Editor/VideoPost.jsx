@@ -3,6 +3,7 @@ import { FiChevronDown } from 'react-icons/fi';
 import { Editor } from '@tinymce/tinymce-react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import TinyMCEEditor from '../common/TinyMCEEditor';
 
 // API base URL configuration
 const API_BASE_URL = 'https://api.newztok.in';
@@ -449,21 +450,11 @@ const VideoPost = () => {
               >
                 Video Description
               </label>
-              <Editor
-                apiKey="omxjaluaxpgfpa6xkfadimoprrirfmhozsrtpb3o1uimu4c5"
-                onInit={(evt, editor) => editorRef.current = editor}
-                initialValue=""
+              <TinyMCEEditor
+                editorRef={editorRef}
                 value={content}
                 onEditorChange={handleEditorChange}
-                init={{
-                  height: 300,
-                  menubar: true,
-                  plugins: [
-                    'anchor', 'autolink', 'charmap', 'codesample', 'emoticons', 'image', 'link', 'lists', 'media', 'searchreplace', 'table', 'visualblocks', 'wordcount',
-                  ],
-                  toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
-                  content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
-                }}
+                height={300}
               />
             </div>
           </form>

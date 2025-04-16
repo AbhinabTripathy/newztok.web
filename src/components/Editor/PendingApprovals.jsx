@@ -1399,7 +1399,7 @@ const PendingApprovals = () => {
                         init={{
                           height: 500,
                           menubar: true,
-                          apiKey: 'omxjaluaxpgfpa6xkfadimoprrirfmhozsrtpb3o1uimu4c5',
+                          apiKey: "74ezfl12d3caazs304xdpxge6jtfxivf5ps8xuc8x259fgn4",
                           branding: false,
                           promotion: false,
                           readonly: false,
