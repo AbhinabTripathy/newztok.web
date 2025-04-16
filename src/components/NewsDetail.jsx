@@ -35,7 +35,7 @@ const NewsDetail = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // API base URL
-  const baseURL = 'https://newztok.in';
+  const baseURL = 'https://api.newztok.in';
   
   // Check if user is logged in (has auth token)
   const isLoggedIn = !!localStorage.getItem('userAuthToken');
@@ -105,7 +105,7 @@ const NewsDetail = () => {
 
       // Make the API call to check like status
       const response = await fetch(
-        `https://newztok.in/api/interaction/news/${id}/like/status`,
+        `${baseURL}/api/interaction/news/${id}/like/status`,
         requestOptions
       );
 
@@ -162,12 +162,17 @@ const NewsDetail = () => {
       let response = null;
       let foundEndpoint = null;
       
+      // Configure axios to follow redirects
+      const axiosConfig = {
+        maxRedirects: 5, // Allow up to 5 redirects
+        validateStatus: status => status < 500 // Accept all responses with status < 500
+      };
+      
       // First, try to fetch from any category endpoint
-      // First try individual fetch for each endpoint
       for (const endpoint of endpoints) {
         try {
           console.log(`Trying endpoint: ${baseURL}${endpoint}`);
-          response = await axios.get(`${baseURL}${endpoint}`);
+          response = await axios.get(`${baseURL}${endpoint}`, axiosConfig);
           if (response.status === 200 && response.data) {
             console.log(`Success with endpoint: ${endpoint}`);
             foundEndpoint = endpoint;
@@ -195,7 +200,7 @@ const NewsDetail = () => {
         for (const endpoint of categoryEndpoints) {
           try {
             console.log(`Trying to find article in listing: ${baseURL}${endpoint}`);
-            const listResponse = await axios.get(`${baseURL}${endpoint}`);
+            const listResponse = await axios.get(`${baseURL}${endpoint}`, axiosConfig);
             
             if (listResponse.status === 200 && listResponse.data) {
               // Extract the array of news items
@@ -233,17 +238,15 @@ const NewsDetail = () => {
       }
       
       if (!response || !foundEndpoint) {
-        // If all endpoints failed, use mocked data as a last resort
-        console.warn("All API endpoints failed, using mocked data...");
-        // Use a mock response with the ID
+        // If all endpoints failed, use empty data instead of mock data
+        console.warn("All API endpoints failed, using empty data...");
         setNewsData({
           id: id,
           title: `News Article ${id}`,
-          content: "This is sample content since the API endpoint couldn't be reached. The content would normally include details about this news article.",
+          content: "This article could not be loaded. Please try again later.",
           createdAt: new Date().toISOString(),
-          state: "Sample State",
-          district: "Sample District",
-          featuredImage: "https://via.placeholder.com/800x400?text=News+Image"
+          state: "",
+          district: ""
         });
       } else {
         console.log(`Successfully fetched data from ${foundEndpoint}`, response.data);
@@ -252,6 +255,43 @@ const NewsDetail = () => {
         if (response.data) {
           const articleData = response.data.data || response.data;
           console.log("Setting news data:", articleData);
+          
+          // Log media data for debugging - with more detail
+          console.log("Media data in article:", {
+            featuredImage: articleData.featuredImage,
+            youtubeUrl: articleData.youtubeUrl,
+            video: articleData.video,
+            image: articleData.image,
+            images: articleData.images,
+            thumbnail: articleData.thumbnail,
+            thumbnailUrl: articleData.thumbnailUrl,
+            imageUrl: articleData.imageUrl,
+            featured_image: articleData.featured_image
+          });
+          
+          // Ensure media properties are properly set
+          if (articleData.youtubeUrl) {
+            console.log("YouTube URL found:", articleData.youtubeUrl);
+            
+            // Debug YouTube URL extraction
+            const youtubeRegex = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+            const match = articleData.youtubeUrl.match(youtubeRegex);
+            if (match && match[1]) {
+              console.log("YouTube video ID extracted:", match[1]);
+              console.log("YouTube thumbnail URL would be:", `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`);
+            } else {
+              console.warn("Could not extract YouTube video ID from:", articleData.youtubeUrl);
+            }
+          }
+          
+          if (articleData.featuredImage) {
+            console.log("Featured image found:", articleData.featuredImage);
+          }
+          
+          if (articleData.video) {
+            console.log("Video found:", articleData.video);
+          }
+          
           setNewsData(articleData);
           
           // If comments are included in the API response
@@ -272,15 +312,14 @@ const NewsDetail = () => {
       
     } catch (err) {
       console.error("Error fetching news details:", err);
-      // Use mock data in case of error
+      // Use empty data in case of error
       setNewsData({
         id: id,
         title: `News Article ${id}`,
-        content: "This is sample content since the API endpoint couldn't be reached. The content would normally include details about this news article.",
+        content: "This article could not be loaded. Please try again later.",
         createdAt: new Date().toISOString(),
-        state: "Sample State",
-        district: "Sample District",
-        featuredImage: "https://via.placeholder.com/800x400?text=News+Image"
+        state: "",
+        district: ""
       });
     } finally {
       setLoading(false);
@@ -301,7 +340,7 @@ const NewsDetail = () => {
       // Make the API call to increment view count
       debug('Sending view count increment request to API');
       const response = await fetch(
-        `https://newztok.in/api/interaction/news/${id}/view`,
+        `${baseURL}/api/interaction/news/${id}/view`,
         requestOptions
       );
 
@@ -389,7 +428,7 @@ const NewsDetail = () => {
       // Make the API call
       debug('Sending like request to API');
       const response = await fetch(
-        `https://newztok.in/api/interaction/news/${id}/like`,
+        `${baseURL}/api/interaction/news/${id}/like`,
         requestOptions
       );
 
@@ -535,7 +574,7 @@ const NewsDetail = () => {
       debug('Attempting to post comment with payload:', commentPayload);
       
       const response = await fetch(
-        `https://newztok.in/api/interaction/news/${id}/comment`,
+        `${baseURL}/api/interaction/news/${id}/comment`,
         {
           method: 'POST',
           headers: headers,
@@ -576,10 +615,10 @@ const NewsDetail = () => {
       
       // Try multiple endpoints for fetching comments
       const endpointsToTry = [
-        `https://newztok.in/api/interaction/news/${id}/comments`,
-        `https://newztok.in/api/news/${id}/comments`,
-        `https://newztok.in/api/comments/news/${id}`,
-        `https://newztok.in/api/comments/${id}`
+        `${baseURL}/api/interaction/news/${id}/comments`,
+        `${baseURL}/api/news/${id}/comments`,
+        `${baseURL}/api/comments/news/${id}`,
+        `${baseURL}/api/comments/${id}`
       ];
       
       let response;
@@ -708,14 +747,30 @@ const NewsDetail = () => {
     
     console.log("Getting media URL for item:", item);
     
-    // Handle YouTube URLs
+    // Handle YouTube URLs - Get thumbnail instead of embed
     if (item.youtubeUrl) {
       console.log("Found YouTube URL:", item.youtubeUrl);
-      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-      const match = item.youtubeUrl.match(regExp);
-      return (match && match[2].length === 11)
-        ? `https://www.youtube.com/embed/${match[2]}`
-        : null;
+      // Using the same robust regex pattern from HomeScreen.jsx
+      const youtubeRegex = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+      const match = item.youtubeUrl.match(youtubeRegex);
+      
+      if (match && match[1]) {
+        const videoId = match[1];
+        console.log("Extracted YouTube video ID:", videoId);
+        // Use high quality thumbnail (hqdefault.jpg)
+        return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+      }
+    }
+    
+    // Handle video property
+    if (item.video) {
+      console.log("Found video property:", item.video);
+      if (typeof item.video === 'string') {
+        return item.video.startsWith('http') ? item.video : `${baseURL}${item.video}`;
+      } else if (typeof item.video === 'object' && (item.video.url || item.video.src)) {
+        const videoSrc = item.video.url || item.video.src;
+        return videoSrc.startsWith('http') ? videoSrc : `${baseURL}${videoSrc}`;
+      }
     }
     
     // Handle images with various property names
@@ -747,7 +802,8 @@ const NewsDetail = () => {
     }
     
     console.log("No media URL found in the item");
-    return 'https://via.placeholder.com/800x400?text=News+Image';
+    // Use a more reliable placeholder image service
+    return 'https://placehold.co/800x400/000000/FFFFFF/png?text=News+Image';
   };
 
   // Function to download image with watermark
@@ -872,7 +928,7 @@ const NewsDetail = () => {
   // Determine media type and URL
   const mediaUrl = getMediaUrl(newsData);
   const isYoutubeVideo = mediaUrl && newsData.youtubeUrl;
-  const isContentVideo = newsData.contentType === 'video';
+  const isContentVideo = newsData.contentType === 'video' || newsData.video ? true : false;
   const createdDate = formatDate(newsData.createdAt || newsData.publishedAt || newsData.updatedAt);
   const location = [
     newsData.state && capitalizeFirstLetter(newsData.state),
@@ -924,65 +980,54 @@ const NewsDetail = () => {
         {/* Media (Image or Video) */}
         {mediaUrl && (
           <Box sx={{ width: '100%', mb: 3, borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
-            {isYoutubeVideo ? (
-              <Box sx={{ position: 'relative', paddingTop: '56.25%' /* 16:9 Aspect Ratio */ }}>
-                <iframe
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    bottom: 0,
-                    right: 0,
-                    width: '100%',
-                    height: '100%',
-                    borderRadius: '8px',
-                  }}
-                  src={mediaUrl}
-                  title={newsData.title}
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </Box>
-            ) : (
-              <Box sx={{ position: 'relative' }}>
-                <Box 
-                  component="img"
-                  src={mediaUrl}
-                  alt={newsData.title}
-                  sx={{
-                    width: '100%',
-                    maxHeight: '500px',
-                    objectFit: 'cover',
-                    borderRadius: '8px',
-                  }}
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = 'https://via.placeholder.com/800x400?text=Image+Not+Available';
-                  }}
-                />
-                <Button
-                  variant="contained"
-                  onClick={downloadImageWithWatermark}
-                  sx={{ 
-                    position: 'absolute',
-                    bottom: '16px',
-                    right: '16px',
-                    bgcolor: 'rgba(231, 57, 82, 0.8)',
-                    borderRadius: 2,
-                    fontSize: '12px',
-                    textTransform: 'none',
-                    padding: '4px 12px',
-                    opacity: 0.9,
-                    transition: 'opacity 0.3s',
-                    '&:hover': {
-                      opacity: 1,
-                      bgcolor: 'rgba(231, 57, 82, 0.9)'
-                    }
-                  }}
-                >
-                  Download with Watermark
-                </Button>
+            <Box 
+              component="img"
+              src={mediaUrl}
+              alt={newsData.title}
+              sx={{
+                width: '100%',
+                maxHeight: '500px',
+                objectFit: 'cover',
+                borderRadius: '8px',
+              }}
+              onError={(e) => {
+                e.target.onerror = null;
+                // Use a more reliable fallback image
+                e.target.src = 'https://placehold.co/800x400/000000/FFFFFF/png?text=News+Image';
+              }}
+            />
+            {isYoutubeVideo && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '80px',
+                  height: '56px',
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  borderRadius: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  '&:hover': {
+                    backgroundColor: 'rgba(0,0,0,0.8)',
+                    transform: 'translate(-50%, -50%) scale(1.05)',
+                  },
+                  transition: 'all 0.2s ease-in-out',
+                }}
+                onClick={() => {
+                  if (newsData.youtubeUrl) {
+                    console.log("Opening YouTube URL:", newsData.youtubeUrl);
+                    window.open(newsData.youtubeUrl, '_blank', 'noopener,noreferrer');
+                  }
+                }}
+              >
+                <svg height="34" width="48" viewBox="0 0 68 48">
+                  <path d="M66.52,7.74c-0.78-2.93-2.49-5.41-5.42-6.19C55.79,.13,34,0,34,0S12.21,.13,6.9,1.55 C3.97,2.33,2.27,4.81,1.48,7.74C0.06,13.05,0,24,0,24s0.06,10.95,1.48,16.26c0.78,2.93,2.49,5.41,5.42,6.19 C12.21,47.87,34,48,34,48s21.79-0.13,27.1-1.55c2.93-0.78,4.64-3.26,5.42-6.19C67.94,34.95,68,24,68,24S67.94,13.05,66.52,7.74z" fill="#f00"></path>
+                  <path d="M 45,24 27,14 27,34" fill="#fff"></path>
+                </svg>
               </Box>
             )}
           </Box>

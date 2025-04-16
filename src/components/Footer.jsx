@@ -24,7 +24,7 @@ const Footer = () => {
     { name: 'State', count: 0, endpoint: 'district' }
   ]);
   
-  const baseUrl = 'https://newztok.in/api/news';
+  const baseUrl = 'https://api.newztok.in/api/news';
 
   // Format date for display
   const formatDate = (dateString) => {

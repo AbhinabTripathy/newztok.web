@@ -226,7 +226,7 @@ const Header = () => {
         };
         
         // Make API call to logout endpoint
-        await fetch("https://newztok.in/api/auth/logout", requestOptions);
+        await fetch("https://api.newztok.in/api/auth/logout", requestOptions);
       }
     } catch (error) {
       console.error("Logout error:", error);

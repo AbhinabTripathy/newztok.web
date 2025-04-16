@@ -281,6 +281,19 @@ const HomeScreen = () => {
 
   // Get image URL with proper handling
   const getImageUrl = (item) => {
+    // If item has youtubeUrl, extract and return YouTube thumbnail
+    if (item.youtubeUrl) {
+      // Extract YouTube video ID from various YouTube URL formats
+      const youtubeRegex = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+      const match = item.youtubeUrl.match(youtubeRegex);
+      
+      if (match && match[1]) {
+        const videoId = match[1];
+        // Use high quality thumbnail (hqdefault.jpg)
+        return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+      }
+    }
+    
     // If item has images array with content
     if (item.images && item.images.length > 0) {
       return item.images[0];
