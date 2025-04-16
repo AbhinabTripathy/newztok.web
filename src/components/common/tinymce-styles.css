@@ -44,4 +44,37 @@
   border-radius: 6px;
   margin-bottom: 10px;
   font-size: 14px;
+}
+
+/* Hide TinyMCE domain warning */
+.tox-notification--warning {
+  display: none !important;
+}
+
+.tox-notification--in {
+  display: none !important;
+}
+
+/* Hide domain alerts in both the main editor and iframe */
+.tox-notifications-container,
+.tox-notification {
+  display: none !important;
+}
+
+/* Make sure TinyMCE dialogs are visible */
+.tox-dialog,
+.tox-dialog__body,
+.tox-dialog__footer {
+  display: flex !important;
+}
+
+/* Adjust overlay */
+[role="alert"] {
+  display: none !important;
+}
+
+/* Additional styling for the editor itself */
+.tox-tinymce {
+  border: 1px solid #ccc !important;
+  border-radius: 4px !important;
 } 

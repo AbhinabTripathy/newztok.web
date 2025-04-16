@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaBold, FaItalic, FaListUl, FaListOl, FaAlignLeft, FaCode } from 'react-icons/fa';
 import { FiChevronDown } from 'react-icons/fi';
+import { BsLightning } from 'react-icons/bs';
+import { IoIosUndo, IoIosRedo } from 'react-icons/io';
 import { Editor } from '@tinymce/tinymce-react';
 import TinyMCEEditor from '../common/TinyMCEEditor';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import './editor.css';
 
-// API base URL configuration
+// API URL configuration
 const API_BASE_URL = 'https://api.newztok.in';
 
 // Configure axios with increased timeout
@@ -16,7 +17,7 @@ axios.defaults.timeout = 120000; // 2 minutes timeout
 const StandardPost = () => {
   const [title, setTitle] = useState('');
   const [file, setFile] = useState(null);
-  const [content, setContent] = useState('');
+  const [content, setContent]= useState('');
   const [category, setCategory] = useState(''); 
   const [state, setState] = useState('');
   const [district, setDistrict] = useState('');

@@ -108,50 +108,107 @@ const Login = () => {
         localStorage.removeItem('savedPassword');
       }
 
+      // Make the login request with more detailed error handling
+      console.log("Making staff login request to:", 'https://api.newztok.in/api/auth/login');
       const response = await axios.post('https://api.newztok.in/api/auth/login', requestData);
+      
+      // Log the entire response for debugging
+      console.log("Full API response:", response);
+      console.log("Response status:", response.status);
+      console.log("Response data:", response.data);
 
       const result = response.data;
       console.log("API Login successful:", result);
       
-      // Access the role from the nested data object
-      const userRole = result.data?.role?.toLowerCase();
-      console.log("User role:", userRole);
-      console.log("Token:", result.data?.token);
-
-      // Always store token in both localStorage and sessionStorage
-      // to ensure it's available in both Overview.jsx and other components
-      localStorage.setItem('authToken', result.data?.token);
-      localStorage.setItem('userRole', userRole);
-      sessionStorage.setItem('authToken', result.data?.token);
-      sessionStorage.setItem('userRole', userRole);
+      // Try to extract token from multiple possible locations
+      let token = null;
+      let userRole = null;
       
-      console.log("Stored auth data in both localStorage and sessionStorage");
+      // Check all possible token locations (handle inconsistent API responses)
+      if (result.data?.token) {
+        token = result.data.token;
+        console.log("Found token in result.data.token");
+      } else if (result.token) {
+        token = result.token;
+        console.log("Found token in result.token");
+      } else if (result.data?.accessToken) {
+        token = result.data.accessToken;
+        console.log("Found token in result.data.accessToken");
+      } else if (result.accessToken) {
+        token = result.accessToken;
+        console.log("Found token in result.accessToken");
+      }
+      
+      // Try to extract role from multiple possible locations
+      if (result.data?.role) {
+        userRole = result.data.role.toLowerCase();
+        console.log("Found role in result.data.role:", userRole);
+      } else if (result.role) {
+        userRole = result.role.toLowerCase();
+        console.log("Found role in result.role:", userRole);
+      }
+
+      // Fallback if no token found - check the entire response structure
+      if (!token) {
+        console.error("No token found in expected locations, searching entire response...");
+        const responseStr = JSON.stringify(response);
+        if (responseStr.includes("token")) {
+          console.log("Response contains 'token', but not in expected location");
+        }
+        throw new Error('Authentication token not found in server response');
+      }
+
+      console.log("Final extracted token:", token ? "Token found (not shown for security)" : "No token found");
+      console.log("Final extracted role:", userRole);
+
+      // Store token with timestamp for expiry tracking
+      const tokenData = {
+        token: token,
+        timestamp: Date.now(),
+        role: userRole
+      };
+
+      // Store in both localStorage and sessionStorage
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('authTokenData', JSON.stringify(tokenData));
+      localStorage.setItem('userRole', userRole || '');
+      sessionStorage.setItem('authToken', token);
+      sessionStorage.setItem('authTokenData', JSON.stringify(tokenData));
+      sessionStorage.setItem('userRole', userRole || '');
+      
+      console.log("Stored auth data in localStorage and sessionStorage successfully");
 
       if (!userRole) {
-        console.error("User role is undefined or null. Cannot redirect.");
-        setError('Unable to determine user role. Please contact support.');
-        return;
+        console.warn("User role is undefined or null, using default redirect");
+        setError('Warning: Unable to determine user role. Using default redirection.');
       }
 
       // Role-based redirection
-      console.log("Redirecting based on role:", userRole);
-
       let redirectPath = '/user';
       
       if (userRole === 'journalist') {
-        console.log("Setting path to journalist panel");
         redirectPath = '/journalist/home';
       } else if (userRole === 'editor') {
-        console.log("Setting path to editor panel");
         redirectPath = '/editor';
       }
 
-      console.log("Attempting navigation to:", redirectPath);
+      console.log("Redirecting to:", redirectPath);
       navigate(redirectPath, { replace: true });
     } catch (error) {
       console.error("API Login failed:", error);
-      console.log("Full error object:", error);
-      setError(error.response?.data?.message || 'Invalid credentials. Please try again.');
+      console.log("Error details:", {
+        message: error.message,
+        response: error.response,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      
+      setError(
+        error.response?.data?.message || 
+        error.response?.data?.error || 
+        error.message || 
+        'Invalid credentials. Please try again.'
+      );
     } finally {
       setLoading(false);
     }
@@ -182,46 +239,95 @@ const Login = () => {
         throw new Error('Please enter your password');
       }
 
-      // Create request headers and body
-      const myHeaders = new Headers();
-      myHeaders.append("Content-Type", "application/json");
+      // Log the request details for debugging
+      console.log("Making user login request with mobile:", mobileNumber);
       
-      const raw = JSON.stringify({
+      // Create request body
+      const requestBody = {
         mobile: mobileNumber,
         password: userPassword
-      });
+      };
+      
+      console.log("Request body:", requestBody);
+      console.log("Sending request to:", "https://api.newztok.in/api/auth/login/audience");
 
-      const requestOptions = {
-        method: "POST",
-        headers: myHeaders,
-        body: raw,
-        redirect: "follow"
+      // Make API call using axios for consistency
+      const response = await axios.post(
+        "https://api.newztok.in/api/auth/login/audience", 
+        requestBody
+      );
+      
+      // Log the entire response for debugging
+      console.log("Full user login response:", response);
+      console.log("Response status:", response.status);
+      console.log("Response data:", response.data);
+      
+      const result = response.data;
+      console.log("User login successful, result:", result);
+      
+      // Try to extract token from all possible locations
+      let token = null;
+      
+      if (result.token) {
+        token = result.token;
+        console.log("Found token in result.token");
+      } else if (result.data?.token) {
+        token = result.data.token;
+        console.log("Found token in result.data.token");
+      } else if (result.accessToken) {
+        token = result.accessToken;
+        console.log("Found token in result.accessToken");
+      } else if (result.data?.accessToken) {
+        token = result.data.accessToken;
+        console.log("Found token in result.data.accessToken");
+      }
+
+      // Final fallback - search entire response for token
+      if (!token) {
+        console.error("No token found in expected locations, searching entire response...");
+        const responseStr = JSON.stringify(response);
+        if (responseStr.includes("token")) {
+          console.log("Response contains 'token', but not in expected location");
+        }
+        throw new Error('Authentication token not found in server response');
+      }
+
+      console.log("Final extracted token:", token ? "Token found (not shown for security)" : "No token found");
+
+      // Store token with timestamp for expiry tracking
+      const tokenData = {
+        token: token,
+        timestamp: Date.now(),
+        type: 'audience'
       };
 
-      // Make API call to user login endpoint
-      const response = await fetch("https://api.newztok.in/api/auth/login/audience", requestOptions);
-      const result = await response.json();
+      // Store auth token in both storages for consistency
+      localStorage.setItem('userAuthToken', token);
+      localStorage.setItem('userAuthTokenData', JSON.stringify(tokenData));
+      localStorage.setItem('userType', 'audience');
+      sessionStorage.setItem('userAuthToken', token);
+      sessionStorage.setItem('userAuthTokenData', JSON.stringify(tokenData));
+      sessionStorage.setItem('userType', 'audience');
       
-      if (!response.ok) {
-        throw new Error(result.message || 'Login failed. Please try again.');
-      }
-      
-      console.log("User login successful:", result);
-      
-      // Store auth token
-      if (result.token) {
-        localStorage.setItem('userAuthToken', result.token);
-        localStorage.setItem('userType', 'audience');
-      } else if (result.data?.token) {
-        localStorage.setItem('userAuthToken', result.data.token);
-        localStorage.setItem('userType', 'audience');
-      }
+      console.log("User token stored successfully in localStorage and sessionStorage");
       
       // Redirect to home page
-      navigate('/', { replace: true }); // Redirects to HomeScreen.jsx
+      navigate('/', { replace: true });
     } catch (error) {
       console.error("User login failed:", error);
-      setError(error.message || 'Login failed. Please try again.');
+      console.log("Error details:", {
+        message: error.message,
+        response: error.response,
+        status: error.response?.status,
+        data: error.response?.data
+      });
+      
+      setError(
+        error.response?.data?.message || 
+        error.response?.data?.error || 
+        error.message || 
+        'Login failed. Please try again.'
+      );
     } finally {
       setLoading(false);
     }
@@ -430,11 +536,11 @@ const Login = () => {
           <Box component="form" onSubmit={handleStaffSubmit} sx={{ width: '100%' }}>
             <Box sx={{ mb: 3 }}>
               <Typography variant="caption" sx={{ mb: 1, display: 'block', fontWeight: 600, color: '#555' }}>
-                EMAIL
+                USERNAME
               </Typography>
               <TextField
                 fullWidth
-                placeholder="Enter your email"
+                placeholder="Enter your username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 sx={{ '& .MuiOutlinedInput-root': { bgcolor: '#fff' } }}

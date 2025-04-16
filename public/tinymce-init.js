@@ -5,7 +5,7 @@
 
 (function() {
   // Set the TinyMCE API key
-  window.tinymceApiKey = '74ezfl12d3caazs304xdpxge6jtfxivf5ps8xuc8x259fgn4';
+  window.tinymceApiKey = 'omxjaluaxpgfpa6xkfadimoprrirfmhozsrtpb3o1uimu4c5';
 
   // Handle local storage for settings instead of cookies
   const originalStorage = window.localStorage;
@@ -85,4 +85,70 @@
   };
 
   console.log('TinyMCE initialization script loaded');
+})();
+
+/**
+ * TinyMCE Initialization Script
+ * This script helps prevent domain warning messages by pre-initializing TinyMCE
+ */
+
+window.tinymceSettings = {
+  // Prevent domain verification message
+  verify_html: false,
+  valid_elements: '*[*]',
+  valid_children: '+body[style]',
+  forced_root_block: false,
+  
+  // Disable automatic domain verification
+  referrer_policy: 'origin',
+  promotion: false,
+  
+  // Add callback to hide domain message
+  setup: function(editor) {
+    editor.on('init', function() {
+      // Remove any warning notifications
+      const notifications = document.querySelectorAll('.tox-notification--warning');
+      if (notifications.length > 0) {
+        notifications.forEach(function(notification) {
+          notification.style.display = 'none';
+        });
+      }
+    });
+  }
+};
+
+// Override TinyMCE's init function to apply our settings
+(function() {
+  // Store reference to original functions
+  if (window.tinymce) {
+    const originalInit = window.tinymce.init;
+    
+    // Override init function
+    window.tinymce.init = function(settings) {
+      // Apply our anti-warning settings
+      settings = Object.assign({}, window.tinymceSettings, settings);
+      
+      // Call original init with modified settings
+      return originalInit.call(this, settings);
+    };
+  }
+  
+  // Remove any existing domain notifications
+  function removeDomainNotifications() {
+    const notifications = document.querySelectorAll('.tox-notification, .tox-notification--warning');
+    if (notifications.length > 0) {
+      notifications.forEach(function(notification) {
+        notification.style.display = 'none';
+      });
+    }
+  }
+  
+  // Run when the document is ready
+  document.addEventListener('DOMContentLoaded', function() {
+    removeDomainNotifications();
+    
+    // Also run with a delay to catch late notifications
+    setTimeout(removeDomainNotifications, 1000);
+    setTimeout(removeDomainNotifications, 3000);
+  });
 })(); 

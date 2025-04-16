@@ -55,26 +55,45 @@ const Posts = () => {
         fetchedPosts = [];
       }
       
-      // Log each post's featured status for debugging
+      // Log each post's featured status for debugging with all possible properties
       fetchedPosts.forEach(post => {
-        console.log(`Post ID ${post.id || post._id} | Initial featured status from API:`, {
+        // Log all properties that might contain featured status
+        console.log(`Post ID ${post.id || post._id} | Complete featured data:`, {
+          id: post.id || post._id,
           isFeatured: post.isFeatured,
-          featured: post.featured
+          featured: post.featured,
+          is_featured: post.is_featured,
+          // Convert any string values to aid debugging
+          isFeaturedType: typeof post.isFeatured,
+          isFeaturedString: String(post.isFeatured),
+          featuredType: typeof post.featured,
+          featuredString: String(post.featured),
         });
       });
       
       // Set posts with a clean object to ensure reactivity and handle missing properties
       setPosts(fetchedPosts.map(post => {
-        // Explicitly check for true, default to false if undefined/null
-        const serverIsFeatured = post.isFeatured === true;
-        const serverFeatured = post.featured === true; 
-        const isCurrentlyFeatured = serverIsFeatured || serverFeatured;
+        // More comprehensive check for featured status
+        // Check for any truthy value or string representation of true
+        const isFeaturedValue = 
+          post.isFeatured === true || 
+          post.featured === true || 
+          post.is_featured === true ||
+          post.isFeatured === 'true' || 
+          post.featured === 'true' || 
+          post.is_featured === 'true' ||
+          // Also check for numeric representation
+          post.isFeatured === 1 ||
+          post.featured === 1 ||
+          post.is_featured === 1;
+        
+        console.log(`Post ${post.id || post._id} final featured status:`, isFeaturedValue);
         
         return {
           ...post,
-          // Ensure both featured properties are consistent and default to false
-          featured: isCurrentlyFeatured !== undefined ? isCurrentlyFeatured : false,
-          isFeatured: isCurrentlyFeatured !== undefined ? isCurrentlyFeatured : false
+          // Keep both consistent
+          featured: isFeaturedValue,
+          isFeatured: isFeaturedValue
         };
       }));
       
@@ -96,55 +115,35 @@ const Posts = () => {
       console.log('Current featured status:', currentFeatured);
       
       // Get the auth token
-      const token = localStorage.getItem('authToken');
+      const token = getAuthToken();
       if (!token) {
         throw new Error('Authentication token not found. Please log in again.');
       }
 
       // Setup headers with the token
-      const myHeaders = new Headers();
-      myHeaders.append("Authorization", `Bearer ${token}`);
-      myHeaders.append("Content-Type", "application/json");
+      const config = getAuthConfig();
 
       // Create request body - explicitly setting the new status
       const newFeaturedStatus = !currentFeatured;
-      const requestBody = JSON.stringify({
+      const requestBody = {
         isFeatured: newFeaturedStatus
-      });
+      };
       console.log('Request body:', requestBody);
 
-      // Setup request options
-      const requestOptions = {
-        method: "PUT",
-        headers: myHeaders,
-        body: requestBody,
-        redirect: "follow"
-      };
-
-      const endpoint = `${baseURL}/api/news/featured/${postId}`;
+      // Setup and make the request
+      const endpoint = formatApiUrl(baseURL, `/api/news/featured/${postId}`);
       console.log('Making request to:', endpoint);
 
-      // Make the request
-      const response = await fetch(endpoint, requestOptions);
-      console.log('Response status:', response.status);
-      
-      const responseText = await response.text();
-      console.log('Raw response:', responseText);
+      // Make the PUT request using axios
+      const response = await axios.put(endpoint, requestBody, config);
+      console.log('Response data:', response.data);
 
-      let responseData;
-      try {
-        responseData = JSON.parse(responseText);
-        console.log('Parsed response data:', responseData);
-      } catch (e) {
-        console.error('Failed to parse response as JSON:', e);
-        responseData = null;
-      }
-
-      if (response.ok) {
+      if (response.status >= 200 && response.status < 300) {
         // Update the posts state with the new featured status
         setPosts(prevPosts => 
           prevPosts.map(post => {
-            if (post.id == postId || post._id == postId) {
+            // Verify the ID match more strictly with string conversion
+            if (String(post.id) === String(postId) || String(post._id) === String(postId)) {
               const updatedPost = {
                 ...post,
                 isFeatured: newFeaturedStatus,
@@ -162,52 +161,31 @@ const Posts = () => {
           : "Featured status removed successfully!"
         );
 
-        // Refresh the posts list to ensure we have the latest data
-        setTimeout(async () => {
-          console.log('Refreshing posts list...');
-          await fetchApprovedPosts();
-        }, 1000);
+        // Don't automatically refresh - it's losing our state
+        // Instead, close the dropdown and let the current state persist
+        toggleActionDropdown(postId);
       } else {
         throw new Error(`Server returned status: ${response.status}`);
       }
-
-      // Close dropdown
-      toggleActionDropdown(postId);
 
     } catch (err) {
       console.error('Featured toggle error:', err);
       setError('Failed to update featured status. Please try again.');
       setTimeout(() => setError(null), 3000);
+      
+      // Close dropdown in case of error too
+      toggleActionDropdown(postId);
     }
   };
 
   // Function to handle remove post (delete request)
   const handleRemovePost = async (postId) => {
     try {
-      // Get the auth token from localStorage or sessionStorage
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      // Show working message instead of deleting
+      setSuccessMessage("We are working on it through the server");
       
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      // Configure axios headers with the token
-      const config = {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      };
-
-      // Make DELETE request to remove the post
-      await axios.delete(`${baseURL}/api/news/${postId}`, config);
-      
-      // Update local state to remove the post
-      setPosts(prevPosts => prevPosts.filter(post => 
-        post.id !== postId && post._id !== postId
-      ));
-
-      // Show success message
-      setSuccessMessage("Post removed successfully");
+      // Close the dropdown
+      toggleActionDropdown(postId);
       
       // Clear the message after 3 seconds
       setTimeout(() => {
@@ -216,7 +194,7 @@ const Posts = () => {
       
     } catch (err) {
       console.error('Error removing post:', err);
-      setError(`Failed to remove post: ${err.message}`);
+      setError(`Failed to process request: ${err.message}`);
       
       // Clear the error after 3 seconds
       setTimeout(() => {

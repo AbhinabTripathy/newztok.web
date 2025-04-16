@@ -78,6 +78,7 @@ const Rejected = () => {
   const fetchRejectedPosts = async () => {
     try {
       setLoading(true);
+      setError(null);
       
       // Get the auth token
       const { token, source, state, district } = getAuthToken();
@@ -86,43 +87,9 @@ const Rejected = () => {
       setUserState(state);
       setUserDistrict(district);
       
-      // Mock data to use if all API calls fail
-      const mockRejectedPosts = [
-        {
-          _id: 'mock-1',
-          headline: 'Sample Rejected Story 1',
-          title: 'Sample Rejected Story 1',
-          category: 'National',
-          status: 'rejected',
-          updatedAt: new Date().toISOString(),
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-          featured: false
-        },
-        {
-          _id: 'mock-2',
-          headline: 'Sample Rejected Story 2',
-          title: 'Sample Rejected Story 2',
-          category: 'Entertainment',
-          status: 'rejected',
-          updatedAt: new Date().toISOString(),
-          createdAt: new Date(Date.now() - 7200000).toISOString(),
-          featured: true
-        },
-        {
-          _id: 'mock-3',
-          headline: 'Sample Rejected Story 3',
-          title: 'Sample Rejected Story 3',
-          category: 'Sports',
-          status: 'rejected',
-          updatedAt: new Date().toISOString(),
-          createdAt: new Date(Date.now() - 10800000).toISOString(),
-          featured: false
-        }
-      ];
-      
       if (!token) {
-        console.log('No token found, using mock data');
-        setRejectedPosts(mockRejectedPosts);
+        console.log('No token found');
+        setError('Authentication token not found. Please log in again.');
         setLoading(false);
         setRetrying(false);
         return;
@@ -138,88 +105,98 @@ const Rejected = () => {
       console.log(`Attempting to fetch rejected posts with token`);
       console.log(`User state: ${state}, district: ${district}`);
       
-      // Try a single direct approach with the IP address we've seen work in other areas
-      try {
-        const directUrl = 'http://13.234.42.114:3333/api/news/rejected';
-        console.log(`Trying direct endpoint: ${directUrl}`);
+      // Define all possible endpoints to try in sequence
+      const possibleEndpoints = [
+        'http://13.234.42.114:3333/api/news/rejected',
+        'https://api.newztok.in/api/news/rejected',
+        'http://13.234.42.114:3333/api/news?status=rejected',
+        'https://api.newztok.in/api/news?status=rejected'
+      ];
+      
+      let success = false;
+      let lastError = null;
+      
+      // Try each endpoint until one succeeds
+      for (const endpoint of possibleEndpoints) {
+        if (success) break;
         
-        const response = await axios({
-          method: 'get',
-          url: directUrl,
-          headers: config.headers,
-          timeout: 10000 // 10 second timeout
-        });
-        
-        if (response.data) {
-          console.log('Response received:', response.data);
+        try {
+          console.log(`Trying endpoint: ${endpoint}`);
           
-          // Handle different response structures
-          let posts = [];
+          const response = await axios({
+            method: 'get',
+            url: endpoint,
+            headers: config.headers,
+            timeout: 15000 // Increased to 15 seconds
+          });
           
-          if (Array.isArray(response.data)) {
-            posts = response.data;
-          } else if (response.data.posts && Array.isArray(response.data.posts)) {
-            posts = response.data.posts;
-          } else if (response.data.data && Array.isArray(response.data.data)) {
-            posts = response.data.data;
-          } else {
-            // Look for any array in the response
-            const arrayKey = Object.keys(response.data).find(key => 
-              Array.isArray(response.data[key]) && response.data[key].length > 0
-            );
+          if (response.data) {
+            console.log(`Response received from ${endpoint}:`, response.data);
             
-            if (arrayKey) {
-              posts = response.data[arrayKey];
+            // Handle different response structures
+            let posts = [];
+            
+            if (Array.isArray(response.data)) {
+              posts = response.data;
+            } else if (response.data.posts && Array.isArray(response.data.posts)) {
+              posts = response.data.posts;
+            } else if (response.data.data && Array.isArray(response.data.data)) {
+              posts = response.data.data;
+            } else {
+              // Look for any array in the response
+              const arrayKey = Object.keys(response.data).find(key => 
+                Array.isArray(response.data[key]) && response.data[key].length > 0
+              );
+              
+              if (arrayKey) {
+                posts = response.data[arrayKey];
+              }
+            }
+            
+            // Set success flag to avoid trying more endpoints
+            success = true;
+            
+            if (posts.length > 0) {
+              console.log(`Successfully fetched ${posts.length} rejected posts`);
+              setRejectedPosts(posts);
+              setError(null);
+            } else {
+              console.log('No rejected posts found in the response.');
+              setRejectedPosts([]);
+              // Don't set error for empty posts - it's a valid state
             }
           }
+        } catch (apiError) {
+          lastError = apiError;
+          console.error(`Error with endpoint ${endpoint}:`, apiError.message);
           
-          if (posts.length > 0) {
-            console.log(`Successfully fetched ${posts.length} rejected posts`);
-            setRejectedPosts(posts);
-            setError(null);
-          } else {
-            console.log('No rejected posts found in the response. Using mock data.');
-            setRejectedPosts(mockRejectedPosts);
+          // If it's a timeout, log specifically
+          if (apiError.message.includes('timeout')) {
+            console.log(`Timeout occurred with endpoint ${endpoint}, trying next endpoint...`);
           }
-        } else {
-          console.log('Empty response from API. Using mock data.');
-          setRejectedPosts(mockRejectedPosts);
+          
+          // Continue to the next endpoint
+          continue;
         }
-      } catch (apiError) {
-        console.error('Error fetching rejected posts:', apiError.message);
-        console.log('API call failed. Using mock data to display UI.');
-        setRejectedPosts(mockRejectedPosts);
+      }
+      
+      // If all endpoints failed, show error
+      if (!success) {
+        console.error('All endpoints failed to fetch rejected posts');
+        
+        // Check if the last error was a timeout
+        if (lastError && lastError.message.includes('timeout')) {
+          setError('Server is taking too long to respond. Your rejected posts (if any) will be available once the server responds.');
+        } else {
+          setError(`Failed to fetch rejected posts: ${lastError ? lastError.message : 'Unknown error'}`);
+        }
+        
+        setRejectedPosts([]);
       }
     } catch (err) {
       console.error('Overall error in fetchRejectedPosts:', err);
-      
-      // Mock data as fallback
-      const mockRejectedPosts = [
-        {
-          _id: 'mock-1',
-          headline: 'Sample Rejected Story 1',
-          title: 'Sample Rejected Story 1',
-          category: 'National',
-          status: 'rejected',
-          updatedAt: new Date().toISOString(),
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-          featured: false
-        },
-        {
-          _id: 'mock-2',
-          headline: 'Sample Rejected Story 2',
-          title: 'Sample Rejected Story 2',
-          category: 'Entertainment',
-          status: 'rejected',
-          updatedAt: new Date().toISOString(),
-          createdAt: new Date(Date.now() - 7200000).toISOString(),
-          featured: true
-        }
-      ];
-      
-      console.log('Using mock data due to error');
-      setRejectedPosts(mockRejectedPosts);
-      setError(null); // Don't show error since we're displaying mock data
+      setError(`Error loading rejected posts: ${err.message}`);
+      setRejectedPosts([]);
     } finally {
       setLoading(false);
       setRetrying(false);
@@ -282,18 +259,6 @@ const Rejected = () => {
     try {
       // Get the auth token
       const { token } = getAuthToken();
-      
-      // Check if this is a mock post (has an ID starting with 'mock-')
-      if (post._id && post._id.startsWith('mock-')) {
-        alert('This is a mock post. In a real environment, it would be resubmitted for review.');
-        
-        // Simulate success by removing it from the list
-        setRejectedPosts(prevPosts => 
-          prevPosts.filter(p => p._id !== post._id)
-        );
-        
-        return;
-      }
       
       if (!token) {
         throw new Error('No authentication token found');
@@ -360,13 +325,7 @@ const Rejected = () => {
           }
           
           if (!success) {
-            // Simulate success anyway for UX purposes
-            alert('Post has been queued for resubmission!');
-            
-            // Remove the post from the list
-            setRejectedPosts(prevPosts => 
-              prevPosts.filter(p => (p._id || p.id) !== (post._id || post.id))
-            );
+            alert('Failed to resubmit post. Please try again later.');
           } else {
             alert('Post has been resubmitted for review!');
             fetchRejectedPosts();
@@ -375,12 +334,7 @@ const Rejected = () => {
       }
     } catch (err) {
       console.error('Error resubmitting post:', err);
-      alert(`The system will try to resubmit this post in the background.`);
-      
-      // Remove the post from the list for better UX
-      setRejectedPosts(prevPosts => 
-        prevPosts.filter(p => (p._id || p.id) !== (post._id || post.id))
-      );
+      alert(`Failed to resubmit post: ${err.message}`);
     }
     
     setActiveDropdown(null);
@@ -388,19 +342,6 @@ const Rejected = () => {
 
   const handleRemove = async (post, event) => {
     event.stopPropagation();
-    
-    // Check if this is a mock post
-    if (post._id && post._id.startsWith('mock-')) {
-      if (window.confirm('Are you sure you want to permanently delete this post?')) {
-        // Remove the mock post from the local state
-        setRejectedPosts(prevPosts => 
-          prevPosts.filter(p => p._id !== post._id)
-        );
-        
-        alert('Post has been permanently deleted');
-      }
-      return;
-    }
     
     try {
       // Get the auth token
@@ -426,26 +367,19 @@ const Rejected = () => {
           
           console.log('Delete response:', response.data);
           alert('Post has been permanently deleted');
+          
+          // Remove the post from the local state
+          setRejectedPosts(prevPosts => 
+            prevPosts.filter(p => (p._id || p.id) !== (post._id || post.id))
+          );
         } catch (err) {
           console.error('Error with delete request:', err);
-          
-          // Still remove it from UI for better UX
-          alert('The post will be deleted in the background.');
+          alert('Failed to delete post. Please try again later.');
         }
-        
-        // Remove the post from the local state
-        setRejectedPosts(prevPosts => 
-          prevPosts.filter(p => (p._id || p.id) !== (post._id || post.id))
-        );
       }
     } catch (err) {
       console.error('Error deleting post:', err);
-      alert(`The system encountered an error but will try to delete the post in the background.`);
-      
-      // Still remove it from UI
-      setRejectedPosts(prevPosts => 
-        prevPosts.filter(p => (p._id || p.id) !== (post._id || post.id))
-      );
+      alert(`Failed to delete post: ${err.message}`);
     }
     
     setActiveDropdown(null);
@@ -584,14 +518,18 @@ const Rejected = () => {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: '16px'
+              gap: '16px',
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+              marginBottom: '20px'
             }}>
               <FaExclamationCircle size={36} color="#d1d5db" />
               <div>
-                <p style={{ fontWeight: '500', marginBottom: '8px' }}>No rejected posts found</p>
-                <p style={{ fontSize: '14px', color: '#9ca3af' }}>When posts are rejected, they will appear here</p>
-                <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px' }}>
-                  Note: Make sure posts are being properly marked as "rejected" in the system
+                <p style={{ fontWeight: '500', marginBottom: '8px', fontSize: '18px' }}>No rejected posts found</p>
+                <p style={{ fontSize: '14px', color: '#9ca3af' }}>All your submitted posts have been approved!</p>
+                <p style={{ fontSize: '14px', color: '#9ca3af', marginTop: '8px' }}>
+                  Any posts that are rejected by the editor will appear here
                 </p>
               </div>
             </div>

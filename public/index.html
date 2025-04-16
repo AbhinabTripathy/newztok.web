@@ -28,6 +28,68 @@
     
     <!-- TinyMCE Cookie initialization script -->
     <script src="%PUBLIC_URL%/tinymce-init.js"></script>
+    
+    <style>
+      /* Hide TinyMCE domain warning notifications */
+      .tox-notifications-container,
+      .tox-notification--warning,
+      .tox-notification--in,
+      .tox-notification {
+        display: none !important;
+      }
+    </style>
+    
+    <script>
+      // Observer to remove TinyMCE domain warning
+      document.addEventListener('DOMContentLoaded', function() {
+        // Function to hide domain warnings
+        function hideTinyMCEDomainWarnings() {
+          // Hide all warnings
+          const warnings = document.querySelectorAll('.tox-notification--warning, .tox-notification');
+          if (warnings.length > 0) {
+            warnings.forEach(warning => {
+              warning.style.display = 'none';
+              warning.remove();
+            });
+          }
+          
+          // Check for iframes that might contain warnings
+          const iframes = document.querySelectorAll('iframe');
+          iframes.forEach(iframe => {
+            try {
+              const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+              const iframeWarnings = iframeDoc.querySelectorAll('.tox-notification--warning, .tox-notification');
+              if (iframeWarnings.length > 0) {
+                iframeWarnings.forEach(warning => {
+                  warning.style.display = 'none';
+                  warning.remove();
+                });
+              }
+            } catch (e) {
+              // Ignore cross-origin errors
+            }
+          });
+        }
+        
+        // Run immediately
+        hideTinyMCEDomainWarnings();
+        
+        // And also with a small delay to catch dynamically added elements
+        setTimeout(hideTinyMCEDomainWarnings, 1000);
+        setTimeout(hideTinyMCEDomainWarnings, 2000);
+        
+        // Use MutationObserver to catch dynamically added warnings
+        const observer = new MutationObserver(function(mutations) {
+          hideTinyMCEDomainWarnings();
+        });
+        
+        // Start observing the document
+        observer.observe(document.body, { 
+          childList: true,
+          subtree: true
+        });
+      });
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

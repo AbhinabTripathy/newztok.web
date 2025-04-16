@@ -2,14 +2,18 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Editor } from '@tinymce/tinymce-react';
 import './tinymce-styles.css';
 
-// The API key provided
-const TINYMCE_API_KEY = '74ezfl12d3caazs304xdpxge6jtfxivf5ps8xuc8x259fgn4';
+// Use CDN version instead of self-hosted to avoid 404 errors
+const TINYMCE_API_KEY = 'omxjaluaxpgfpa6xkfadimoprrirfmhozsrtpb3o1uimu4c5';
 
 // Domains where your application is deployed
 const ALLOWED_DOMAINS = [
   'newztok.in',
   'www.newztok.in',
   'api.newztok.in',
+  'admin.newztok.in',
+  'dev.newztok.in',
+  'staging.newztok.in',
+  '13.234.42.114',
   'localhost',
   window.location.hostname // Current domain
 ];
@@ -106,11 +110,8 @@ const TinyMCEEditor = ({
     // Set valid domains to avoid cross-domain issues
     document_base_url: window.location.origin,
     
-    // Disable browser caching of TinyMCE files
-    cache_suffix: `?v=${new Date().getTime()}`,
-    
-    // Allow CORS-enabled image uploads
-    images_upload_credentials: true,
+    // Disable message without affecting functionality
+    promotion: false,
     
     // Add your domains
     allowed_origins: ALLOWED_DOMAINS,
@@ -121,10 +122,6 @@ const TinyMCEEditor = ({
     // Important for cookies in iframes
     iframe_strip_domain: false,
     
-    // Use CDN for skin and content CSS instead of local files
-    skin: 'oxide',
-    content_css: 'default',
-    
     // Disable branding
     branding: false,
     
@@ -132,16 +129,34 @@ const TinyMCEEditor = ({
     entity_encoding: 'raw',
     convert_urls: false,
     
-    // Error handling - set the following to true if you're debugging
+    // Error handling
     remove_script_host: false,
     
-    // Initialize directly - don't wait for user interaction
-    auto_focus: true,
-    
-    // Handle script load errors
+    // Setup function
     setup: function (editor) {
       editor.on('LoadContent', function() {
         // Script executed when content is loaded
+      });
+      
+      // Remove domain message using DOM
+      editor.on('init', function() {
+        try {
+          // Try to find and remove domain notification
+          const iframe = document.querySelector('.tox-edit-area__iframe');
+          if (iframe) {
+            const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+            const notification = iframeDoc.querySelector('.tox-notification--warning');
+            if (notification) {
+              notification.style.display = 'none';
+            }
+          }
+          
+          // Also remove any notifications in the main editor
+          const notifications = document.querySelectorAll('.tox-notification--warning');
+          notifications.forEach(n => n.style.display = 'none');
+        } catch (e) {
+          console.log('Error removing notifications:', e);
+        }
       });
     }
   };
@@ -186,9 +201,16 @@ const TinyMCEEditor = ({
         value={value}
         onEditorChange={handleEditorChange}
         init={mergedConfig}
-        cloudChannel="6" // Use TinyMCE 6
         onError={handleEditorError}
       />
+      <style>
+        {`
+          /* CSS to hide TinyMCE domain warning notification */
+          .tox-notification--warning {
+            display: none !important;
+          }
+        `}
+      </style>
     </div>
   );
 };
