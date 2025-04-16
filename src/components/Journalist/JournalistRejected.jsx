@@ -29,7 +29,7 @@ const JournalistRejected = () => {
         console.log('Making API request with token:', token);
 
         // Fetch rejected news
-        const response = await axios.get('https://newztok.in/api/news/my-rejected-news', config);
+        const response = await axios.get('https://api.newztok.in/api/news/my-rejected-news', config);
         
         console.log('Rejected news response:', response.data);
         

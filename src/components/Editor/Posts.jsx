@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { FaPlus, FaEllipsisV, FaFileAlt, FaVideo, FaStar, FaTrash } from 'react-icons/fa';
+import { FaPlus, FaEllipsisV, FaFileAlt, FaVideo, FaStar, FaTrash, FaEdit, FaExternalLinkAlt, FaRegStar } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { formatApiUrl, getAuthToken, getAuthConfig } from '../../utils/api';
 
 const Posts = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -15,7 +16,7 @@ const Posts = () => {
   const navigate = useNavigate();
 
   // API Base URL
-  const baseURL = 'https://newztok.in';
+  const baseURL = 'https://api.newztok.in';
 
   // Fetch approved posts
   useEffect(() => {
@@ -25,22 +26,20 @@ const Posts = () => {
   const fetchApprovedPosts = async () => {
     try {
       setLoading(true);
-      // Get the auth token from localStorage or sessionStorage
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      
+      // Get the auth token
+      const token = getAuthToken();
       
       if (!token) {
         throw new Error('No authentication token found');
       }
 
       // Configure axios headers with the token
-      const config = {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      };
+      const config = getAuthConfig();
 
-      // Fetch approved posts
-      const response = await axios.get(`${baseURL}/api/news/approved-by-me`, config);
+      // Fetch approved posts with properly formatted URL
+      const url = formatApiUrl(baseURL, '/api/news/approved-by-me');
+      const response = await axios.get(url, config);
       
       console.log('Approved posts response:', response.data);
       

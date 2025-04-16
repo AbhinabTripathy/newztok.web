@@ -36,7 +36,7 @@ const AccountDropdown = ({ isOpen, onClose }) => {
       };
 
       // API Base URL
-      const baseURL = 'https://newztok.in';
+      const baseURL = 'https://api.newztok.in';
 
       try {
         const profileResponse = await axios.get(`${baseURL}/api/users/my-profile`, config);

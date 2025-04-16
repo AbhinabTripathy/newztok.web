@@ -57,9 +57,9 @@ const StateNewsDetails = () => {
     
     // List of potential API endpoints to try
     const apiEndpoints = [
-      `https://newztok.in/api/news/${id}`,
-      `https://newztok.in/api/news/id/${id}`,
-      `https://newztok.in/api/news/state/${state}/${id}`
+      `https://api.newztok.in/api/news/${id}`,
+      `https://api.newztok.in/api/news/id/${id}`,
+      `https://api.newztok.in/api/news/state/${state}/${id}`
     ];
     
     let success = false;
@@ -169,7 +169,7 @@ const StateNewsDetails = () => {
   const fetchRelatedNews = async (stateName, category) => {
     try {
       // Try to fetch related news by state and category
-      const response = await axios.get(`https://newztok.in/api/news/category/district`);
+      const response = await axios.get(`https://api.newztok.in/api/news/category/district`);
       
       let relatedItems = [];
       if (response.data && Array.isArray(response.data)) {
@@ -211,7 +211,7 @@ const StateNewsDetails = () => {
   const incrementViewCount = async () => {
     try {
       // Try to update view count on the server
-      await axios.post(`https://newztok.in/api/news/${id}/view`);
+      await axios.post(`https://api.newztok.in/api/news/${id}/view`);
       
       // Update local view count
       setViewsCount(prev => prev + 1);
@@ -247,7 +247,7 @@ const StateNewsDetails = () => {
     
     try {
       // Try to update like on the server
-      await axios.post(`https://newztok.in/api/news/${id}/like`, { 
+      await axios.post(`https://api.newztok.in/api/news/${id}/like`, { 
         liked: newLikedState 
       });
     } catch (err) {
@@ -334,7 +334,7 @@ const StateNewsDetails = () => {
   const getFullImageUrl = (imagePath) => {
     if (!imagePath) return 'https://via.placeholder.com/1200x630?text=No+Image';
     if (imagePath.startsWith('http')) return imagePath;
-    return `https://newztok.in${imagePath}`;
+    return `https://api.newztok.in${imagePath}`;
   };
 
   if (loading) {

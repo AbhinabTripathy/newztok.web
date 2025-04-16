@@ -108,7 +108,7 @@ const Login = () => {
         localStorage.removeItem('savedPassword');
       }
 
-      const response = await axios.post('https://newztok.in/api/auth/login', requestData);
+      const response = await axios.post('https://api.newztok.in/api/auth/login', requestData);
 
       const result = response.data;
       console.log("API Login successful:", result);
@@ -199,7 +199,7 @@ const Login = () => {
       };
 
       // Make API call to user login endpoint
-      const response = await fetch("https://newztok.in/api/auth/login/audience", requestOptions);
+      const response = await fetch("https://api.newztok.in/api/auth/login/audience", requestOptions);
       const result = await response.json();
       
       if (!response.ok) {

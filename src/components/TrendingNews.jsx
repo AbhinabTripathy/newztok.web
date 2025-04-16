@@ -57,7 +57,7 @@ const TrendingNews = () => {
     
     try {
       console.log('Fetching trending news from endpoint...');
-      const response = await axios.get('https://newztok.in/api/news/trending');
+      const response = await axios.get('https://api.newztok.in/api/news/trending');
       console.log('API Response:', response);
       
       let fetchedNews = [];
@@ -237,7 +237,7 @@ const TrendingNews = () => {
           return item.featuredImage;
         } else {
           // Add base URL for relative paths
-          const fullUrl = `https://newztok.in${item.featuredImage}`;
+          const fullUrl = `https://api.newztok.in${item.featuredImage}`;
           console.log(`Using relative featuredImage with base URL for "${item.title}": ${fullUrl}`);
           return fullUrl;
         }
@@ -251,7 +251,7 @@ const TrendingNews = () => {
           return item.image;
         } else {
           // Add base URL for relative paths
-          const fullUrl = `https://newztok.in${item.image}`;
+          const fullUrl = `https://api.newztok.in${item.image}`;
           console.log(`Using relative image with base URL for "${item.title}": ${fullUrl}`);
           return fullUrl;
         }
@@ -468,7 +468,7 @@ const TrendingNews = () => {
           return item.featuredImage;
         } else {
           // Add base URL for relative paths
-          return `https://newztok.in${item.featuredImage}`;
+          return `https://api.newztok.in${item.featuredImage}`;
         }
       }
       
@@ -479,7 +479,7 @@ const TrendingNews = () => {
           return item.image;
         } else {
           // Add base URL for relative paths
-          return `https://newztok.in${item.image}`;
+          return `https://api.newztok.in${item.image}`;
         }
       }
       

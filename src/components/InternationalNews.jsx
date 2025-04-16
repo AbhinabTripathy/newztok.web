@@ -38,7 +38,7 @@ const InternationalNews = () => {
       setLoading(true);
       
       // Add timeout to the axios request to avoid long hanging requests
-      const response = await axios.get('https://newztok.in/api/news/category/international', {
+      const response = await axios.get('https://api.newztok.in/api/news/category/international', {
         timeout: 10000, // 10 seconds timeout
         // Add retry mechanism with axios
         maxRetries: 3,
@@ -93,7 +93,7 @@ const InternationalNews = () => {
       // Try alternative URL if primary fails
       try {
         console.log('Trying alternative API endpoint...');
-        const alternativeResponse = await axios.get('https://newztok.in/api/news/international', {
+        const alternativeResponse = await axios.get('https://api.newztok.in/api/news/international', {
           timeout: 10000
         });
         
@@ -163,7 +163,7 @@ const InternationalNews = () => {
     const getFullImageUrl = (imagePath) => {
       if (!imagePath) return 'https://via.placeholder.com/400x300?text=No+Image';
       if (imagePath.startsWith('http')) return imagePath;
-      return `https://newztok.in${imagePath}`;
+      return `https://api.newztok.in${imagePath}`;
     };
     
     const mediaUrl = getFullImageUrl(item.featuredImage || item.image);
@@ -355,7 +355,7 @@ const InternationalNews = () => {
     const getFullImageUrl = (imagePath) => {
       if (!imagePath) return 'https://via.placeholder.com/400x300?text=No+Image';
       if (imagePath.startsWith('http')) return imagePath;
-      return `https://newztok.in${imagePath}`;
+      return `https://api.newztok.in${imagePath}`;
     };
     
     const mediaUrl = getFullImageUrl(item.featuredImage || item.image);

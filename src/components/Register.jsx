@@ -114,7 +114,7 @@ const Register = () => {
       };
 
       // Make API call to register endpoint
-      const response = await fetch("https://newztok.in/api/auth/register", requestOptions);
+      const response = await fetch("https://api.newztok.in/api/auth/register", requestOptions);
       const result = await response.json();
       
       if (!response.ok) {

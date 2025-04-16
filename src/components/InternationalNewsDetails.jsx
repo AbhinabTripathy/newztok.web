@@ -37,7 +37,7 @@ const InternationalNewsDetails = () => {
   const [viewCount, setViewCount] = useState(0);
   
   // API base URL
-  const baseURL = 'https://newztok.in';
+  const baseURL = 'https://api.newztok.in';
   
   // Check if user is logged in (has auth token)
   const isLoggedIn = !!localStorage.getItem('userAuthToken');

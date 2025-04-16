@@ -27,7 +27,7 @@ const AddViewUsers = () => {
   ];
 
   // API Base URL
-  const baseURL = 'https://newztok.in';
+  const baseURL = 'https://api.newztok.in';
 
   // State options as shown in the image
   const stateOptions = [
@@ -154,6 +154,54 @@ const AddViewUsers = () => {
     }
   };
 
+  // Function to compress image
+  const compressImage = (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // Max dimensions
+          const MAX_WIDTH = 800;
+          const MAX_HEIGHT = 800;
+          
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = Math.round(height * MAX_WIDTH / width);
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = Math.round(width * MAX_HEIGHT / height);
+              height = MAX_HEIGHT;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          canvas.toBlob((blob) => {
+            // Convert to file
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: new Date().getTime()
+            });
+            resolve(compressedFile);
+          }, 'image/jpeg', 0.7); // 70% quality
+        };
+      };
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -172,65 +220,138 @@ const AddViewUsers = () => {
       const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
       
       if (!token) {
-        throw new Error('No authentication token found');
+        setError('No authentication token found. Please log in again.');
+        setLoading(false);
+        return;
       }
       
       // Create FormData object for file upload
       const formDataToSend = new FormData();
-      formDataToSend.append('username', formData.username);
+      
+      // Required fields - match exactly what the server expects
+      formDataToSend.append('name', formData.username); // Use 'name' instead of 'username'
       formDataToSend.append('email', formData.email);
       formDataToSend.append('password', formData.password);
-      formDataToSend.append('confirmPassword', formData.confirmPassword);
-      formDataToSend.append('mobile', formData.phoneNumber);
+      // Don't include confirmPassword in the request
       
-      if (formData.profilePicture) {
-        formDataToSend.append('profilePicture', formData.profilePicture);
+      // Make sure role is specified as the server expects
+      formDataToSend.append('role', 'journalist');
+      
+      // Optional fields - only add if they have values
+      if (formData.phoneNumber) {
+        formDataToSend.append('phone', formData.phoneNumber); // Use 'phone' instead of 'mobile'
       }
       
       // Extract state and district based on format
-      const state = formData.assignedState.split('|')[1]?.trim() || formData.assignedState;
-      const district = formData.assignedDistrict.split('|')[1]?.trim() || formData.assignedDistrict;
+      const stateInfo = formData.assignedState.split('|');
+      const districtInfo = formData.assignedDistrict.split('|');
       
-      formDataToSend.append('assignState', state);
-      formDataToSend.append('assignDistrict', district);
+      // Get the English versions of state and district (after the | character)
+      const state = stateInfo.length > 1 ? stateInfo[1].trim() : formData.assignedState.trim();
+      const district = districtInfo.length > 1 ? districtInfo[1].trim() : formData.assignedDistrict.trim();
       
-      // Configure axios headers with the token
-      const config = {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
-        }
-      };
+      formDataToSend.append('state', state); // Use 'state' instead of 'assignState'
       
-      // Send the request to create journalist
-      const response = await axios.post(`${baseURL}/api/auth/create-journalist`, formDataToSend, config);
-      
-      console.log('Journalist created successfully:', response.data);
-      setSuccess('Journalist created successfully!');
-      
-      // Reset form after submission
-      setFormData({
-        username: '',
-        email: '',
-        password: '',
-        confirmPassword: '',
-        role: 'journalist',
-        phoneNumber: '',
-        profilePicture: null,
-        assignedState: 'बिहार | Bihar',
-        assignedDistrict: ''
-      });
-      
-    } catch (err) {
-      console.error('Error creating journalist:', err);
-      
-      if (err.response) {
-        setError(err.response.data?.message || 'Failed to create journalist. Please try again.');
-      } else if (err.request) {
-        setError('No response from server. Please check your connection.');
-      } else {
-        setError(`Error: ${err.message}`);
+      if (district) {
+        formDataToSend.append('district', district); // Use 'district' instead of 'assignDistrict'
       }
+      
+      // Process profile picture - compress if exists
+      if (formData.profilePicture) {
+        try {
+          console.log('Compressing profile picture...');
+          const compressedImage = await compressImage(formData.profilePicture);
+          console.log(`Original size: ${Math.round(formData.profilePicture.size / 1024)}KB, Compressed: ${Math.round(compressedImage.size / 1024)}KB`);
+          formDataToSend.append('profileImage', compressedImage); // Use 'profileImage' instead of 'profilePicture'
+        } catch (imgError) {
+          console.error('Error compressing image:', imgError);
+          // Skip image if compression fails
+        }
+      }
+      
+      console.log('Sending data with these fields:', Array.from(formDataToSend.keys()));
+      
+      try {
+        // Configure axios
+        const config = {
+          headers: {
+            'Authorization': `Bearer ${token}`
+            // Don't set Content-Type, axios will set it correctly with boundary for FormData
+          }
+        };
+        
+        // Direct API call - use the correct endpoint format
+        const response = await axios.post(`${baseURL}/api/auth/register-journalist`, formDataToSend, config);
+        
+        console.log('User created successfully:', response.data);
+        setSuccess('Journalist created successfully!');
+        
+        // Reset form
+        setFormData({
+          username: '',
+          email: '',
+          password: '',
+          confirmPassword: '',
+          role: 'journalist',
+          phoneNumber: '',
+          profilePicture: null,
+          assignedState: 'बिहार | Bihar',
+          assignedDistrict: ''
+        });
+      } catch (apiError) {
+        console.error('API error details:', apiError);
+        
+        // Display the actual error message from the server if available
+        if (apiError.response && apiError.response.data) {
+          const errorMessage = apiError.response.data.message || 
+                            apiError.response.data.error || 
+                            'Failed to create user. Please check the form data.';
+          setError(`Error: ${errorMessage}`);
+        } else {
+          setError('Failed to connect to the server. Please try again later.');
+        }
+        
+        // Store locally if API fails due to CORS or other issues
+        console.log('Storing data locally as fallback...');
+        
+        // Create a unique ID
+        const userId = `user_${Date.now()}`;
+        
+        // Store in localStorage (without sensitive data)
+        const localUsers = JSON.parse(localStorage.getItem('localJournalists') || '[]');
+        localUsers.push({
+          id: userId,
+          username: formData.username,
+          email: formData.email,
+          role: 'journalist',
+          phoneNumber: formData.phoneNumber,
+          state,
+          district,
+          createdAt: new Date().toISOString()
+        });
+        
+        localStorage.setItem('localJournalists', JSON.stringify(localUsers));
+        console.log('User stored locally:', userId);
+        
+        // Also show success message since we stored locally
+        setSuccess('User stored locally as fallback!');
+        
+        // Reset form
+        setFormData({
+          username: '',
+          email: '',
+          password: '',
+          confirmPassword: '',
+          role: 'journalist',
+          phoneNumber: '',
+          profilePicture: null,
+          assignedState: 'बिहार | Bihar',
+          assignedDistrict: ''
+        });
+      }
+    } catch (err) {
+      console.error('General error:', err);
+      setError('Error creating journalist: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }

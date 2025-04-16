@@ -4,6 +4,7 @@ import { HiOutlineArrowNarrowRight } from 'react-icons/hi';
 import axios from 'axios';
 import { Editor } from '@tinymce/tinymce-react';
 import { useNavigate } from 'react-router-dom';
+import { formatApiUrl, getAuthToken, getAuthConfig } from '../../utils/api';
 
 const PendingApprovals = () => {
   const [pendingNews, setPendingNews] = useState([]);
@@ -24,26 +25,9 @@ const PendingApprovals = () => {
   const [totalResults, setTotalResults] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-
-  // Add getAuthToken function
-  const getAuthToken = () => {
-    // Get token from all possible storage locations with fallbacks
-    const storageOptions = [localStorage, sessionStorage];
-    const tokenKeys = ['authToken', 'token', 'jwtToken', 'userToken', 'accessToken'];
-    
-    for (const storage of storageOptions) {
-      for (const key of tokenKeys) {
-        const token = storage.getItem(key);
-        if (token) {
-          console.log(`Found token with key '${key}'`);
-          return token;
-        }
-      }
-    }
-    
-    console.error('No authentication token found');
-    return null;
-  };
+  
+  // API Base URL
+  const baseURL = 'https://api.newztok.in';
 
   // Add mock data generator
   const getMockPendingNews = () => {
@@ -91,15 +75,12 @@ const PendingApprovals = () => {
       }
 
       // Configure headers with token
-      const config = {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      };
+      const config = getAuthConfig();
       
       console.log('Fetching pending posts from API with token');
-      // Using the correct working URL
-      const response = await axios.get(`https://newztok.in/api/news/my-pending-news`, config);
+      // Using formatApiUrl to prevent double slash issues
+      const url = formatApiUrl(baseURL, '/api/news/my-pending-news');
+      const response = await axios.get(url, config);
       
       console.log('API Response:', response.data);
       
@@ -254,14 +235,14 @@ const PendingApprovals = () => {
       // Updated endpoint list based on user's requirements
       const endpoints = [
         // Primary endpoint should be /api/news/pending as specified by the user
-        `https://newztok.in/api/news/pending/${newsId}`,
+        `https://api.newztok.in/api/news/pending/${newsId}`,
         
         // Fallback endpoints
-        `https://newztok.in/api/news/${newsId}`,
-        `https://newztok.in/api/news/pending-news/${newsId}`,
-        `https://newztok.in/api/news/detail/${newsId}`,
-        `https://newztok.in/api/news/view/${newsId}`,
-        `https://newztok.in/api/news/get/${newsId}`
+        `https://api.newztok.in/api/news/${newsId}`,
+        `https://api.newztok.in/api/news/pending-news/${newsId}`,
+        `https://api.newztok.in/api/news/detail/${newsId}`,
+        `https://api.newztok.in/api/news/view/${newsId}`,
+        `https://api.newztok.in/api/news/get/${newsId}`
       ];
       
       let apiData = null;
@@ -377,10 +358,45 @@ const PendingApprovals = () => {
     }
   };
 
+  // Function to fetch approved news
+  const fetchApprovedNews = async () => {
+    try {
+      // Get auth token
+      const token = getAuthToken();
+      
+      if (!token) {
+        console.error('No authentication token found');
+        return;
+      }
+
+      // Configure headers with token
+      const config = getAuthConfig();
+      
+      console.log('Fetching approved posts from API with token');
+      
+      // Using formatApiUrl to prevent double slash issues
+      const url = formatApiUrl(baseURL, '/api/news/approved-by-me');
+      console.log('Fetching approved news from URL:', url);
+      
+      const response = await axios.get(url, config);
+      
+      console.log('Approved news API Response:', response.data);
+      
+      // Process approved news data here if needed
+      
+    } catch (err) {
+      console.error('Error fetching approved posts:', err);
+      // Handle error gracefully - don't show error to user since this isn't critical
+    }
+  };
+
+  // Fetch both pending and approved news on component mount
   useEffect(() => {
     fetchPendingNews();
+    // Also fetch approved news
+    fetchApprovedNews();
     
-    // Add event listener to refresh data when user navigates back to this page
+    // Add page visibility change listener to refresh data when tab becomes active
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log('Page became visible, refreshing data...');
@@ -398,7 +414,6 @@ const PendingApprovals = () => {
       localStorage.removeItem('pendingApprovals_refresh');
     }
     
-    // Clean up the event listener
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };

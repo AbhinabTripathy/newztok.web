@@ -14,7 +14,7 @@ const Rejected = () => {
   const navigate = useNavigate();
 
   // API Base URL
-  const baseURL = 'https://newztok.in';
+  const baseURL = 'https://api.newztok.in';
 
   // Get auth token - try multiple possible storage keys
   const getAuthToken = () => {

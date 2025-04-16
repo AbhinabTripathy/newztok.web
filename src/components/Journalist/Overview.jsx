@@ -36,7 +36,7 @@ const Overview = () => {
         };
 
         // Set the correct base URL
-        const baseURL = 'https://newztok.in';
+        const baseURL = 'https://api.newztok.in';
 
         // Fetch user profile data
         try {

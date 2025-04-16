@@ -32,7 +32,7 @@ const Users = () => {
         };
 
         // Set the correct base URL
-        const baseURL = 'https://newztok.in';
+        const baseURL = 'https://api.newztok.in';
 
         // Fetch journalists
         const response = await axios.get(`${baseURL}/api/users/assigned-journalists`, config);

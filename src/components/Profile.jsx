@@ -31,7 +31,7 @@ const Profile = () => {
   const navigate = useNavigate();
 
   // API Base URL
-  const baseURL = 'https://newztok.in';
+  const baseURL = 'https://api.newztok.in';
 
   useEffect(() => {
     fetchUserData();

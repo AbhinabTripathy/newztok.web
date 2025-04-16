@@ -51,7 +51,7 @@ const JournalistPost = () => {
         console.log('Making API request to fetch approved posts');
 
         // Fetch journalist's approved posts using the specified endpoint
-        const response = await axios.get('https://newztok.in/api/news/my-approved-news', config);
+        const response = await axios.get('https://api.newztok.in/api/news/my-approved-news', config);
         
         console.log('Approved posts raw response:', response);
         console.log('Approved posts response data:', response.data);

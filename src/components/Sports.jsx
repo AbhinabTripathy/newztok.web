@@ -31,7 +31,7 @@ const Sports = () => {
   const fetchSportsNews = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('https://newztok.in/api/news/category/sports');
+      const response = await axios.get('https://api.newztok.in/api/news/category/sports');
       console.log('Sports news API response:', response.data);
       
       // Process data from API
@@ -121,7 +121,7 @@ const Sports = () => {
     const getFullImageUrl = (imagePath) => {
       if (!imagePath) return 'https://via.placeholder.com/400x300?text=No+Image';
       if (imagePath.startsWith('http')) return imagePath;
-      return `https://newztok.in${imagePath}`;
+      return `https://api.newztok.in${imagePath}`;
     };
     
     const mediaUrl = getFullImageUrl(item.featuredImage || item.image);
@@ -271,7 +271,7 @@ const Sports = () => {
     const getFullImageUrl = (imagePath) => {
       if (!imagePath) return 'https://via.placeholder.com/400x300?text=No+Image';
       if (imagePath.startsWith('http')) return imagePath;
-      return `https://newztok.in${imagePath}`;
+      return `https://api.newztok.in${imagePath}`;
     };
     
     const mediaUrl = getFullImageUrl(item.featuredImage || item.image);

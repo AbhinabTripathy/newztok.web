@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import './editor.css';
 
 // API base URL configuration
-const API_BASE_URL = 'https://newztok.in';
+const API_BASE_URL = 'https://api.newztok.in';
 
 // Configure axios with increased timeout
 axios.defaults.timeout = 120000; // 2 minutes timeout

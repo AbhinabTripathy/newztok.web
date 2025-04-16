@@ -4,7 +4,7 @@ import axios from 'axios';
 import { FiChevronDown } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 
-const API_BASE_URL = 'https://newztok.in';
+const API_BASE_URL = 'https://api.newztok.in';
 
 axios.defaults.timeout = 120000;
 
@@ -210,7 +210,7 @@ const StandardPost = () => {
         jsonHeaders.append("Content-Type", "application/json");
         
         // Make the fetch request with JSON data
-        const response = await fetch("https://newztok.in/api/news/create", {
+        const response = await fetch("https://api.newztok.in/api/news/create", {
           method: "POST",
           headers: jsonHeaders,
           body: JSON.stringify(postData),
@@ -308,7 +308,7 @@ const StandardPost = () => {
             setUploadProgress(30);
             
             const response = await axios.post(
-              "https://newztok.in/api/news/create", 
+              "https://api.newztok.in/api/news/create", 
               fixedPostData,
               {
                 headers: {
@@ -336,7 +336,7 @@ const StandardPost = () => {
           try {
             // Use axios for a different approach
             const response = await axios.post(
-              "https://newztok.in/api/news/create", 
+              "https://api.newztok.in/api/news/create", 
               {
                 title: title.trim(),
                 content: actualContent.trim(),

@@ -32,7 +32,7 @@ const PendingApprovals = () => {
   const [rejecting, setRejecting] = useState(false);
   const navigate = useNavigate();
   const [lastFetchTime, setLastFetchTime] = useState(null);
-  const baseURL = 'https://newztok.in';
+  const baseURL = 'https://api.newztok.in';
 
   useEffect(() => {
     console.log('PendingApprovals component mounted at:', new Date().toISOString());
@@ -1262,7 +1262,7 @@ const PendingApprovals = () => {
                                 `/${selectedNews.featuredImage}`;
                                 
                               // Construct the full image URL
-                              const imageUrl = `https://newztok.in${imagePath}`;
+                              const imageUrl = `https://api.newztok.in${imagePath}`;
                               
                               console.log("Constructed image URL:", imageUrl);
                               
@@ -1310,17 +1310,17 @@ const PendingApprovals = () => {
                               return [
                                 // Standard variations that should cover most cases
                                 imagePath.startsWith('http') ? imagePath : null,
-                                imagePath.startsWith('/') ? `https://newztok.in${imagePath}` : null,
-                                !imagePath.startsWith('/') ? `https://newztok.in/${imagePath}` : null,
+                                imagePath.startsWith('/') ? `https://api.newztok.in${imagePath}` : null,
+                                !imagePath.startsWith('/') ? `https://api.newztok.in/${imagePath}` : null,
                                 
                                 // Specific variations for the uploads path format
-                                isUploadPath && imagePath.startsWith('/') ? `https://newztok.in${imagePath}` : null,
-                                isUploadPath && !imagePath.startsWith('/') ? `https://newztok.in/${imagePath}` : null,
-                                isUploadPath && imagePath.startsWith('/uploads') ? `https://newztok.in${imagePath}` : null,
-                                isUploadPath && imagePath.startsWith('uploads') ? `https://newztok.in/${imagePath}` : null,
+                                isUploadPath && imagePath.startsWith('/') ? `https://api.newztok.in${imagePath}` : null,
+                                isUploadPath && !imagePath.startsWith('/') ? `https://api.newztok.in/${imagePath}` : null,
+                                isUploadPath && imagePath.startsWith('/uploads') ? `https://api.newztok.in${imagePath}` : null,
+                                isUploadPath && imagePath.startsWith('uploads') ? `https://api.newztok.in/${imagePath}` : null,
                                 
                                 // Try with direct server path
-                                isUploadPath ? `https://newztok.in/uploads/images/${imagePath.split('/').pop()}` : null,
+                                isUploadPath ? `https://api.newztok.in/uploads/images/${imagePath.split('/').pop()}` : null,
                               ].filter(Boolean);
                             };
                             
