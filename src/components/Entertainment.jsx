@@ -176,8 +176,24 @@ const Entertainment = () => {
         id: item.id,
         featuredImage: item.featuredImage,
         image: item.image,
-        images: item.images
+        images: item.images,
+        youtubeUrl: item.youtubeUrl
       });
+      
+      // If item has youtubeUrl, extract and return YouTube thumbnail
+      if (item.youtubeUrl) {
+        console.log(`Found YouTube URL for "${item.title}":`, item.youtubeUrl);
+        // Extract YouTube video ID from various YouTube URL formats
+        const youtubeRegex = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+        const match = item.youtubeUrl.match(youtubeRegex);
+        
+        if (match && match[1]) {
+          const videoId = match[1];
+          console.log(`Extracted YouTube video ID for "${item.title}":`, videoId);
+          // Use high quality thumbnail
+          return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        }
+      }
       
       // If item has images array with content
       if (item.images && item.images.length > 0) {
@@ -215,7 +231,7 @@ const Entertainment = () => {
       
       // Fallback to placeholder
       console.log(`No image found for "${item.title}", using placeholder`);
-      return '/entertainment-news-placeholder.jpg';
+      return 'https://placehold.co/800x400/000000/FFFFFF/png?text=Entertainment+News';
     };
     
     const imageUrl = getImageUrl();
@@ -357,6 +373,21 @@ const Entertainment = () => {
     const getImageUrl = () => {
       console.log(`Getting image URL for item:`, item);
       
+      // If item has youtubeUrl, extract and return YouTube thumbnail
+      if (item.youtubeUrl) {
+        console.log(`Found YouTube URL:`, item.youtubeUrl);
+        // Extract YouTube video ID from various YouTube URL formats
+        const youtubeRegex = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+        const match = item.youtubeUrl.match(youtubeRegex);
+        
+        if (match && match[1]) {
+          const videoId = match[1];
+          console.log(`Extracted YouTube video ID:`, videoId);
+          // Use high quality thumbnail
+          return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        }
+      }
+      
       // If item has images array with content
       if (item.images && item.images.length > 0) {
         console.log(`Using images[0] from array: ${item.images[0]}`);
@@ -393,7 +424,7 @@ const Entertainment = () => {
       
       // Fallback to placeholder
       console.log('No image found, using placeholder');
-      return '/entertainment-news-placeholder.jpg';
+      return 'https://placehold.co/800x400/000000/FFFFFF/png?text=Entertainment+News';
     };
     
     const imageUrl = getImageUrl();

@@ -242,7 +242,7 @@ const Footer = () => {
                 <WhatsAppIcon />
               </Link>
               <Link 
-                href="https://twitter.com"
+                href="https://x.com/newztok_news?t=bE27w5SMkv5Hdpu9TJPCJQ&s=09"
                 color="inherit"
                 target="_blank"
                 rel="noopener noreferrer"

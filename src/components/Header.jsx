@@ -612,7 +612,7 @@ const Header = () => {
               <IconButton size="small" sx={{ color: '#3b5998' }} component="a" href="https://www.facebook.com/share/16BJSMtSn1/" target="_blank">
                 <FacebookIcon fontSize="small" />
               </IconButton>
-              <IconButton size="small" sx={{ color: '#000000' }} component="a" href="#" target="_blank">
+              <IconButton size="small" sx={{ color: '#000000' }} component="a" href="https://x.com/newztok_news?t=bE27w5SMkv5Hdpu9TJPCJQ&s=09" target="_blank">
                 <Box
                   component="svg"
                   xmlns="http://www.w3.org/2000/svg"
@@ -950,7 +950,7 @@ const Header = () => {
             </Box>
             <Box 
               component="a"
-              href="#"
+              href="https://x.com/newztok_news?t=bE27w5SMkv5Hdpu9TJPCJQ&s=09"
               target="_blank"
               sx={{ 
                 bgcolor: '#000000',

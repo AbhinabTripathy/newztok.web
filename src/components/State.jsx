@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -20,10 +20,13 @@ const StateNews = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { selectedState } = useStateContext(); // Get selected state from context
+  const navigate = useNavigate(); // Add useNavigate import
 
   useEffect(() => {
-    fetchDistrictNews();
-  }, [selectedState]); // Re-fetch when selected state changes
+    // Simply stop loading to show maintenance message
+    setLoading(false);
+    // No alert dialog or automatic redirect
+  }, []);
 
   const fetchDistrictNews = async () => {
     try {
@@ -1164,19 +1167,56 @@ const StateNews = () => {
             Please try again later or check your connection.
           </Typography>
         </Box>
-      ) : district ? (
-        // Show specific state with district when district is selected
-        renderStateContent(state, district)
-      ) : state ? (
-        // Show single state when state is selected but no district
-        renderStateContent(state)
       ) : (
-        // Show all states when neither state nor district is selected
-        states.map((stateData) => (
-          <Box key={stateData.en}>
-            {renderStateContent(stateData.en)}
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            minHeight: '60vh',
+            p: 4,
+            textAlign: 'center',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease-in-out',
+            '&:hover': {
+              backgroundColor: 'rgba(0, 0, 0, 0.02)',
+            }
+          }}
+          onClick={() => navigate('/')}
+        >
+          <Typography variant="h4" gutterBottom color="primary" sx={{ fontWeight: 'bold' }}>
+            State News Section
+          </Typography>
+          <Typography variant="h5" gutterBottom color="error">
+            Under Maintenance
+          </Typography>
+          <Typography variant="body1" sx={{ mb: 4, maxWidth: '600px', mx: 'auto', color: 'text.secondary' }}>
+            We're currently updating this section to serve you better.
+          </Typography>
+          <Box 
+            sx={{
+              mt: 2,
+              py: 1.5,
+              px: 3,
+              borderRadius: 2,
+              bgcolor: 'primary.main',
+              color: 'white',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'medium',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              '&:hover': {
+                bgcolor: 'primary.dark',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
+              }
+            }}
+          >
+            Click to Return to Home
           </Box>
-        ))
+        </Box>
       )}
     </Box>
   );
