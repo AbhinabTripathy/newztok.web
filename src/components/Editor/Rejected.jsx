@@ -8,7 +8,6 @@ const Rejected = () => {
   const [rejectedPosts, setRejectedPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [retrying, setRetrying] = useState(false);
   const [userState, setUserState] = useState('N/A');
   const [userDistrict, setUserDistrict] = useState('N/A');
   const navigate = useNavigate();
@@ -91,7 +90,6 @@ const Rejected = () => {
         console.log('No token found');
         setError('Authentication token not found. Please log in again.');
         setLoading(false);
-        setRetrying(false);
         return;
       }
       
@@ -199,7 +197,6 @@ const Rejected = () => {
       setRejectedPosts([]);
     } finally {
       setLoading(false);
-      setRetrying(false);
     }
   };
 
@@ -385,11 +382,6 @@ const Rejected = () => {
     setActiveDropdown(null);
   };
 
-  const handleRetry = () => {
-    setRetrying(true);
-    fetchRejectedPosts();
-  };
-
   const formatDate = (dateString) => {
     if (!dateString) return 'Unknown';
     const date = new Date(dateString);
@@ -411,6 +403,13 @@ const Rejected = () => {
       minute: '2-digit'
     });
   };
+
+  // Sort rejected posts by rejection date (most recent first)
+  const sortedRejectedPosts = [...rejectedPosts].sort((a, b) => {
+    const dateA = new Date(a.updatedAt || a.rejectedAt);
+    const dateB = new Date(b.updatedAt || b.rejectedAt);
+    return dateB - dateA;
+  });
 
   return (
     <div style={{ padding: '30px', backgroundColor: '#f9fafb' }}>
@@ -439,27 +438,6 @@ const Rejected = () => {
             ({Array.isArray(rejectedPosts) ? rejectedPosts.length : 0})
           </span>
         </h1>
-        
-        <button
-          onClick={handleRetry}
-          disabled={loading || retrying}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '8px 16px',
-            backgroundColor: '#4f46e5',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            fontWeight: '500',
-            cursor: loading || retrying ? 'not-allowed' : 'pointer',
-            opacity: loading || retrying ? 0.7 : 1
-          }}
-        >
-          <FaRedo size={14} />
-          {retrying ? 'Refreshing...' : 'Refresh'}
-        </button>
       </div>
       
       {/* Error message */}
@@ -563,36 +541,20 @@ const Rejected = () => {
                     fontWeight: '500',
                     color: '#374151'
                   }}>
-                    State <span style={{ color: '#9ca3af' }}>↓</span>
-                  </th>
-                  <th style={{ 
-                    padding: '12px 16px', 
-                    textAlign: 'left', 
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    District <span style={{ color: '#9ca3af' }}>↓</span>
-                  </th>
-                  <th style={{ 
-                    padding: '12px 16px', 
-                    textAlign: 'left', 
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
-                    Rejection Date <span style={{ color: '#9ca3af' }}>↓</span>
-                  </th>
-                  <th style={{ 
-                    padding: '12px 16px', 
-                    textAlign: 'left', 
-                    fontWeight: '500',
-                    color: '#374151'
-                  }}>
                     Submitted At <span style={{ color: '#9ca3af' }}>↓</span>
+                  </th>
+                  <th style={{ 
+                    padding: '12px 16px', 
+                    textAlign: 'left', 
+                    fontWeight: '500',
+                    color: '#374151'
+                  }}>
+                    Rejected At <span style={{ color: '#9ca3af' }}>↓</span>
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {Array.isArray(rejectedPosts) && rejectedPosts.map(post => (
+                {Array.isArray(sortedRejectedPosts) && sortedRejectedPosts.map(post => (
                   <tr key={post._id || post.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
                     <td style={{ padding: '16px', maxWidth: '300px' }}>
                       <div style={{ marginBottom: post.featured ? '5px' : '0' }}>
@@ -640,32 +602,8 @@ const Rejected = () => {
                         {post.category}
                       </span>
                     </td>
-                    <td style={{ padding: '16px' }}>
-                      <span style={{
-                        backgroundColor: '#f3f4f6',
-                        color: '#4b5563',
-                        padding: '3px 8px',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        fontWeight: '500'
-                      }}>
-                        {userState}
-                      </span>
-                    </td>
-                    <td style={{ padding: '16px' }}>
-                      <span style={{
-                        backgroundColor: '#f3f4f6',
-                        color: '#4b5563',
-                        padding: '3px 8px',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        fontWeight: '500'
-                      }}>
-                        {userDistrict}
-                      </span>
-                    </td>
-                    <td style={{ padding: '16px' }}>{formatDate(post.updatedAt || post.rejectedAt)}</td>
                     <td style={{ padding: '16px' }}>{formatDateTime(post.createdAt || post.submittedAt)}</td>
+                    <td style={{ padding: '16px' }}>{formatDateTime(post.updatedAt || post.rejectedAt)}</td>
                   </tr>
                 ))}
               </tbody>

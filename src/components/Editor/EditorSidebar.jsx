@@ -28,11 +28,30 @@ const EditorSidebar = ({ onSectionChange, activeSection }) => {
   };
 
   return (
-    <div style={{ padding: '20px 0', height: '100%' }}>
+    <div style={{ 
+      padding: '20px 0', 
+      height: '100%',
+      overflowY: 'auto',
+      scrollbarWidth: 'thin',
+      scrollbarColor: '#4a4a4a #1e2029',
+      '&::-webkit-scrollbar': {
+        width: '8px'
+      },
+      '&::-webkit-scrollbar-track': {
+        background: '#1e2029'
+      },
+      '&::-webkit-scrollbar-thumb': {
+        background: '#4a4a4a',
+        borderRadius: '4px'
+      },
+      '&::-webkit-scrollbar-thumb:hover': {
+        background: '#555'
+      }
+    }}>
       <div style={{ 
         display: 'flex', 
         flexDirection: 'column', 
-        height: '100%',
+        minHeight: '100%',
         color: '#ccc',
       }}>
         {/* Overview */}

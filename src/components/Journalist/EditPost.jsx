@@ -460,7 +460,7 @@ const EditPost = () => {
           {/* Buttons at top right */}
           <div style={{ 
             position: 'absolute', 
-            top: '90px', // Adjusted to account for JournalistHeader
+            top: '120px', // Changed from 90px to 120px to move buttons down
             right: '30px',
             display: 'flex',
             gap: '10px'
@@ -694,23 +694,38 @@ const EditPost = () => {
                   Content
                 </label>
                 <Editor
-                  key={editorKey}
                   apiKey="omxjaluaxpgfpa6xkfadimoprrirfmhozsrtpb3o1uimu4c5"
-                  onInit={handleEditorInit}
-                  initialValue={content}
                   value={content}
-                  onEditorChange={handleEditorChange}
+                  onEditorChange={(newContent, editor) => {
+                    // Get current selection
+                    const selection = editor.selection.getSel();
+                    if (selection) {
+                      // Store the current cursor position
+                      const range = selection.getRangeAt(0);
+                      const bookmark = editor.selection.getBookmark();
+                      
+                      // Update content
+                      setContent(newContent);
+                      
+                      // Restore cursor position
+                      editor.selection.moveToBookmark(bookmark);
+                    } else {
+                      setContent(newContent);
+                    }
+                  }}
                   init={{
-                    height: 400,
+                    height: 500,
                     menubar: true,
+                    branding: false,
+                    promotion: false,
                     plugins: [
-                      // Core editing features
                       'anchor', 'autolink', 'charmap', 'codesample', 'emoticons', 'image', 'link', 'lists', 'media', 'searchreplace', 'table', 'visualblocks', 'wordcount',
-                      // Premium features
-                      'checklist', 'mediaembed', 'casechange', 'formatpainter', 'pageembed', 'a11ychecker', 'tinymcespellchecker', 'permanentpen', 'powerpaste', 'advtable', 'advcode', 'editimage', 'advtemplate', 'mentions', 'tableofcontents', 'footnotes', 'mergetags', 'autocorrect', 'typography', 'inlinecss', 'markdown', 'importword', 'exportword', 'exportpdf'
+                      'checklist', 'mediaembed', 'casechange', 'formatpainter', 'pageembed'
                     ],
-                    toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table mergetags | spellcheckdialog a11ycheck typography | align lineheight | checklist numlist bullist indent outdent | emoticons charmap | removeformat',
-                    content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
+                    toolbar: 'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | checklist numlist bullist indent outdent | emoticons charmap | removeformat',
+                    content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }',
+                    tinycomments_mode: 'embedded',
+                    tinycomments_author: 'Editor'
                   }}
                 />
               </div>

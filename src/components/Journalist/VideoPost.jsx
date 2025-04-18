@@ -46,13 +46,17 @@ const VideoPost = () => {
           }
         });
 
-        if (response.data && response.data.state && response.data.district) {
-          setState(response.data.state);
-          setDistrict(response.data.district);
-          console.log('Journalist profile loaded:', {
-            state: response.data.state,
-            district: response.data.district
-          });
+        if (response.data) {
+          // Set state and district from the profile
+          const { state: profileState, district: profileDistrict } = response.data;
+          if (profileState) {
+            setState(profileState);
+            console.log('Setting state from profile:', profileState);
+          }
+          if (profileDistrict) {
+            setDistrict(profileDistrict);
+            console.log('Setting district from profile:', profileDistrict);
+          }
         }
       } catch (err) {
         console.error('Error fetching journalist profile:', err);
@@ -81,17 +85,7 @@ const VideoPost = () => {
   };
 
   const handleDiscard = () => {
-    setTitle('');
-    setYoutubeUrl('');
-    setVideoFile(null);
-    setContent('');
-    setCategory('');
-    // Don't reset state and district as they come from the journalist's profile
-    setError('');
-    setUploadMethod('youtube');
-    if (editorRef.current) {
-      editorRef.current.setContent('');
-    }
+    alert("We are working on the discard functionality. Please stay tuned!");
   };
 
   const handleSaveDraft = () => {
@@ -461,21 +455,6 @@ const VideoPost = () => {
           <button 
             style={{ 
               padding: '8px 16px', 
-              backgroundColor: 'white', 
-              color: '#4f46e5', 
-              border: '1px solid #e5e7eb', 
-              borderRadius: '6px',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}
-            onClick={handleSaveDraft}
-            disabled={loading}
-          >
-            Save Draft
-          </button>
-          <button 
-            style={{ 
-              padding: '8px 16px', 
               backgroundColor: '#4f46e5', 
               color: 'white', 
               border: 'none', 
@@ -792,7 +771,7 @@ const VideoPost = () => {
               </div>
             </div>
             
-            {/* State Dropdown - Read Only */}
+            {/* State Dropdown */}
             <div style={{ marginBottom: '16px' }}>
               <label 
                 htmlFor="state"
@@ -808,25 +787,42 @@ const VideoPost = () => {
                 STATE
               </label>
               <div style={{ position: 'relative' }}>
-                <input
+                <select
                   id="state"
-                  type="text"
-                  value={state || 'Loading...'}
-                  readOnly
+                  value={state}
+                  onChange={(e) => {
+                    setState(e.target.value);
+                    setDistrict(''); // Reset district when state changes
+                  }}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
+                    appearance: 'none',
                     border: '1px solid #e5e7eb',
                     borderRadius: '6px',
-                    backgroundColor: '#f9fafb',
-                    fontSize: '14px',
-                    color: state ? '#111827' : '#6b7280'
+                    backgroundColor: 'white',
+                    fontSize: '14px'
                   }}
+                >
+                  <option value="">---------</option>
+                  <option value="bihar">बिहार | Bihar</option>
+                  <option value="jharkhand">झारखंड | Jharkhand</option>
+                  <option value="up">उत्तर प्रदेश | Uttar Pradesh</option>
+                </select>
+                <FiChevronDown 
+                  style={{ 
+                    position: 'absolute', 
+                    right: '10px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    color: '#6b7280',
+                    pointerEvents: 'none'
+                  }} 
                 />
               </div>
             </div>
 
-            {/* District Dropdown - Read Only */}
+            {/* District Dropdown */}
             <div style={{ marginBottom: '16px' }}>
               <label 
                 htmlFor="district"
@@ -842,20 +838,113 @@ const VideoPost = () => {
                 DISTRICT
               </label>
               <div style={{ position: 'relative' }}>
-                <input
+                <select
                   id="district"
-                  type="text"
-                  value={district || 'Loading...'}
-                  readOnly
+                  value={district}
+                  onChange={(e) => setDistrict(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
+                    appearance: 'none',
                     border: '1px solid #e5e7eb',
                     borderRadius: '6px',
-                    backgroundColor: '#f9fafb',
-                    fontSize: '14px',
-                    color: district ? '#111827' : '#6b7280'
+                    backgroundColor: 'white',
+                    fontSize: '14px'
                   }}
+                  disabled={!state}
+                >
+                  <option value="">---------</option>
+                  {state === 'bihar' && (
+                    <>
+                      <option value="patna">पटना | Patna</option>
+                      <option value="gaya">गया | Gaya</option>
+                      <option value="munger">मुंगेर | Munger</option>
+                      <option value="bhagalpur">भागलपुर | Bhagalpur</option>
+                      <option value="purnia">पूर्णिया | Purnia</option>
+                      <option value="darbhanga">दरभंगा | Darbhanga</option>
+                      <option value="muzaffarpur">मुजफ्फरपुर | Muzaffarpur</option>
+                      <option value="saharsa">सहरसा | Saharsa</option>
+                      <option value="sitamarhi">सीतामढ़ी | Sitamarhi</option>
+                      <option value="vaishali">वैशाली | Vaishali</option>
+                      <option value="siwan">सिवान | Siwan</option>
+                      <option value="saran">सारण | Saran</option>
+                      <option value="gopalganj">गोपालगंज | Gopalganj</option>
+                      <option value="begusarai">बेगूसराय | Begusarai</option>
+                      <option value="samastipur">समस्तीपुर | Samastipur</option>
+                      <option value="madhubani">मधुबनी | Madhubani</option>
+                      <option value="supaul">सुपौल | Supaul</option>
+                      <option value="araria">अररिया | Araria</option>
+                      <option value="kishanganj">किशनगंज | Kishanganj</option>
+                      <option value="katihar">कटिहार | Katihar</option>
+                      <option value="east-champaran">पूर्वी चंपारण | East Champaran</option>
+                      <option value="west-champaran">पश्चिमी चंपारण | West Champaran</option>
+                      <option value="sheohar">शिवहर | Sheohar</option>
+                      <option value="madhepura">मधेपुरा | Madhepura</option>
+                    </>
+                  )}
+                  {state === 'jharkhand' && (
+                    <>
+                      <option value="ranchi">रांची | Ranchi</option>
+                      <option value="jamshedpur">जमशेदपुर | Jamshedpur</option>
+                      <option value="dhanbad">धनबाद | Dhanbad</option>
+                      <option value="bokaro">बोकारो | Bokaro</option>
+                      <option value="deoghar">देवघर | Deoghar</option>
+                      <option value="hazaribagh">हजारीबाग | Hazaribagh</option>
+                      <option value="giridih">गिरिडीह | Giridih</option>
+                      <option value="koderma">कोडरमा | Koderma</option>
+                      <option value="chatra">चतरा | Chatra</option>
+                      <option value="gumla">गुमला | Gumla</option>
+                      <option value="latehar">लातेहार | Latehar</option>
+                      <option value="lohardaga">लोहरदगा | Lohardaga</option>
+                      <option value="pakur">पाकुड़ | Pakur</option>
+                      <option value="palamu">पलामू | Palamu</option>
+                      <option value="ramgarh">रामगढ़ | Ramgarh</option>
+                      <option value="sahibganj">साहिबगंज | Sahibganj</option>
+                      <option value="simdega">सिमडेगा | Simdega</option>
+                      <option value="singhbhum">सिंहभूम | Singhbhum</option>
+                      <option value="seraikela-kharsawan">सरायकेला खरसावां | Seraikela Kharsawan</option>
+                      <option value="east-singhbhum">पूर्वी सिंहभूम | East Singhbhum</option>
+                      <option value="west-singhbhum">पश्चिमी सिंहभूम | West Singhbhum</option>
+                    </>
+                  )}
+                  {state === 'up' && (
+                    <>
+                      <option value="lucknow">लखनऊ | Lucknow</option>
+                      <option value="kanpur">कानपुर | Kanpur</option>
+                      <option value="agra">आगरा | Agra</option>
+                      <option value="varanasi">वाराणसी | Varanasi</option>
+                      <option value="prayagraj">प्रयागराज | Prayagraj</option>
+                      <option value="meerut">मेरठ | Meerut</option>
+                      <option value="noida">नोएडा | Noida</option>
+                      <option value="ghaziabad">गाजियाबाद | Ghaziabad</option>
+                      <option value="bareilly">बरेली | Bareilly</option>
+                      <option value="aligarh">अलीगढ़ | Aligarh</option>
+                      <option value="moradabad">मुरादाबाद | Moradabad</option>
+                      <option value="saharanpur">सहारनपुर | Saharanpur</option>
+                      <option value="gorakhpur">गोरखपुर | Gorakhpur</option>
+                      <option value="faizabad">फैजाबाद | Faizabad</option>
+                      <option value="jaunpur">जौनपुर | Jaunpur</option>
+                      <option value="mathura">मथुरा | Mathura</option>
+                      <option value="ballia">बलिया | Ballia</option>
+                      <option value="rae-bareli">रायबरेली | Rae Bareli</option>
+                      <option value="sultanpur">सुल्तानपुर | Sultanpur</option>
+                      <option value="fatehpur">फतेहपुर | Fatehpur</option>
+                      <option value="pratapgarh">प्रतापगढ़ | Pratapgarh</option>
+                      <option value="kaushambi">कौशाम्बी | Kaushambi</option>
+                      <option value="jhansi">झांसी | Jhansi</option>
+                      <option value="lalitpur">ललितपुर | Lalitpur</option>
+                    </>
+                  )}
+                </select>
+                <FiChevronDown 
+                  style={{ 
+                    position: 'absolute', 
+                    right: '10px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    color: '#6b7280',
+                    pointerEvents: 'none'
+                  }} 
                 />
               </div>
             </div>

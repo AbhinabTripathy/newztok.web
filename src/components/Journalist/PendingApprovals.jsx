@@ -5,6 +5,22 @@ import axios from 'axios';
 import { Editor } from '@tinymce/tinymce-react';
 import { useNavigate } from 'react-router-dom';
 import { formatApiUrl, getAuthToken, getAuthConfig } from '../../utils/api';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableContainer, 
+  TableHead, 
+  TableRow, 
+  Paper,
+  IconButton,
+  Typography,
+  Box,
+  CircularProgress,
+  TablePagination,
+  Chip
+} from '@mui/material';
+import { Edit as EditIcon } from '@mui/icons-material';
 
 const PendingApprovals = () => {
   const [pendingNews, setPendingNews] = useState([]);
@@ -527,269 +543,215 @@ const PendingApprovals = () => {
       )}
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '20px' }}>Loading pending news...</div>
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+          <CircularProgress />
+        </Box>
       ) : (
-        /* Table */
-        <div style={{ 
-          borderRadius: '8px', 
-          overflow: 'hidden',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          marginBottom: '16px'
-        }}>
-          {/* Table Headers */}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: '1.5fr 2fr 1fr 1fr 1fr 1fr 0.5fr', 
-            borderBottom: '1px solid #e5e7eb',
-            backgroundColor: 'white'
-          }}>
-            <div style={{ 
-              color: '#374151', 
-              fontWeight: '500', 
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px 16px',
-              borderRight: '1px solid #e5e7eb'
-            }}>
-              Headline <FiChevronDown size={16} style={{ marginLeft: '4px', color: '#9ca3af' }} />
-            </div>
-            <div style={{ 
-              color: '#374151', 
-              fontWeight: '500', 
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px 16px',
-              borderRight: '1px solid #e5e7eb'
-            }}>
-              Content <FiChevronDown size={16} style={{ marginLeft: '4px', color: '#9ca3af' }} />
-            </div>
-            <div style={{ 
-              color: '#374151', 
-              fontWeight: '500', 
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px 16px',
-              borderRight: '1px solid #e5e7eb'
-            }}>
-              Category <FiChevronDown size={16} style={{ marginLeft: '4px', color: '#9ca3af' }} />
-            </div>
-            <div style={{ 
-              color: '#374151', 
-              fontWeight: '500', 
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px 16px',
-              borderRight: '1px solid #e5e7eb'
-            }}>
-              State <FiChevronDown size={16} style={{ marginLeft: '4px', color: '#9ca3af' }} />
-            </div>
-            <div style={{ 
-              color: '#374151', 
-              fontWeight: '500', 
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px 16px',
-              borderRight: '1px solid #e5e7eb'
-            }}>
-              District <FiChevronDown size={16} style={{ marginLeft: '4px', color: '#9ca3af' }} />
-            </div>
-            <div style={{ 
-              color: '#374151', 
-              fontWeight: '500', 
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px 16px',
-              borderRight: '1px solid #e5e7eb'
-            }}>
-              Status <FiChevronDown size={16} style={{ marginLeft: '4px', color: '#9ca3af' }} />
-            </div>
-            <div style={{ 
-              color: '#374151', 
-              fontWeight: '500', 
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px 16px'
-            }}>
-              Action
-            </div>
-          </div>
-
-          {pendingNews.length === 0 ? (
-            /* Empty State */
-            <div style={{ 
-              padding: '24px 16px',
-              textAlign: 'center',
-              color: '#6b7280',
-              borderBottom: '1px solid #e5e7eb',
-              backgroundColor: 'white'
-            }}>
-              No posts available for approval.
-            </div>
-          ) : (
-            /* News Items */
-            pendingNews.map((news, index) => (
-              <div 
-                key={news.id || index}
-                style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: '1.5fr 2fr 1fr 1fr 1fr 1fr 0.5fr', 
-                  borderBottom: index < pendingNews.length - 1 ? '1px solid #e5e7eb' : 'none',
-                  backgroundColor: news._updatedLocally ? '#f0f9ff' : 'white' // Highlight locally updated items
-                }}
-              >
-                <div style={{ 
-                  padding: '16px', 
-                  borderRight: '1px solid #e5e7eb',
-                  color: '#1f2937'
-                }}>
-                  {news.title || 'No title'}
-                  {news._updatedLocally && (
-                    <span style={{
-                      fontSize: '11px',
-                      color: '#2563eb',
-                      marginLeft: '5px',
-                      fontWeight: 'bold'
-                    }}>
-                      (edited)
-                    </span>
-                  )}
-                </div>
-                <div style={{ 
-                  padding: '16px', 
-                  borderRight: '1px solid #e5e7eb',
-                  color: '#1f2937'
-                }}>
-                  {getContentPreview(news.content)}
-                </div>
-                <div style={{ 
-                  padding: '16px', 
-                  borderRight: '1px solid #e5e7eb',
-                  color: '#1f2937'
-                }}>
-                  {news.category || 'Uncategorized'}
-                </div>
-                <div style={{ 
-                  padding: '16px', 
-                  borderRight: '1px solid #e5e7eb',
-                  color: '#1f2937'
-                }}>
-                  {news.state || 'N/A'}
-                </div>
-                <div style={{ 
-                  padding: '16px', 
-                  borderRight: '1px solid #e5e7eb',
-                  color: '#1f2937'
-                }}>
-                  {news.district || 'N/A'}
-                </div>
-                <div style={{ 
-                  padding: '16px',
-                  color: '#1f2937',
-                  display: 'flex',
-                  justifyContent: 'flex-start',
-                  alignItems: 'center'
-                }}>
-                  <span style={{
-                    backgroundColor: '#FEF3C7',
-                    color: '#D97706',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    fontWeight: '500'
+        <TableContainer 
+          component={Paper} 
+          sx={{ 
+            borderRadius: '12px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            marginBottom: '24px',
+            overflow: 'hidden'
+          }}
+        >
+          <Table>
+            <TableHead>
+              <TableRow sx={{ 
+                backgroundColor: '#f8fafc',
+                '& th': {
+                  color: '#64748b',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  padding: '16px 24px',
+                  borderBottom: '2px solid #e2e8f0'
+                }
+              }}>
+                <TableCell>Headline</TableCell>
+                <TableCell>Content</TableCell>
+                <TableCell>Category</TableCell>
+                <TableCell>State</TableCell>
+                <TableCell>District</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell align="center">Action</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {pendingNews.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ 
+                    padding: '32px 16px',
+                    color: '#64748b',
+                    fontSize: '14px'
                   }}>
-                    {news.status || 'Pending'}
-                  </span>
-                </div>
-                <div style={{ 
-                  padding: '16px',
-                  color: '#1f2937',
-                  display: 'flex',
-                  justifyContent: 'center',
-                  alignItems: 'center'
-                }}>
-                  <button
-                    style={{
-                      backgroundColor: '#4f46e5',
-                      color: 'white',
-                      border: 'none',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '8px',
-                      borderRadius: '4px',
-                      transition: 'background-color 0.2s'
+                    No posts available for approval.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                pendingNews.map((news, index) => (
+                  <TableRow 
+                    key={news.id || index}
+                    sx={{ 
+                      backgroundColor: news._updatedLocally ? '#f0f9ff' : 'white',
+                      '&:hover': {
+                        backgroundColor: '#f8fafc',
+                        transition: 'background-color 0.2s ease'
+                      },
+                      '& td': {
+                        padding: '16px 24px',
+                        color: '#1e293b',
+                        fontSize: '14px',
+                        borderBottom: '1px solid #e2e8f0'
+                      }
                     }}
-                    title="Edit news post"
-                    onClick={() => handleEditClick(news)}
                   >
-                    <FiEdit size={16} />
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography sx={{ fontWeight: 500 }}>
+                          {news.title || 'No title'}
+                        </Typography>
+                        {news._updatedLocally && (
+                          <Chip
+                            label="edited"
+                            size="small"
+                            sx={{ 
+                              ml: 1,
+                              fontSize: '11px',
+                              backgroundColor: '#2563eb',
+                              color: 'white',
+                              height: '20px'
+                            }}
+                          />
+                        )}
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Typography sx={{ 
+                        color: '#64748b',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {getContentPreview(news.content)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={news.category || 'Uncategorized'}
+                        size="small"
+                        sx={{ 
+                          backgroundColor: '#f1f5f9',
+                          color: '#475569',
+                          fontWeight: 500
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography sx={{ fontWeight: 500 }}>
+                        {news.state || 'N/A'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography sx={{ fontWeight: 500 }}>
+                        {news.district || 'N/A'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={news.status || 'Pending'}
+                        size="small"
+                        sx={{ 
+                          backgroundColor: '#FEF3C7',
+                          color: '#D97706',
+                          fontWeight: 500,
+                          height: '24px'
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <IconButton
+                        onClick={() => handleEditClick(news)}
+                        sx={{ 
+                          backgroundColor: '#4f46e5',
+                          color: 'white',
+                          '&:hover': {
+                            backgroundColor: '#4338ca',
+                            transform: 'scale(1.05)',
+                            transition: 'all 0.2s ease'
+                          }
+                        }}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
 
       {!loading && pendingNews.length > 0 && (
-        /* Pagination */
-        <div style={{ 
+        <Box sx={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
-          color: '#6b7280',
-          fontSize: '14px'
+          color: '#64748b',
+          fontSize: '14px',
+          padding: '0 8px'
         }}>
-          <div>
+          <Typography>
             1 to {pendingNews.length} Items of {totalResults} — 
-            <button style={{ 
-              color: '#4f46e5', 
-              backgroundColor: 'transparent', 
-              border: 'none', 
-              padding: '0 4px', 
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              fontWeight: '500'
-            }}>
+            <IconButton 
+              sx={{ 
+                color: '#4f46e5',
+                fontSize: '14px',
+                padding: '0 4px',
+                '&:hover': { 
+                  backgroundColor: 'transparent',
+                  textDecoration: 'underline'
+                }
+              }}
+            >
               View all <HiOutlineArrowNarrowRight style={{ marginLeft: '4px' }} />
-            </button>
-          </div>
+            </IconButton>
+          </Typography>
           
-          {/* Pagination Buttons */}
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button style={{ 
-              padding: '8px 16px', 
-              backgroundColor: '#e5edff', 
-              color: '#4f46e5', 
-              border: 'none', 
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: '500'
-            }}>
+          <Box sx={{ display: 'flex', gap: '16px' }}>
+            <Typography
+              component="span"
+              sx={{ 
+                color: '#4f46e5',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 500,
+                '&:hover': {
+                  textDecoration: 'underline'
+                }
+              }}
+            >
               Previous
-            </button>
-            <button style={{ 
-              padding: '8px 16px', 
-              backgroundColor: '#e5edff', 
-              color: '#4f46e5', 
-              border: 'none', 
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontWeight: '500'
-            }}>
+            </Typography>
+            <Typography
+              component="span"
+              sx={{ 
+                color: '#4f46e5',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: 500,
+                '&:hover': {
+                  textDecoration: 'underline'
+                }
+              }}
+            >
               Next
-            </button>
-          </div>
-        </div>
+            </Typography>
+          </Box>
+        </Box>
       )}
     </div>
   );

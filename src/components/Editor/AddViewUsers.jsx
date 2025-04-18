@@ -386,25 +386,25 @@ const AddViewUsers = () => {
 
   return (
     <div style={{ 
-      padding: '30px', 
+      padding: '20px', 
       backgroundColor: '#f9fafb' 
     }}>
       <div style={{ 
-        maxWidth: '1200px', 
+        maxWidth: '1000px', 
         margin: '0 auto' 
       }}>
         <h1 style={{ 
-          fontSize: '28px', 
+          fontSize: '24px', 
           fontWeight: 'bold', 
           color: '#111827', 
-          marginBottom: '16px' 
+          marginBottom: '12px' 
         }}>
           Create User
         </h1>
         <p style={{ 
-          fontSize: '16px', 
+          fontSize: '14px', 
           color: '#4b5563', 
-          marginBottom: '24px' 
+          marginBottom: '20px' 
         }}>
           Create a new user by filling out the form below.
         </p>
@@ -416,13 +416,13 @@ const AddViewUsers = () => {
             alignItems: 'center', 
             backgroundColor: '#3b82f6', 
             color: 'white', 
-            padding: '10px 20px', 
-            borderRadius: '8px', 
+            padding: '8px 16px', 
+            borderRadius: '6px', 
             border: 'none', 
-            fontSize: '16px', 
+            fontSize: '14px', 
             fontWeight: '500', 
             cursor: 'pointer', 
-            marginBottom: '32px' 
+            marginBottom: '24px' 
           }}
         >
           Back to Profile
@@ -432,9 +432,10 @@ const AddViewUsers = () => {
           <div style={{ 
             backgroundColor: '#fee2e2', 
             color: '#b91c1c', 
-            padding: '12px', 
-            borderRadius: '8px', 
-            marginBottom: '20px' 
+            padding: '10px', 
+            borderRadius: '6px', 
+            marginBottom: '16px',
+            fontSize: '14px'
           }}>
             {error}
           </div>
@@ -444,9 +445,10 @@ const AddViewUsers = () => {
           <div style={{ 
             backgroundColor: '#d1fae5', 
             color: '#047857', 
-            padding: '12px', 
-            borderRadius: '8px', 
-            marginBottom: '20px' 
+            padding: '10px', 
+            borderRadius: '6px', 
+            marginBottom: '16px',
+            fontSize: '14px'
           }}>
             {success}
           </div>
@@ -456,8 +458,8 @@ const AddViewUsers = () => {
           <div style={{ 
             display: 'grid', 
             gridTemplateColumns: 'repeat(2, 1fr)', 
-            gap: '24px', 
-            marginBottom: '24px' 
+            gap: '16px', 
+            marginBottom: '20px' 
           }}>
             {/* Username */}
             <div>
@@ -465,9 +467,10 @@ const AddViewUsers = () => {
                 htmlFor="username"
                 style={{ 
                   display: 'block', 
-                  marginBottom: '8px', 
+                  marginBottom: '6px', 
                   fontWeight: '500', 
-                  color: '#111827' 
+                  color: '#111827',
+                  fontSize: '14px'
                 }}
               >
                 Username:
@@ -481,10 +484,10 @@ const AddViewUsers = () => {
                 onChange={handleInputChange}
                 style={{ 
                   width: '100%', 
-                  padding: '12px 16px', 
+                  padding: '8px 12px', 
                   border: '1px solid #d1d5db', 
-                  borderRadius: '8px', 
-                  fontSize: '16px' 
+                  borderRadius: '6px', 
+                  fontSize: '14px' 
                 }}
               />
             </div>
@@ -495,9 +498,10 @@ const AddViewUsers = () => {
                 htmlFor="email"
                 style={{ 
                   display: 'block', 
-                  marginBottom: '8px', 
+                  marginBottom: '6px', 
                   fontWeight: '500', 
-                  color: '#111827' 
+                  color: '#111827',
+                  fontSize: '14px'
                 }}
               >
                 Email:
@@ -511,10 +515,10 @@ const AddViewUsers = () => {
                 onChange={handleInputChange}
                 style={{ 
                   width: '100%', 
-                  padding: '12px 16px', 
+                  padding: '8px 12px', 
                   border: '1px solid #d1d5db', 
-                  borderRadius: '8px', 
-                  fontSize: '16px' 
+                  borderRadius: '6px', 
+                  fontSize: '14px' 
                 }}
                 required
               />
@@ -526,9 +530,10 @@ const AddViewUsers = () => {
                 htmlFor="password"
                 style={{ 
                   display: 'block', 
-                  marginBottom: '8px', 
+                  marginBottom: '6px', 
                   fontWeight: '500', 
-                  color: '#111827' 
+                  color: '#111827',
+                  fontSize: '14px'
                 }}
               >
                 Password:
@@ -542,10 +547,10 @@ const AddViewUsers = () => {
                 onChange={handleInputChange}
                 style={{ 
                   width: '100%', 
-                  padding: '12px 16px', 
+                  padding: '8px 12px', 
                   border: '1px solid #d1d5db', 
-                  borderRadius: '8px', 
-                  fontSize: '16px' 
+                  borderRadius: '6px', 
+                  fontSize: '14px' 
                 }}
                 required
               />
@@ -557,9 +562,10 @@ const AddViewUsers = () => {
                 htmlFor="confirmPassword"
                 style={{ 
                   display: 'block', 
-                  marginBottom: '8px', 
+                  marginBottom: '6px', 
                   fontWeight: '500', 
-                  color: '#111827' 
+                  color: '#111827',
+                  fontSize: '14px'
                 }}
               >
                 Confirm Password:
@@ -573,10 +579,10 @@ const AddViewUsers = () => {
                 onChange={handleInputChange}
                 style={{ 
                   width: '100%', 
-                  padding: '12px 16px', 
+                  padding: '8px 12px', 
                   border: '1px solid #d1d5db', 
-                  borderRadius: '8px', 
-                  fontSize: '16px' 
+                  borderRadius: '6px', 
+                  fontSize: '14px' 
                 }}
                 required
               />
@@ -586,18 +592,19 @@ const AddViewUsers = () => {
           <div style={{ 
             display: 'grid', 
             gridTemplateColumns: 'repeat(3, 1fr)', 
-            gap: '24px', 
-            marginBottom: '24px' 
+            gap: '16px', 
+            marginBottom: '20px' 
           }}>
-            {/* Role - Updated to dropdown */}
+            {/* Role */}
             <div>
               <label 
                 htmlFor="role"
                 style={{ 
                   display: 'block', 
-                  marginBottom: '8px', 
+                  marginBottom: '6px', 
                   fontWeight: '500', 
-                  color: '#111827' 
+                  color: '#111827',
+                  fontSize: '14px'
                 }}
               >
                 Role:
@@ -610,10 +617,10 @@ const AddViewUsers = () => {
                   onChange={handleInputChange}
                   style={{ 
                     width: '100%', 
-                    padding: '12px 16px', 
+                    padding: '8px 12px', 
                     border: '1px solid #d1d5db', 
-                    borderRadius: '8px', 
-                    fontSize: '16px',
+                    borderRadius: '6px', 
+                    fontSize: '14px',
                     appearance: 'none',
                     backgroundColor: '#fff'
                   }}
@@ -627,11 +634,12 @@ const AddViewUsers = () => {
                 <FiChevronDown 
                   style={{ 
                     position: 'absolute', 
-                    right: '16px', 
+                    right: '12px', 
                     top: '50%', 
                     transform: 'translateY(-50%)', 
                     pointerEvents: 'none',
-                    color: '#6b7280'
+                    color: '#6b7280',
+                    fontSize: '14px'
                   }} 
                 />
               </div>
@@ -643,9 +651,10 @@ const AddViewUsers = () => {
                 htmlFor="phoneNumber"
                 style={{ 
                   display: 'block', 
-                  marginBottom: '8px', 
+                  marginBottom: '6px', 
                   fontWeight: '500', 
-                  color: '#111827' 
+                  color: '#111827',
+                  fontSize: '14px'
                 }}
               >
                 Phone Number:
@@ -659,10 +668,10 @@ const AddViewUsers = () => {
                 onChange={handleInputChange}
                 style={{ 
                   width: '100%', 
-                  padding: '12px 16px', 
+                  padding: '8px 12px', 
                   border: '1px solid #d1d5db', 
-                  borderRadius: '8px', 
-                  fontSize: '16px' 
+                  borderRadius: '6px', 
+                  fontSize: '14px' 
                 }}
               />
             </div>
@@ -673,9 +682,10 @@ const AddViewUsers = () => {
                 htmlFor="profilePicture"
                 style={{ 
                   display: 'block', 
-                  marginBottom: '8px', 
+                  marginBottom: '6px', 
                   fontWeight: '500', 
-                  color: '#111827' 
+                  color: '#111827',
+                  fontSize: '14px'
                 }}
               >
                 Profile Picture:
@@ -688,11 +698,11 @@ const AddViewUsers = () => {
                   htmlFor="profilePictureInput"
                   style={{ 
                     backgroundColor: '#f3f4f6', 
-                    padding: '12px 16px', 
+                    padding: '8px 12px', 
                     border: '1px solid #d1d5db', 
                     borderRight: 'none', 
-                    borderRadius: '8px 0 0 8px', 
-                    fontSize: '16px',
+                    borderRadius: '6px 0 0 6px', 
+                    fontSize: '14px',
                     cursor: 'pointer' 
                   }}
                 >
@@ -701,11 +711,11 @@ const AddViewUsers = () => {
                 <span 
                   style={{ 
                     flex: 1, 
-                    padding: '12px 16px', 
+                    padding: '8px 12px', 
                     border: '1px solid #d1d5db', 
                     borderLeft: 'none', 
-                    borderRadius: '0 8px 8px 0', 
-                    fontSize: '16px', 
+                    borderRadius: '0 6px 6px 0', 
+                    fontSize: '14px', 
                     color: '#6b7280' 
                   }}
                 >
@@ -725,18 +735,19 @@ const AddViewUsers = () => {
           <div style={{ 
             display: 'grid', 
             gridTemplateColumns: 'repeat(2, 1fr)', 
-            gap: '24px', 
-            marginBottom: '32px' 
+            gap: '16px', 
+            marginBottom: '24px' 
           }}>
-            {/* Assigned State - Updated to a dropdown */}
+            {/* Assigned State */}
             <div>
               <label 
                 htmlFor="assignedState"
                 style={{ 
                   display: 'block', 
-                  marginBottom: '8px', 
+                  marginBottom: '6px', 
                   fontWeight: '500', 
-                  color: '#111827' 
+                  color: '#111827',
+                  fontSize: '14px'
                 }}
               >
                 Assigned State:
@@ -749,10 +760,10 @@ const AddViewUsers = () => {
                   onChange={handleInputChange}
                   style={{ 
                     width: '100%', 
-                    padding: '12px 16px', 
+                    padding: '8px 12px', 
                     border: '1px solid #d1d5db', 
-                    borderRadius: '8px', 
-                    fontSize: '16px',
+                    borderRadius: '6px', 
+                    fontSize: '14px',
                     appearance: 'none',
                     backgroundColor: '#fff'
                   }}
@@ -766,25 +777,27 @@ const AddViewUsers = () => {
                 <FiChevronDown 
                   style={{ 
                     position: 'absolute', 
-                    right: '16px', 
+                    right: '12px', 
                     top: '50%', 
                     transform: 'translateY(-50%)', 
                     pointerEvents: 'none',
-                    color: '#6b7280'
+                    color: '#6b7280',
+                    fontSize: '14px'
                   }} 
                 />
               </div>
             </div>
 
-            {/* Assigned District - Updated to a dynamic dropdown */}
+            {/* Assigned District */}
             <div>
               <label 
                 htmlFor="assignedDistrict"
                 style={{ 
                   display: 'block', 
-                  marginBottom: '8px', 
+                  marginBottom: '6px', 
                   fontWeight: '500', 
-                  color: '#111827' 
+                  color: '#111827',
+                  fontSize: '14px'
                 }}
               >
                 Assigned District:
@@ -797,10 +810,10 @@ const AddViewUsers = () => {
                   onChange={handleInputChange}
                   style={{ 
                     width: '100%', 
-                    padding: '12px 16px', 
+                    padding: '8px 12px', 
                     border: '1px solid #d1d5db', 
-                    borderRadius: '8px', 
-                    fontSize: '16px',
+                    borderRadius: '6px', 
+                    fontSize: '14px',
                     appearance: 'none',
                     backgroundColor: '#fff'
                   }}
@@ -815,11 +828,12 @@ const AddViewUsers = () => {
                 <FiChevronDown 
                   style={{ 
                     position: 'absolute', 
-                    right: '16px', 
+                    right: '12px', 
                     top: '50%', 
                     transform: 'translateY(-50%)', 
                     pointerEvents: 'none',
-                    color: '#6b7280'
+                    color: '#6b7280',
+                    fontSize: '14px'
                   }} 
                 />
               </div>
@@ -832,10 +846,10 @@ const AddViewUsers = () => {
             style={{ 
               backgroundColor: loading ? '#93c5fd' : '#3b82f6', 
               color: 'white', 
-              padding: '12px 24px', 
-              borderRadius: '8px', 
+              padding: '8px 16px', 
+              borderRadius: '6px', 
               border: 'none', 
-              fontSize: '16px', 
+              fontSize: '14px', 
               fontWeight: '500', 
               cursor: loading ? 'not-allowed' : 'pointer' 
             }}

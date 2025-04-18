@@ -82,12 +82,7 @@ const Users = () => {
 
   const toggleDropdown = (id, event) => {
     event.stopPropagation();
-    
-    if (activeDropdown === id) {
-      setActiveDropdown(null);
-    } else {
-      setActiveDropdown(id);
-    }
+    alert("We are working on the user management features. Please stay tuned!");
   };
 
   // Close dropdown when clicking anywhere on the document
@@ -240,56 +235,6 @@ const Users = () => {
                           >
                             <FaEllipsisV />
                           </button>
-                          
-                          {activeDropdown === `${title}-${user.id}` && (
-                            <div 
-                              onClick={(e) => e.stopPropagation()}
-                              style={{
-                                position: 'absolute',
-                                right: '0',
-                                top: '100%',
-                                marginTop: '8px',
-                                backgroundColor: 'white',
-                                borderRadius: '8px',
-                                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1), 0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-                                width: '140px',
-                                zIndex: 10,
-                                border: '1px solid #e5e7eb'
-                              }}
-                            >
-                              <div 
-                                style={{
-                                  padding: '12px 16px',
-                                  borderBottom: '1px solid #e5e7eb',
-                                  color: '#374151',
-                                  cursor: 'pointer',
-                                  fontSize: '14px'
-                                }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  console.log('Edit user:', user.id);
-                                  setActiveDropdown(null);
-                                }}
-                              >
-                                Edit
-                              </div>
-                              <div 
-                                style={{
-                                  padding: '12px 16px',
-                                  color: '#ef4444',
-                                  cursor: 'pointer',
-                                  fontSize: '14px'
-                                }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  console.log('Remove user:', user.id);
-                                  setActiveDropdown(null);
-                                }}
-                              >
-                                Remove
-                              </div>
-                            </div>
-                          )}
                         </div>
                       </td>
                     </tr>

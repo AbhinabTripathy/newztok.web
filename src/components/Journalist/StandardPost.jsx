@@ -93,17 +93,7 @@ const StandardPost = () => {
   };
 
   const handleDiscard = () => {
-    setTitle('');
-    setFile(null);
-    setContent('');
-    setCategory('');
-    setState('');
-    setDistrict('');
-    setError('');
-    setUploadProgress(0);
-    if (editorRef.current) {
-      editorRef.current.setContent('');
-    }
+    alert("We are working on the discard functionality. Please stay tuned!");
   };
 
   const handleSaveDraft = () => {
@@ -399,21 +389,6 @@ const StandardPost = () => {
             disabled={loading}
           >
             Discard
-          </button>
-          <button 
-            style={{ 
-              padding: '8px 16px', 
-              backgroundColor: 'white', 
-              color: '#4f46e5', 
-              border: '1px solid #e5e7eb', 
-              borderRadius: '6px',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}
-            onClick={handleSaveDraft}
-            disabled={loading}
-          >
-            Save Draft
           </button>
           <button 
             style={{ 
