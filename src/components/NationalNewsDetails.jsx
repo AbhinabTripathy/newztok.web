@@ -35,6 +35,8 @@ const NationalNewsDetails = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [viewCount, setViewCount] = useState(0);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [commentSuccess, setCommentSuccess] = useState(false);
   
   // API base URL
   const baseURL = 'https://api.newztok.in';
@@ -42,9 +44,51 @@ const NationalNewsDetails = () => {
   // Check if user is logged in (has auth token)
   const isLoggedIn = !!localStorage.getItem('userAuthToken');
 
+  // Get the user token for API requests
+  const getUserToken = () => {
+    return localStorage.getItem('userAuthToken');
+  };
+
+  // Add a debug helper
+  const debug = (message, data) => {
+    console.log(`[NationalNewsDetails ${id}] ${message}`, data !== undefined ? data : '');
+  };
+
   useEffect(() => {
+    debug('Component mounted with ID', id);
+    debug('User logged in?', isLoggedIn);
+    
     fetchNationalNewsDetail();
+    fetchComments();
+    
+    // Check if user has already liked the article when component mounts
+    if (isLoggedIn) {
+      checkLikeStatus();
+    }
   }, [id]);
+
+  // Clear comment success message after 3 seconds
+  useEffect(() => {
+    if (commentSuccess) {
+      const timer = setTimeout(() => {
+        setCommentSuccess(false);
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [commentSuccess]);
+
+  // Re-check like status whenever login state changes
+  useEffect(() => {
+    if (isLoggedIn) {
+      debug('User login state changed, checking like status');
+      checkLikeStatus();
+      fetchComments();
+    } else {
+      // Reset like status if user logs out
+      setIsLiked(false);
+    }
+  }, [isLoggedIn]);
 
   const fetchNationalNewsDetail = async () => {
     try {
@@ -209,12 +253,76 @@ const NationalNewsDetails = () => {
       return;
     }
 
+    // Store current state before any async operations
+    let prevLikeState = isLiked;
+    let prevLikeCount = likeCount;
+
     try {
-      // For now, simulate with local state
-      setIsLiked(!isLiked);
-      setLikeCount(prev => isLiked ? prev - 1 : prev + 1);
-    } catch (err) {
-      console.error("Error toggling like:", err);
+      // Get the auth token
+      const token = getUserToken();
+      debug('Toggling like with token');
+      
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
+      // Optimistically update UI for both like and unlike
+      const newLikedState = !isLiked;
+      setIsLiked(newLikedState);
+      setLikeCount(prevCount => newLikedState ? prevCount + 1 : Math.max(0, prevCount - 1));
+      debug(`Optimistically updated like state to ${newLikedState ? 'liked' : 'unliked'}`);
+
+      // Create headers with auth token
+      const myHeaders = new Headers();
+      myHeaders.append("Authorization", `Bearer ${token}`);
+      
+      // Determine which endpoint to use based on the action (like or unlike)
+      const likeEndpoint = isLiked 
+        ? `http://13.234.42.114:3333/api/interaction/news/${id}/unlike`
+        : `http://13.234.42.114:3333/api/interaction/news/${id}/like`;
+      
+      const requestOptions = {
+        method: "POST",
+        headers: myHeaders,
+        redirect: "follow"
+      };
+
+      // Make the API call
+      debug(`Sending ${isLiked ? 'unlike' : 'like'} request to API`);
+      const response = await fetch(likeEndpoint, requestOptions);
+
+      if (!response.ok) {
+        throw new Error(`${isLiked ? 'Unlike' : 'Like'} request failed with status: ${response.status}`);
+      }
+      
+      const resultText = await response.text();
+      debug('Received like/unlike response', resultText);
+      
+      try {
+        if (resultText && resultText.trim()) {
+          const result = JSON.parse(resultText);
+          debug('Parsed like/unlike response', result);
+          
+          // Update like count from server response if available
+          if (result && typeof result.likesCount !== 'undefined') {
+            debug('Setting like count from API response', result.likesCount);
+            setLikeCount(result.likesCount);
+          } else if (result && typeof result.likeCount !== 'undefined') {
+            debug('Setting like count from API response', result.likeCount);
+            setLikeCount(result.likeCount);
+          }
+        }
+      } catch (parseError) {
+        debug('Response is not valid JSON, keeping optimistic update', parseError.message);
+      }
+      
+    } catch (error) {
+      console.error(`Error ${isLiked ? 'unliking' : 'liking'} article:`, error);
+      // If there was an error, revert to the previous state
+      setIsLiked(prevLikeState);
+      setLikeCount(prevLikeCount);
+      // Alert the user of the failure
+      alert(`Failed to ${isLiked ? 'unlike' : 'like'} the article. Please try again.`);
     }
   };
 
@@ -251,28 +359,32 @@ const NationalNewsDetails = () => {
       // Configure headers with the token
       const config = {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       };
       
-      // In production, this would be a real API call
-      // const response = await axios.post(`${baseURL}/api/news/${id}/comment`, { content: comment }, config);
+      debug('Submitting comment', comment);
       
-      // For now, simulate by adding to local state
-      const newComment = {
-        id: Date.now(),
-        content: comment,
-        createdAt: new Date().toISOString(),
-        user: {
-          username: 'Current User' // This would come from API or state in production
-        }
-      };
+      // Send the comment to the API
+      const response = await axios.post(
+        `${baseURL}/api/interaction/news/${id}/comment`, 
+        { content: comment },
+        config
+      );
       
-      setComments(prev => [newComment, ...prev]);
+      debug('Comment submission response', response.data);
+      
+      // After successful submission, refresh the comments list
+      fetchComments();
+      
+      // Clear the comment input
       setComment('');
+
+      // Set comment success state
+      setCommentSuccess(true);
     } catch (err) {
       console.error("Error submitting comment:", err);
-      alert("Failed to submit comment. Please try again.");
     }
   };
 
@@ -357,6 +469,104 @@ const NationalNewsDetails = () => {
       .split(' ')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(' ');
+  };
+
+  // Add function to fetch comments
+  const fetchComments = async () => {
+    try {
+      setLoadingComments(true);
+      debug('Fetching comments for news ID', id);
+      
+      // Prepare headers with token if available
+      const headers = {};
+      const token = getUserToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const commentsUrl = `${baseURL}/api/interaction/news/${id}/comments`;
+      debug('Comments API URL', commentsUrl);
+      
+      const response = await axios.get(commentsUrl, { headers });
+      debug('Comments API response', response.data);
+      
+      if (response.data) {
+        let fetchedComments = [];
+        if (Array.isArray(response.data)) {
+          fetchedComments = response.data;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          fetchedComments = response.data.data;
+        } else if (response.data.comments && Array.isArray(response.data.comments)) {
+          fetchedComments = response.data.comments;
+        }
+        
+        debug('Fetched comments count', fetchedComments.length);
+        setComments(fetchedComments);
+      }
+    } catch (err) {
+      console.error("Error fetching comments:", err);
+      // Don't set error state, just log it to avoid disrupting the UI
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  // Add function to check if user has already liked the article
+  const checkLikeStatus = async () => {
+    try {
+      const token = getUserToken();
+      
+      if (!token) {
+        debug('No token found for like status check');
+        return;
+      }
+
+      debug('Checking like status with token');
+
+      // Create request headers
+      const myHeaders = new Headers();
+      myHeaders.append("Authorization", `Bearer ${token}`);
+      
+      const requestOptions = {
+        method: "GET",
+        headers: myHeaders,
+        redirect: "follow"
+      };
+
+      // Make the API call to check like status
+      const response = await fetch(
+        `http://13.234.42.114:3333/api/interaction/news/${id}/like/status`,
+        requestOptions
+      );
+
+      if (!response.ok) {
+        throw new Error(`Status check failed with status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      debug('Like status response received', result);
+
+      // Update like status based on response
+      if (result.liked || result.isLiked || result.hasLiked) {
+        debug('User has liked this article', true);
+        setIsLiked(true);
+      } else {
+        debug('User has not liked this article', false);
+        setIsLiked(false);
+      }
+
+      // Update like count from response if available
+      if (result.likesCount !== undefined) {
+        debug('Setting like count from API', result.likesCount);
+        setLikeCount(result.likesCount);
+      } else if (result.likeCount !== undefined) {
+        debug('Setting like count from API', result.likeCount);
+        setLikeCount(result.likeCount);
+      }
+      
+    } catch (error) {
+      console.error("Error checking like status:", error);
+    }
   };
 
   if (loading) {
@@ -549,11 +759,38 @@ const NationalNewsDetails = () => {
         
         {/* Action Buttons (Like, View, Share) */}
         <Box sx={{ py: 2, display: 'flex', alignItems: 'center', gap: 4, borderBottom: '1px solid #eee', mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={handleLikeToggle}>
-            <IconButton color={isLiked ? 'error' : 'default'} size="small">
-              {isLiked ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              cursor: 'pointer',
+              opacity: 0.9,
+              '&:hover': {
+                opacity: 1
+              }
+            }} 
+            onClick={handleLikeToggle}
+          >
+            <IconButton 
+              color={isLiked ? 'error' : 'default'} 
+              size="small"
+              sx={{
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'scale(1.1)',
+                }
+              }}
+            >
+              {isLiked ? <FavoriteIcon color="error" /> : <FavoriteBorderIcon />}
             </IconButton>
-            <Typography variant="body2" sx={{ ml: 0.5 }}>
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                ml: 0.5,
+                color: isLiked ? 'error.main' : 'text.primary',
+                fontWeight: isLiked ? 'medium' : 'regular'
+              }}
+            >
               {likeCount} {likeCount === 1 ? 'Like' : 'Likes'}
             </Typography>
           </Box>
@@ -591,6 +828,33 @@ const NationalNewsDetails = () => {
             <Typography variant="h6" sx={{ mb: 3, fontWeight: 'bold' }}>
               Comments
             </Typography>
+
+            {/* Comment Success Message */}
+            {commentSuccess && (
+              <Box 
+                sx={{ 
+                  backgroundColor: '#ecfdf5', 
+                  color: '#065f46', 
+                  p: 2, 
+                  borderRadius: 2,
+                  mb: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  fontWeight: 'medium'
+                }}
+              >
+                <Typography variant="body2">
+                  Comment posted successfully!
+                </Typography>
+              </Box>
+            )}
+
+            {/* Loading indicator */}
+            {loadingComments && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                <CircularProgress size={30} sx={{ color: '#FF6F00' }} />
+              </Box>
+            )}
             
             {/* Comment Input - Show only if logged in */}
             {isLoggedIn ? (
@@ -639,7 +903,11 @@ const NationalNewsDetails = () => {
             
             {/* Comments List */}
             <Box>
-              {comments.length === 0 ? (
+              {loadingComments ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                  <CircularProgress size={30} sx={{ color: '#FF6F00' }} />
+                </Box>
+              ) : comments.length === 0 ? (
                 <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
                   No comments yet. Be the first to comment!
                 </Typography>
@@ -650,12 +918,12 @@ const NationalNewsDetails = () => {
                       <Avatar 
                         sx={{ bgcolor: '#FF6F00' }}
                       >
-                        {(comment.user?.username || 'U').charAt(0).toUpperCase()}
+                        {(comment.user?.username || comment.user?.name || 'U').charAt(0).toUpperCase()}
                       </Avatar>
                       <Box>
                         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
                           <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                            {comment.user?.username || 'Anonymous'}
+                            {comment.user?.username || comment.user?.name || 'Anonymous'}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
                             {formatDate(comment.createdAt)}

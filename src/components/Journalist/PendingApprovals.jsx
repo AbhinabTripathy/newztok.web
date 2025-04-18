@@ -103,8 +103,34 @@ const PendingApprovals = () => {
       
       console.log('Fetched pending news items:', newsItems.length);
       
+      // Log the first item to see its structure
+      if (newsItems.length > 0) {
+        console.log('First news item structure:', newsItems[0]);
+      }
+      
+      // Process each news item to ensure it has all required fields
+      const processedItems = newsItems.map(item => {
+        // Log each item to see its structure
+        console.log('Processing item:', item);
+        
+        // Create a clean copy with all required fields
+        return {
+          ...item,
+          // Ensure these fields have fallback values and are never null
+          title: item.title || '',
+          content: item.content || '',
+          category: item.category || '',
+          state: item.state || '',
+          district: item.district || '',
+          featuredImage: item.featuredImage || '',
+          status: item.status || 'pending'
+        };
+      });
+      
+      console.log('Processed items with state and district:', processedItems);
+      
       // Check for any locally updated news items in localStorage
-      const updatedItems = checkForLocallyUpdatedItems(newsItems);
+      const updatedItems = checkForLocallyUpdatedItems(processedItems);
       
       setPendingNews(updatedItems);
       
@@ -378,14 +404,23 @@ const PendingApprovals = () => {
       const url = formatApiUrl(baseURL, '/api/news/approved-by-me');
       console.log('Fetching approved news from URL:', url);
       
-      const response = await axios.get(url, config);
-      
-      console.log('Approved news API Response:', response.data);
-      
-      // Process approved news data here if needed
+      // Check if the endpoint is accessible before making the request
+      // This is a workaround for the 403 error
+      try {
+        const response = await axios.get(url, config);
+        console.log('Approved news API Response:', response.data);
+        // Process approved news data here if needed
+      } catch (error) {
+        // Silently handle the 403 error - this endpoint might not be available for journalists
+        if (error.response && error.response.status === 403) {
+          console.log('Approved news endpoint not accessible for this user role');
+        } else {
+          console.error('Error fetching approved posts:', error);
+        }
+      }
       
     } catch (err) {
-      console.error('Error fetching approved posts:', err);
+      console.error('Error in fetchApprovedNews:', err);
       // Handle error gracefully - don't show error to user since this isn't critical
     }
   };
@@ -393,8 +428,8 @@ const PendingApprovals = () => {
   // Fetch both pending and approved news on component mount
   useEffect(() => {
     fetchPendingNews();
-    // Also fetch approved news
-    fetchApprovedNews();
+    // Comment out the approved news fetch since it's causing errors and not being used
+    // fetchApprovedNews();
     
     // Add page visibility change listener to refresh data when tab becomes active
     const handleVisibilityChange = () => {
@@ -504,7 +539,7 @@ const PendingApprovals = () => {
           {/* Table Headers */}
           <div style={{ 
             display: 'grid', 
-            gridTemplateColumns: '1.5fr 2fr 1fr 1fr 1fr 0.5fr', 
+            gridTemplateColumns: '1.5fr 2fr 1fr 1fr 1fr 1fr 0.5fr', 
             borderBottom: '1px solid #e5e7eb',
             backgroundColor: 'white'
           }}>
@@ -540,6 +575,17 @@ const PendingApprovals = () => {
               borderRight: '1px solid #e5e7eb'
             }}>
               Category <FiChevronDown size={16} style={{ marginLeft: '4px', color: '#9ca3af' }} />
+            </div>
+            <div style={{ 
+              color: '#374151', 
+              fontWeight: '500', 
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '12px 16px',
+              borderRight: '1px solid #e5e7eb'
+            }}>
+              State <FiChevronDown size={16} style={{ marginLeft: '4px', color: '#9ca3af' }} />
             </div>
             <div style={{ 
               color: '#374151', 
@@ -593,7 +639,7 @@ const PendingApprovals = () => {
                 key={news.id || index}
                 style={{ 
                   display: 'grid', 
-                  gridTemplateColumns: '1.5fr 2fr 1fr 1fr 1fr 0.5fr', 
+                  gridTemplateColumns: '1.5fr 2fr 1fr 1fr 1fr 1fr 0.5fr', 
                   borderBottom: index < pendingNews.length - 1 ? '1px solid #e5e7eb' : 'none',
                   backgroundColor: news._updatedLocally ? '#f0f9ff' : 'white' // Highlight locally updated items
                 }}
@@ -628,6 +674,13 @@ const PendingApprovals = () => {
                   color: '#1f2937'
                 }}>
                   {news.category || 'Uncategorized'}
+                </div>
+                <div style={{ 
+                  padding: '16px', 
+                  borderRight: '1px solid #e5e7eb',
+                  color: '#1f2937'
+                }}>
+                  {news.state || 'N/A'}
                 </div>
                 <div style={{ 
                   padding: '16px', 

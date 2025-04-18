@@ -94,7 +94,12 @@ const Login = () => {
     setError('');
     setLoading(true);
 
-    const requestData = { username: email, password };
+    // Modified request data format to match the API's expected structure
+    const requestData = { 
+      username: email, // Send as username instead of email
+      password: password
+    };
+    
     console.log("Staff request data:", requestData);
 
     try {
@@ -110,7 +115,19 @@ const Login = () => {
 
       // Make the login request with more detailed error handling
       console.log("Making staff login request to:", 'https://api.newztok.in/api/auth/login');
-      const response = await axios.post('https://api.newztok.in/api/auth/login', requestData);
+      
+      // Add headers for content type
+      const config = {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      };
+      
+      const response = await axios.post(
+        'https://api.newztok.in/api/auth/login', 
+        requestData,
+        config
+      );
       
       // Log the entire response for debugging
       console.log("Full API response:", response);

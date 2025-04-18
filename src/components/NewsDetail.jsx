@@ -27,12 +27,14 @@ const NewsDetail = () => {
   const navigate = useNavigate();
   const [newsData, setNewsData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [comment, setComment] = useState('');
   const [comments, setComments] = useState([]);
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [viewCount, setViewCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [commentSuccess, setCommentSuccess] = useState(false);
   
   // API base URL
   const baseURL = 'https://api.newztok.in';
@@ -50,24 +52,30 @@ const NewsDetail = () => {
     console.log(`[NewsDetail ${id}] ${message}`, data !== undefined ? data : '');
   };
 
+  // Fetch news details on component mount
   useEffect(() => {
     debug('Component mounted with ID', id);
-    debug('User logged in?', isLoggedIn);
     
     fetchNewsDetail();
-    
-    // Increment view count immediately
-    incrementViewCount();
-    
-    // Fetch comments for this article
     fetchComments();
     
-    // Check if user has already liked the article when component mounts
-    if (isLoggedIn) {
+    // Check like status if user is logged in
+    const token = getUserToken();
+    if (token) {
       checkLikeStatus();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Clear comment success message after 3 seconds
+  useEffect(() => {
+    if (commentSuccess) {
+      const timer = setTimeout(() => {
+        setCommentSuccess(false);
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [commentSuccess]);
 
   // Re-check like status whenever login state changes
   useEffect(() => {
@@ -524,7 +532,6 @@ const NewsDetail = () => {
     if (e) e.preventDefault();
     
     if (!comment.trim()) {
-      alert("Comment cannot be empty");
       return;
     }
     
@@ -532,13 +539,13 @@ const NewsDetail = () => {
     const token = getUserToken();
     
     if (!token) {
-      alert("Please login to comment");
+      navigate('/user/login');
       return;
     }
     
     const currentUser = getCurrentUser();
     if (!currentUser) {
-      alert("User information not available. Please login again");
+      navigate('/user/login');
       return;
     }
     
@@ -596,10 +603,9 @@ const NewsDetail = () => {
       // Fetch the latest comments to ensure we have the server version
       fetchComments();
       
-      alert("Comment added successfully!");
+      setCommentSuccess(true);
     } catch (error) {
       console.error("Error submitting comment:", error);
-      alert("Failed to add comment. Please try again.");
       
       // Remove optimistic comment on error
       setComments(prevComments => prevComments.filter(c => !c.id.startsWith('temp-')));
@@ -1152,6 +1158,26 @@ const NewsDetail = () => {
                 >
                   Login to comment
                 </Button>
+              </Box>
+            )}
+            
+            {/* Comment Success Message */}
+            {commentSuccess && (
+              <Box 
+                sx={{ 
+                  backgroundColor: '#ecfdf5', 
+                  color: '#065f46', 
+                  p: 2, 
+                  borderRadius: 2,
+                  mb: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  fontWeight: 'medium'
+                }}
+              >
+                <Typography variant="body2">
+                  Comment posted successfully!
+                </Typography>
               </Box>
             )}
             

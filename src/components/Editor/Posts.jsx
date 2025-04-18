@@ -18,6 +18,30 @@ const Posts = () => {
   // API Base URL
   const baseURL = 'https://api.newztok.in';
 
+  // Helper function to format dates to IST
+  const formatToIST = (dateString) => {
+    if (!dateString) return 'Unknown';
+    try {
+      const date = new Date(dateString);
+      // Check if the date is valid
+      if (isNaN(date.getTime())) return 'Invalid Date';
+      
+      // Format to IST (UTC+5:30)
+      return date.toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return dateString; // Return original string if formatting fails
+    }
+  };
+
   // Fetch approved posts
   useEffect(() => {
     fetchApprovedPosts();
@@ -55,26 +79,26 @@ const Posts = () => {
         fetchedPosts = [];
       }
       
-      // Log each post's featured status for debugging with all possible properties
-      fetchedPosts.forEach(post => {
-        // Log all properties that might contain featured status
-        console.log(`Post ID ${post.id || post._id} | Complete featured data:`, {
-          id: post.id || post._id,
-          isFeatured: post.isFeatured,
-          featured: post.featured,
-          is_featured: post.is_featured,
-          // Convert any string values to aid debugging
-          isFeaturedType: typeof post.isFeatured,
-          isFeaturedString: String(post.isFeatured),
-          featuredType: typeof post.featured,
-          featuredString: String(post.featured),
-        });
+      // Get list of deleted post IDs from localStorage
+      let deletedPostIds = [];
+      try {
+        deletedPostIds = JSON.parse(localStorage.getItem('deletedPosts') || '[]');
+      } catch (error) {
+        console.warn('Could not parse deleted posts from localStorage:', error);
+      }
+      
+      // Filter out any posts that have been deleted
+      fetchedPosts = fetchedPosts.filter(post => {
+        const postId = post._id || post.id;
+        return !deletedPostIds.includes(postId);
       });
       
+      // Log complete post objects to examine structure
+      console.log('Complete post objects after filtering deleted posts:', fetchedPosts);
+      
       // Set posts with a clean object to ensure reactivity and handle missing properties
-      setPosts(fetchedPosts.map(post => {
+      const processedPosts = fetchedPosts.map(post => {
         // More comprehensive check for featured status
-        // Check for any truthy value or string representation of true
         const isFeaturedValue = 
           post.isFeatured === true || 
           post.featured === true || 
@@ -82,21 +106,97 @@ const Posts = () => {
           post.isFeatured === 'true' || 
           post.featured === 'true' || 
           post.is_featured === 'true' ||
-          // Also check for numeric representation
           post.isFeatured === 1 ||
           post.featured === 1 ||
           post.is_featured === 1;
         
-        console.log(`Post ${post.id || post._id} final featured status:`, isFeaturedValue);
+        // Extract journalist information with proper logging for debugging
+        let journalistName = 'Unknown';
+        const journalistInfo = post.journalist || post.createdBy || post.submittedBy || post.author;
         
+        console.log('Journalist info for post', post._id || post.id, ':', journalistInfo);
+        
+        if (journalistInfo) {
+          if (typeof journalistInfo === 'object') {
+            if (journalistInfo.name) {
+              journalistName = journalistInfo.name;
+            } else if (journalistInfo.fullName) {
+              journalistName = journalistInfo.fullName;
+            } else if (journalistInfo.userName) {
+              journalistName = journalistInfo.userName;
+            } else if (journalistInfo.username) {
+              journalistName = journalistInfo.username;
+            } else {
+              // If we have an object but no recognizable name property, try to format what we have
+              journalistName = `ID: ${journalistInfo.id || 'unknown'}`;
+              if (journalistInfo.email) journalistName += ` (${journalistInfo.email})`;
+              
+              // Log the object for debugging
+              console.log('Journalist object without standard name property:', journalistInfo);
+            }
+          } else if (typeof journalistInfo === 'string') {
+            journalistName = journalistInfo;
+          }
+        }
+          
+        // Extract editor information with proper logging for debugging
+        let editorName = 'Unknown';
+        const editorInfo = post.editor || post.approvedBy;
+        
+        console.log('Editor info for post', post._id || post.id, ':', editorInfo);
+        
+        if (editorInfo) {
+          if (typeof editorInfo === 'object') {
+            if (editorInfo.name) {
+              editorName = editorInfo.name;
+            } else if (editorInfo.fullName) {
+              editorName = editorInfo.fullName;
+            } else if (editorInfo.userName) {
+              editorName = editorInfo.userName;
+            } else if (editorInfo.username) {
+              editorName = editorInfo.username;
+            } else {
+              // If we have an object but no recognizable name property, try to format what we have
+              editorName = `ID: ${editorInfo.id || 'unknown'}`;
+              if (editorInfo.email) editorName += ` (${editorInfo.email})`;
+              
+              // Log the object for debugging
+              console.log('Editor object without standard name property:', editorInfo);
+            }
+          } else if (typeof editorInfo === 'string') {
+            editorName = editorInfo;
+          }
+        }
+        
+        // Format dates to IST
+        const formattedSubmittedAt = formatToIST(post.createdAt || post.submittedAt);
+        const formattedApprovedAt = formatToIST(post.approvedAt || post.updatedAt);
+        
+        // Log the extracted names for debugging
+        console.log(`Post ${post._id || post.id} - Journalist: ${journalistName}, Editor: ${editorName}`);
+          
         return {
           ...post,
           // Keep both consistent
           featured: isFeaturedValue,
-          isFeatured: isFeaturedValue
+          isFeatured: isFeaturedValue,
+          // Store journalist and editor info
+          journalistName,
+          editorName,
+          // Store formatted dates
+          formattedSubmittedAt,
+          formattedApprovedAt
         };
-      }));
+      });
       
+      // Sort by most recently approved first
+      const sortedPosts = processedPosts.sort((a, b) => {
+        const dateA = new Date(a.approvedAt || a.updatedAt || 0);
+        const dateB = new Date(b.approvedAt || b.updatedAt || 0);
+        return dateB - dateA; // Descending order (newest first)
+      });
+      
+      setPosts(sortedPosts);
       setError(null);
 
     } catch (err) {
@@ -120,6 +220,29 @@ const Posts = () => {
         throw new Error('Authentication token not found. Please log in again.');
       }
 
+      // Check if we're trying to mark a post as featured (not unfeature it)
+      if (!currentFeatured) {
+        // First, check if the token already indicates this post is featured
+        // We do this by checking local storage or any other token storage mechanism
+        try {
+          const storedFeaturedKey = `featured_post_${postId}`;
+          const storedFeatured = localStorage.getItem(storedFeaturedKey);
+          
+          // If we already have a stored token for this post being featured,
+          // we can update the UI immediately without making an API call
+          if (storedFeatured === 'true') {
+            console.log(`Post ${postId} already marked as featured in local storage`);
+            
+            // Update UI state only
+            updatePostFeaturedState(postId, true);
+            return;
+          }
+        } catch (storageError) {
+          // If localStorage access fails, continue with API call
+          console.warn('Could not access localStorage:', storageError);
+        }
+      }
+
       // Setup headers with the token
       const config = getAuthConfig();
 
@@ -139,31 +262,24 @@ const Posts = () => {
       console.log('Response data:', response.data);
 
       if (response.status >= 200 && response.status < 300) {
-        // Update the posts state with the new featured status
-        setPosts(prevPosts => 
-          prevPosts.map(post => {
-            // Verify the ID match more strictly with string conversion
-            if (String(post.id) === String(postId) || String(post._id) === String(postId)) {
-              const updatedPost = {
-                ...post,
-                isFeatured: newFeaturedStatus,
-                featured: newFeaturedStatus
-              };
-              console.log('Updated post data:', updatedPost);
-              return updatedPost;
-            }
-            return post;
-          })
-        );
+        // If successfully marked as featured, store this information
+        if (newFeaturedStatus) {
+          try {
+            localStorage.setItem(`featured_post_${postId}`, 'true');
+          } catch (storageError) {
+            console.warn('Could not store featured state in localStorage:', storageError);
+          }
+        } else {
+          // If unfeatured, remove the local storage token
+          try {
+            localStorage.removeItem(`featured_post_${postId}`);
+          } catch (storageError) {
+            console.warn('Could not remove featured state from localStorage:', storageError);
+          }
+        }
 
-        setSuccessMessage(newFeaturedStatus 
-          ? "News marked as featured successfully!" 
-          : "Featured status removed successfully!"
-        );
-
-        // Don't automatically refresh - it's losing our state
-        // Instead, close the dropdown and let the current state persist
-        toggleActionDropdown(postId);
+        // Update post state with the new featured status
+        updatePostFeaturedState(postId, newFeaturedStatus);
       } else {
         throw new Error(`Server returned status: ${response.status}`);
       }
@@ -178,29 +294,89 @@ const Posts = () => {
     }
   };
 
+  // Helper function to update featured state in UI
+  const updatePostFeaturedState = (postId, newFeaturedStatus) => {
+    // Update the posts state with the new featured status
+    setPosts(prevPosts => 
+      prevPosts.map(post => {
+        // Verify the ID match more strictly with string conversion
+        if (String(post.id) === String(postId) || String(post._id) === String(postId)) {
+          const updatedPost = {
+            ...post,
+            isFeatured: newFeaturedStatus,
+            featured: newFeaturedStatus
+          };
+          console.log('Updated post data:', updatedPost);
+          return updatedPost;
+        }
+        return post;
+      })
+    );
+
+    setSuccessMessage(newFeaturedStatus 
+      ? "News marked as featured successfully!" 
+      : "Featured status removed successfully!"
+    );
+
+    // Don't automatically refresh - it's losing our state
+    // Instead, close the dropdown and let the current state persist
+    toggleActionDropdown(postId);
+  };
+
   // Function to handle remove post (delete request)
   const handleRemovePost = async (postId) => {
     try {
-      // Show working message instead of deleting
-      setSuccessMessage("We are working on it through the server");
+      // Confirm with the user before deleting
+      if (!window.confirm('Are you sure you want to permanently delete this post? This action cannot be undone.')) {
+        return;
+      }
+
+      console.log("Trying to delete post:", postId);
+      const token = getAuthToken();
+      const res = await axios.delete(`https://api.newztok.in/api/news/${postId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      console.log("Delete successful:", res.data);
       
-      // Close the dropdown
-      toggleActionDropdown(postId);
+      // Handle successful deletion
+      handleSuccessfulDeletion(postId);
       
-      // Clear the message after 3 seconds
-      setTimeout(() => {
-        setSuccessMessage(null);
-      }, 3000);
-      
-    } catch (err) {
-      console.error('Error removing post:', err);
-      setError(`Failed to process request: ${err.message}`);
-      
-      // Clear the error after 3 seconds
-      setTimeout(() => {
-        setError(null);
-      }, 3000);
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      setError('Failed to delete post. Please try again.');
+      setTimeout(() => setError(null), 3000);
     }
+  };
+  
+  // Helper function to handle successful deletion
+  const handleSuccessfulDeletion = (postId) => {
+    // Remove the post from the local state
+    setPosts(prevPosts => prevPosts.filter(post => 
+      String(post.id) !== String(postId) && String(post._id) !== String(postId)
+    ));
+    
+    // Store the deleted post ID in localStorage to prevent it from reappearing
+    try {
+      const deletedPosts = JSON.parse(localStorage.getItem('deletedPosts') || '[]');
+      if (!deletedPosts.includes(postId)) {
+        deletedPosts.push(postId);
+        localStorage.setItem('deletedPosts', JSON.stringify(deletedPosts));
+      }
+    } catch (storageError) {
+      console.warn('Could not store deleted post ID in localStorage:', storageError);
+    }
+    
+    setSuccessMessage("Post permanently deleted from the database");
+    
+    // Clear the message after 3 seconds
+    setTimeout(() => {
+      setSuccessMessage(null);
+    }, 3000);
+    
+    // Close the dropdown
+    toggleActionDropdown(postId);
   };
 
   // Toggle action dropdown for a specific post
@@ -512,10 +688,24 @@ const Posts = () => {
                         )}
                       </td>
                       <td style={{ padding: '16px' }}>{post.category || 'Uncategorized'}</td>
-                      <td style={{ padding: '16px' }}>{post.author || post.submittedBy || post.createdBy || 'Unknown'}</td>
-                      <td style={{ padding: '16px' }}>{post.approvedBy || 'Unknown'}</td>
-                      <td style={{ padding: '16px' }}>{post.createdAt || post.submittedAt || 'Unknown'}</td>
-                      <td style={{ padding: '16px' }}>{post.approvedAt || post.updatedAt || 'Unknown'}</td>
+                      <td style={{ padding: '16px' }}>
+                        {/* Show the journalist information */}
+                        {post.journalist && typeof post.journalist === 'object' ? 
+                          post.journalist.username || post.journalist.name || `ID: ${post.journalist.id}` 
+                          : 
+                          post.journalistName || post.author || post.submittedBy || post.createdBy || 'Unknown'
+                        }
+                      </td>
+                      <td style={{ padding: '16px' }}>
+                        {/* Show the editor information */}
+                        {post.editor && typeof post.editor === 'object' ? 
+                          post.editor.username || post.editor.name || `ID: ${post.editor.id}` 
+                          : 
+                          post.editorName || post.approvedBy || 'Unknown'
+                        }
+                      </td>
+                      <td style={{ padding: '16px' }}>{post.formattedSubmittedAt}</td>
+                      <td style={{ padding: '16px' }}>{post.formattedApprovedAt}</td>
                       <td style={{ padding: '16px', textAlign: 'center' }}>
                         <div style={{ position: 'relative' }}>
                           <button 
@@ -646,4 +836,4 @@ const Posts = () => {
   );
 };
 
-export default Posts; 
+export default Posts;

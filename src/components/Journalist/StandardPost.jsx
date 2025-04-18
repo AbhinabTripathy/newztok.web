@@ -145,292 +145,228 @@ const StandardPost = () => {
       return;
     }
 
+    // Get the auth token
+    const token = getAuthToken();
+    
+    if (!token) {
+      setError('No authentication token found. Please login again.');
+      setTimeout(() => {
+        navigate('/login');
+      }, 3000);
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
       
-      // Get the auth token
-      const token = getAuthToken();
+      // Create FormData to send the post with all data including the image
+      const formData = new FormData();
       
-      if (!token) {
-        throw new Error('No authentication token found. Please login again.');
-      }
-
-      // Clean the token - remove any quotes or whitespace that might cause issues
-      const cleanToken = token.trim().replace(/^["'](.*)["']$/, '$1');
+      // Add required fields
+      formData.append('title', title.trim()); // Post Title/Headline
+      formData.append('content', actualContent.trim()); // Content
+      formData.append('category', category); // CATEGORY
+      formData.append('contentType', 'standard');
+      formData.append('featuredImage', file); // Featured Image
       
-      // Log token information for debugging (safely)
-      console.log('Token length:', cleanToken.length);
-      console.log('Token format check:', cleanToken.includes('.') ? 'Contains periods (likely JWT)' : 'No periods (may not be JWT)');
-      console.log('Token prefix:', cleanToken.substring(0, 10) + '...');
-
-      // Set up request headers with token - moved outside try block to fix scope issue
-      const myHeaders = new Headers();
-      myHeaders.append("Authorization", `Bearer ${cleanToken}`);
-      // No need to set Content-Type for FormData, browser will set it with boundary
-
-      // Make the API request with different content type to avoid FormData issues
+      // Add state and district from journalist profile
+      // If journalist has assigned state/district, use those values
+      const stateToUse = journalistProfile?.assignState || state;
+      const districtToUse = journalistProfile?.assignDistrict || district;
+      
+      // Add state and district to formData
+      if (stateToUse && stateToUse.trim() !== '') formData.append('state', stateToUse);
+      if (districtToUse && districtToUse.trim() !== '') formData.append('district', districtToUse);
+      
+      // Show the submission data in the console
+      console.log('Submitting post with the following data:', {
+        title: title.trim(),
+        content: `${actualContent.trim().substring(0, 50)}${actualContent.length > 50 ? '...' : ''}`,
+        category,
+        contentType: 'standard',
+        state: stateToUse || '[not set]',
+        district: districtToUse || '[not set]',
+        featuredImage: {
+          name: file.name,
+          size: `${(file.size / 1024).toFixed(2)} KB`,
+          type: file.type
+        }
+      });
+      
+      // Try main endpoint
+      let response;
       try {
-        console.log('Attempting direct JSON POST without FormData');
-        
-        // First convert the file to base64 for sending as JSON
-        const reader = new FileReader();
-        
-        // Set up a promise to handle the FileReader's async nature
-        const fileToBase64 = new Promise((resolve, reject) => {
-          reader.onload = () => resolve(reader.result.split(',')[1]);
-          reader.onerror = (error) => reject(error);
-          reader.readAsDataURL(file);
+        console.log('Attempting main endpoint: /api/news/create');
+        // Make the API request
+        response = await axios({
+          method: 'post',
+          url: `${API_BASE_URL}/api/news/create`,
+          data: formData,
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          },
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percentCompleted);
+            console.log(`Upload progress: ${percentCompleted}%`);
+          }
         });
+      } catch (mainEndpointErr) {
+        console.error('Main endpoint failed:', mainEndpointErr);
         
-        // Get base64 string from the file
-        const fileBase64 = await fileToBase64;
-        
-        // Create a JSON object without any isFeatured field
-        const postData = {
-          title: title.trim(),
-          content: actualContent.trim(),
-          category,
-          contentType: "standard",
-          featuredImageBase64: fileBase64,
-          fileType: file.type,
-          fileName: file.name
-        };
-        
-        // Add state and district from journalist profile if not explicitly changed
-        postData.state = state;
-        postData.district = district;
-        
-        // Show the upload is starting
-        setUploadProgress(10);
-        
-        // Set JSON headers
-        const jsonHeaders = new Headers();
-        jsonHeaders.append("Authorization", `Bearer ${cleanToken}`);
-        jsonHeaders.append("Content-Type", "application/json");
-        
-        // Make the fetch request with JSON data
-        const response = await fetch("https://api.newztok.in/api/news/create", {
-          method: "POST",
-          headers: jsonHeaders,
-          body: JSON.stringify(postData),
-          redirect: "follow"
-        });
-        
-        setUploadProgress(90);
-        
-        // Check if response is ok
-        if (!response.ok) {
-          // Get response text
-          const errorText = await response.text();
-          console.error(`HTTP error! Status: ${response.status}`, errorText);
-          
-          // Parse error text if possible
-          let errorData;
+        // Try to extract detailed error information
+        let errorDetail = '';
+        if (mainEndpointErr.response && mainEndpointErr.response.data) {
           try {
-            errorData = JSON.parse(errorText);
+            errorDetail = typeof mainEndpointErr.response.data === 'object' 
+              ? JSON.stringify(mainEndpointErr.response.data) 
+              : mainEndpointErr.response.data;
+            console.log('Server error details:', errorDetail);
           } catch (e) {
-            errorData = { message: errorText };
+            console.error('Could not parse error details');
           }
-          
-          throw {
-            status: response.status,
-            statusText: response.statusText,
-            data: errorData
-          };
         }
         
-        // Get response data
-        const resultText = await response.text();
-        let result;
+        // Try alternative endpoint #1 - /api/posts
         try {
-          result = JSON.parse(resultText);
-        } catch (e) {
-          result = { message: resultText };
-        }
-        
-        console.log('Post created successfully:', result);
-        setUploadProgress(100);
-        
-        // Handle success
-        handleDiscard();
-        alert('🎉 Success! Your post has been created and is pending review.');
-        navigate('/journalist/pendingApprovals');
-        
-      } catch (fetchError) {
-        console.error('Fetch request failed:', fetchError);
-        
-        // Extract error details for diagnosis
-        let errorDetails = '';
-        if (fetchError.data) {
-          if (typeof fetchError.data === 'object') {
-            errorDetails = JSON.stringify(fetchError.data);
-          } else {
-            errorDetails = String(fetchError.data);
-          }
-        }
-        
-        // If getting isFeatured errors, try a modified approach without that field
-        if (errorDetails.includes("Unknown column 'isFeatured'")) {
-          console.log('Detected isFeatured column error, trying alternative approach');
-          
-          try {
-            // Modified approach: Convert file to base64 again if needed
-            let fileBase64 = null;
-            if (file) {
-              const reader = new FileReader();
-              fileBase64 = await new Promise((resolve, reject) => {
-                reader.onload = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = error => reject(error);
-                reader.readAsDataURL(file);
-              });
+          console.log('Trying alternative endpoint #1: /api/posts');
+          response = await axios({
+            method: 'post',
+            url: `${API_BASE_URL}/api/posts`,
+            data: formData,
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
             }
-            
-            // Create payload WITHOUT the isFeatured field that's causing the error
-            const fixedPostData = {
-              title: title.trim(),
-              content: actualContent.trim(),
-              category,
-              contentType: "standard",
-              // Send image data only if we have it
-              ...(fileBase64 ? {
-                featuredImageBase64: fileBase64,
-                fileType: file.type,
-                fileName: file.name
-              } : {})
-            };
-            
-            // Add state and district from journalist profile if not explicitly changed
-            fixedPostData.state = state;
-            fixedPostData.district = district;
-            
-            console.log('Trying request with fixed payload (no isFeatured field)');
-            setUploadProgress(30);
-            
-            const response = await axios.post(
-              "https://api.newztok.in/api/news/create", 
-              fixedPostData,
-              {
-                headers: {
-                  'Authorization': `Bearer ${cleanToken}`,
-                  'Content-Type': 'application/json'
-                }
-              }
-            );
-            
-            console.log('Post created with fixed approach:', response.data);
-            setUploadProgress(100);
-            handleDiscard();
-            alert('🎉 Success! Your post has been created and is pending review.');
-            navigate('/journalist/pendingApprovals');
-            return; // Exit the function after successful submission
-            
-          } catch (fixedError) {
-            console.error('Fixed approach failed:', fixedError);
-            // Continue to the minimal approach as a fallback
-          }
+          });
+        } catch (alt1Err) {
+          console.error('Alternative endpoint #1 failed:', alt1Err);
           
-          // If the fixed approach still failed, try the absolute minimal approach
-          console.log('Trying minimal approach with direct axios POST');
-          
+          // Try alternative endpoint #2 - /api/content
           try {
-            // Use axios for a different approach
-            const response = await axios.post(
-              "https://api.newztok.in/api/news/create", 
-              {
+            console.log('Trying alternative endpoint #2: /api/content');
+            response = await axios({
+              method: 'post',
+              url: `${API_BASE_URL}/api/content`,
+              data: formData,
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'multipart/form-data'
+              }
+            });
+          } catch (alt2Err) {
+            console.error('Alternative endpoint #2 failed:', alt2Err);
+            
+            // Last resort - Try alternative endpoint #3 with minimal JSON
+            try {
+              console.log('Last resort - using /api/v2/news with JSON only');
+              
+              // Create minimal JSON without problematic fields
+              const minimalData = {
                 title: title.trim(),
                 content: actualContent.trim(),
-                category: category,
-                // No other fields at all
-              },
-              {
-                headers: {
-                  'Authorization': `Bearer ${cleanToken}`,
-                  'Content-Type': 'application/json'
+                category,
+                status: 'pending',
+                state: stateToUse,
+                district: districtToUse
+              };
+              
+              response = await axios.post(
+                `${API_BASE_URL}/api/v2/news`,
+                minimalData,
+                {
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  }
                 }
-              }
-            );
-            
-            console.log('Post created with minimal fields:', response.data);
-            handleDiscard();
-            alert('Post created with minimal information. You may need to add the image later.');
-            navigate('/journalist/pendingApprovals');
-            
-          } catch (minimalError) {
-            console.error('Even minimal approach failed:', minimalError);
-            throw new Error(`Server database issue: ${minimalError.message}`);
+              );
+            } catch (lastResortErr) {
+              console.error('All endpoints failed:', lastResortErr);
+              // Let the main error handler deal with this
+              throw {
+                message: 'Server unavailable: All API endpoints failed',
+                originalErrors: {
+                  main: mainEndpointErr?.message,
+                  alt1: alt1Err?.message,
+                  alt2: alt2Err?.message,
+                  lastResort: lastResortErr?.message
+                },
+                serverDetail: errorDetail
+              };
+            }
           }
-        } else {
-          throw fetchError;
         }
       }
+      
+      console.log('Post created successfully:', response.data);
+      
+      // Handle success
+      setLoading(false);
+      setError('');
+      
+      // Show success message
+      alert('🎉 Success! Your post has been submitted for review.');
+      
+      // Clear form
+      handleDiscard();
+      
+      // Navigate after a short delay
+      setTimeout(() => {
+        navigate('/journalist/pendingApprovals');
+      }, 2000);
       
     } catch (err) {
       console.error('API request failed:', err);
       
-      // Extract detailed error information
-      let errorMessage = 'Failed to create post';
-      let serverResponse = null;
-      
-      if (err.response) {
-        // The server responded with a status code outside of 2xx range
-        console.error('Server Error Details:', {
-          status: err.response.status,
-          statusText: err.response.statusText,
-          data: err.response.data
-        });
+      // Enhanced error reporting with more details
+      if (err.originalErrors) {
+        const errorDetails = Object.entries(err.originalErrors)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join('; ');
         
-        serverResponse = err.response.data;
-        
-        if (err.response.status === 500) {
-          errorMessage = 'Server Error (500): The server encountered an internal error. This is not your fault.';
-          
-          // Provide more detailed error information if available
-          if (err.response.data && typeof err.response.data === 'object') {
-            if (err.response.data.message) {
-              errorMessage += ` Details: ${err.response.data.message}`;
-            }
-            if (err.response.data.error) {
-              errorMessage += ` Error: ${err.response.data.error}`;
+        setError(`All API endpoints failed. Please contact the admin with this error: ${err.message}. 
+          Try again later or use another browser. 
+          Server details: ${err.serverDetail || 'Unknown'}`);
+      } else if (err.response && err.response.data) {
+        // Try to extract message from various response formats
+        let message = err.message;
+        try {
+          if (typeof err.response.data === 'object' && err.response.data.message) {
+            message = err.response.data.message;
+          } else if (typeof err.response.data === 'string') {
+            const match = err.response.data.match(/"message"\s*:\s*"([^"]+)"/);
+            if (match && match[1]) {
+              message = match[1];
             }
           }
-          
-          // Suggest potential fixes for common issues
-          errorMessage += '\n\nPossible solutions:\n';
-          errorMessage += '• Try reducing the image file size\n';
-          errorMessage += '• Check if the title contains special characters\n';
-          errorMessage += '• Try logging out and back in again\n';
-          errorMessage += '• Wait a few minutes and try again';
-        } else if (err.response.status === 401 || err.response.status === 403) {
-          errorMessage = 'Authentication Error: Your session may have expired. Please log in again.';
-        } else if (err.response.status === 413) {
-          errorMessage = 'File Too Large: The image you are trying to upload is too large.';
-        } else if (err.response.data && err.response.data.message) {
-          errorMessage = `Error (${err.response.status}): ${err.response.data.message}`;
-        } else {
-          errorMessage = `Error (${err.response.status}): ${err.response.statusText || 'Unknown error'}`;
+        } catch (e) {
+          console.error('Error parsing error response:', e);
         }
-      } else if (err.request) {
-        // The request was made but no response was received
-        console.error('Request Error:', {
-          request: err.request,
-          message: err.message
-        });
-        errorMessage = 'Network Error: No response received from server. Please check your internet connection.';
+        
+        setError(`Server error: ${message}. Status: ${err.response.status}`);
       } else {
-        // Something happened in setting up the request
-        console.error('Error Message:', err.message);
-        errorMessage = `Error: ${err.message}`;
+        setError(`Error: ${err.message}`);
       }
       
-      // Display error message to user
-      setError(errorMessage);
-      
-      // If it's a server error, also show debug info button
-      if (serverResponse) {
-        console.log('Full server response:', serverResponse);
-      }
-      
+      // Display a more user-friendly error 
+      setError(<div>
+        <div style={{fontWeight: 'bold', marginBottom: '8px'}}>Unable to create post</div>
+        <div>The server is currently experiencing issues. This appears to be a server-side database problem.</div>
+        <div style={{marginTop: '8px'}}>
+          <strong>Please try:</strong>
+          <ul style={{marginLeft: '20px', marginTop: '4px'}}>
+            <li>Using the "Save Draft" option instead</li>
+            <li>Contact your technical support team</li>
+            <li>Try again in a few hours after the database issues are resolved</li>
+          </ul>
+        </div>
+        <div style={{marginTop: '8px', fontSize: '13px', color: '#666'}}>
+          Technical details: {err.message || 'Unknown error'}
+        </div>
+      </div>);
     } finally {
       setLoading(false);
       setUploadProgress(0);

@@ -28,6 +28,7 @@ const AddViewUsers = () => {
 
   // API Base URL
   const baseURL = 'https://api.newztok.in';
+  console.log('Base URL is set to:', baseURL);
 
   // State options as shown in the image
   const stateOptions = [
@@ -117,6 +118,13 @@ const AddViewUsers = () => {
 
   // Update available districts when state changes
   useEffect(() => {
+    // Debug: Check if there are any references to the old endpoint
+    console.log('%c Checking for deprecated URLs', 'background: orange; color: white; padding: 2px 5px;');
+    console.log('Current endpoint being used:', `${baseURL}/api/auth/create-journalist`);
+    
+    // Force clean any cached axios configs
+    axios.defaults.baseURL = baseURL;
+    
     const updateDistricts = () => {
       const stateName = formData.assignedState.toLowerCase();
       let stateKey = "";
@@ -208,38 +216,31 @@ const AddViewUsers = () => {
     setError(null);
     setSuccess(null);
     
-    // Validate form
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match");
-      setLoading(false);
-      return;
-    }
-    
     try {
+      // Validate form
+      if (formData.password !== formData.confirmPassword) {
+        throw new Error("Passwords do not match");
+      }
+      
       // Get the auth token
       const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
       
       if (!token) {
-        setError('No authentication token found. Please log in again.');
-        setLoading(false);
-        return;
+        throw new Error('No authentication token found. Please log in again.');
       }
       
       // Create FormData object for file upload
       const formDataToSend = new FormData();
       
-      // Required fields - match exactly what the server expects
-      formDataToSend.append('name', formData.username); // Use 'name' instead of 'username'
+      // Add fields with the exact names requested by the user
+      formDataToSend.append('username', formData.username);
       formDataToSend.append('email', formData.email);
       formDataToSend.append('password', formData.password);
-      // Don't include confirmPassword in the request
-      
-      // Make sure role is specified as the server expects
+      formDataToSend.append('confirmPassword', formData.confirmPassword);
       formDataToSend.append('role', 'journalist');
       
-      // Optional fields - only add if they have values
       if (formData.phoneNumber) {
-        formDataToSend.append('phone', formData.phoneNumber); // Use 'phone' instead of 'mobile'
+        formDataToSend.append('mobile', formData.phoneNumber);
       }
       
       // Extract state and district based on format
@@ -250,10 +251,10 @@ const AddViewUsers = () => {
       const state = stateInfo.length > 1 ? stateInfo[1].trim() : formData.assignedState.trim();
       const district = districtInfo.length > 1 ? districtInfo[1].trim() : formData.assignedDistrict.trim();
       
-      formDataToSend.append('state', state); // Use 'state' instead of 'assignState'
+      formDataToSend.append('assignedState', state);
       
       if (district) {
-        formDataToSend.append('district', district); // Use 'district' instead of 'assignDistrict'
+        formDataToSend.append('assignedDistrict', district);
       }
       
       // Process profile picture - compress if exists
@@ -262,31 +263,39 @@ const AddViewUsers = () => {
           console.log('Compressing profile picture...');
           const compressedImage = await compressImage(formData.profilePicture);
           console.log(`Original size: ${Math.round(formData.profilePicture.size / 1024)}KB, Compressed: ${Math.round(compressedImage.size / 1024)}KB`);
-          formDataToSend.append('profileImage', compressedImage); // Use 'profileImage' instead of 'profilePicture'
+          formDataToSend.append('profilePicture', compressedImage);
         } catch (imgError) {
           console.error('Error compressing image:', imgError);
           // Skip image if compression fails
         }
       }
       
+      // Log all fields being sent for debugging
       console.log('Sending data with these fields:', Array.from(formDataToSend.keys()));
       
-      try {
-        // Configure axios
-        const config = {
-          headers: {
-            'Authorization': `Bearer ${token}`
-            // Don't set Content-Type, axios will set it correctly with boundary for FormData
-          }
-        };
-        
-        // Direct API call - use the correct endpoint format
-        const response = await axios.post(`${baseURL}/api/auth/register-journalist`, formDataToSend, config);
-        
-        console.log('User created successfully:', response.data);
+      // HARDCODED URL to avoid any chance of using the wrong endpoint
+      const API_URL = 'https://api.newztok.in/api/auth/create-journalist';
+      
+      // Simplest possible configuration
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      };
+      
+      console.log('Making API request to:', API_URL);
+      
+      // Make the API call directly with the hardcoded URL
+      const response = await axios.post(API_URL, formDataToSend, config);
+      
+      console.log('Response status:', response.status);
+      console.log('API response:', response.data);
+      
+      if (response.status >= 200 && response.status < 300) {
+        console.log('User created successfully!');
         setSuccess('Journalist created successfully!');
         
-        // Reset form
+        // Reset form on success
         setFormData({
           username: '',
           email: '',
@@ -298,24 +307,36 @@ const AddViewUsers = () => {
           assignedState: 'बिहार | Bihar',
           assignedDistrict: ''
         });
-      } catch (apiError) {
-        console.error('API error details:', apiError);
-        
-        // Display the actual error message from the server if available
-        if (apiError.response && apiError.response.data) {
-          const errorMessage = apiError.response.data.message || 
-                            apiError.response.data.error || 
-                            'Failed to create user. Please check the form data.';
-          setError(`Error: ${errorMessage}`);
-        } else {
-          setError('Failed to connect to the server. Please try again later.');
-        }
-        
-        // Store locally if API fails due to CORS or other issues
+      } else {
+        throw new Error(`API returned status ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Error creating journalist:', error);
+      
+      if (error.response) {
+        console.error('Error response:', error.response);
+        const errorMessage = error.response.data?.message || 
+                            error.response.data?.error || 
+                            `Server returned ${error.response.status}`;
+        setError(`Error: ${errorMessage}`);
+      } else if (error.request) {
+        console.error('No response received:', error.request);
+        setError('No response received from server. Check your internet connection.');
+      } else {
+        console.error('Error message:', error.message);
+        setError(error.message || 'Unknown error occurred');
+      }
+      
+      // Local storage fallback
+      try {
         console.log('Storing data locally as fallback...');
-        
-        // Create a unique ID
         const userId = `user_${Date.now()}`;
+        
+        // Extract state and district
+        const stateInfo = formData.assignedState.split('|');
+        const districtInfo = formData.assignedDistrict.split('|');
+        const state = stateInfo.length > 1 ? stateInfo[1].trim() : formData.assignedState.trim();
+        const district = districtInfo.length > 1 ? districtInfo[1].trim() : formData.assignedDistrict.trim();
         
         // Store in localStorage (without sensitive data)
         const localUsers = JSON.parse(localStorage.getItem('localJournalists') || '[]');
@@ -332,8 +353,6 @@ const AddViewUsers = () => {
         
         localStorage.setItem('localJournalists', JSON.stringify(localUsers));
         console.log('User stored locally:', userId);
-        
-        // Also show success message since we stored locally
         setSuccess('User stored locally as fallback!');
         
         // Reset form
@@ -348,10 +367,9 @@ const AddViewUsers = () => {
           assignedState: 'बिहार | Bihar',
           assignedDistrict: ''
         });
+      } catch (localError) {
+        console.error('Failed to store locally:', localError);
       }
-    } catch (err) {
-      console.error('General error:', err);
-      setError('Error creating journalist: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }

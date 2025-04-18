@@ -35,6 +35,8 @@ const TrendingNewsDetails = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [viewCount, setViewCount] = useState(0);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [commentSuccess, setCommentSuccess] = useState(false);
   
   // API base URL
   const baseURL = 'https://api.newztok.in';
@@ -57,6 +59,7 @@ const TrendingNewsDetails = () => {
     debug('User logged in?', isLoggedIn);
     
     fetchTrendingNewsDetail();
+    fetchComments();
     
     // Check if user has already liked the article when component mounts
     if (isLoggedIn) {
@@ -64,16 +67,68 @@ const TrendingNewsDetails = () => {
     }
   }, [id]);
 
+  // Clear comment success message after 3 seconds
+  useEffect(() => {
+    if (commentSuccess) {
+      const timer = setTimeout(() => {
+        setCommentSuccess(false);
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [commentSuccess]);
+
   // Re-check like status whenever login state changes
   useEffect(() => {
     if (isLoggedIn) {
       debug('User login state changed, checking like status');
       checkLikeStatus();
+      fetchComments();
     } else {
       // Reset like status if user logs out
       setIsLiked(false);
     }
   }, [isLoggedIn]);
+
+  // Add function to fetch comments
+  const fetchComments = async () => {
+    try {
+      setLoadingComments(true);
+      debug('Fetching comments for news ID', id);
+      
+      // Prepare headers with token if available
+      const headers = {};
+      const token = getUserToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const commentsUrl = `${baseURL}/api/interaction/news/${id}/comments`;
+      debug('Comments API URL', commentsUrl);
+      
+      const response = await axios.get(commentsUrl, { headers });
+      debug('Comments API response', response.data);
+      
+      if (response.data) {
+        let fetchedComments = [];
+        if (Array.isArray(response.data)) {
+          fetchedComments = response.data;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          fetchedComments = response.data.data;
+        } else if (response.data.comments && Array.isArray(response.data.comments)) {
+          fetchedComments = response.data.comments;
+        }
+        
+        debug('Fetched comments count', fetchedComments.length);
+        setComments(fetchedComments);
+      }
+    } catch (err) {
+      console.error("Error fetching comments:", err);
+      // Don't set error state, just log it to avoid disrupting the UI
+    } finally {
+      setLoadingComments(false);
+    }
+  };
 
   // Add function to check if user has already liked the article
   const checkLikeStatus = async () => {
@@ -311,13 +366,9 @@ const TrendingNewsDetails = () => {
       return;
     }
 
-    // If already liked, don't allow re-liking
-    if (isLiked) {
-      debug('User already liked this article, ignoring click');
-      // You can show a message to the user if you want
-      // alert('You have already liked this article');
-      return;
-    }
+    // Store current state before any async operations
+    let prevLikeState = isLiked;
+    let prevLikeCount = likeCount;
 
     try {
       // Get the auth token
@@ -327,19 +378,21 @@ const TrendingNewsDetails = () => {
       if (!token) {
         throw new Error('No authentication token found');
       }
-
-      // Track current state for optimistic updates
-      const currentLikeState = isLiked;
-      const currentLikeCount = likeCount;
       
-      // Optimistically update UI - only allow liking, not unliking
-      setIsLiked(true);
-      setLikeCount(prevCount => prevCount + 1);
-      debug('Optimistically updated like state to liked');
+      // Optimistically update UI for both like and unlike
+      const newLikedState = !isLiked;
+      setIsLiked(newLikedState);
+      setLikeCount(prevCount => newLikedState ? prevCount + 1 : Math.max(0, prevCount - 1));
+      debug(`Optimistically updated like state to ${newLikedState ? 'liked' : 'unliked'}`);
 
       // Create headers with auth token
       const myHeaders = new Headers();
       myHeaders.append("Authorization", `Bearer ${token}`);
+      
+      // Determine which endpoint to use based on the action (like or unlike)
+      const likeEndpoint = isLiked 
+        ? `http://13.234.42.114:3333/api/interaction/news/${id}/unlike`
+        : `http://13.234.42.114:3333/api/interaction/news/${id}/like`;
       
       const requestOptions = {
         method: "POST",
@@ -348,23 +401,20 @@ const TrendingNewsDetails = () => {
       };
 
       // Make the API call
-      debug('Sending like request to API');
-      const response = await fetch(
-        `http://13.234.42.114:3333/api/interaction/news/${id}/like`,
-        requestOptions
-      );
+      debug(`Sending ${isLiked ? 'unlike' : 'like'} request to API`);
+      const response = await fetch(likeEndpoint, requestOptions);
 
       if (!response.ok) {
-        throw new Error(`Like request failed with status: ${response.status}`);
+        throw new Error(`${isLiked ? 'Unlike' : 'Like'} request failed with status: ${response.status}`);
       }
       
       const resultText = await response.text();
-      debug('Received like response', resultText);
+      debug('Received like/unlike response', resultText);
       
       try {
         if (resultText && resultText.trim()) {
           const result = JSON.parse(resultText);
-          debug('Parsed like response', result);
+          debug('Parsed like/unlike response', result);
           
           // Update like count from server response if available
           if (result && typeof result.likesCount !== 'undefined') {
@@ -374,21 +424,18 @@ const TrendingNewsDetails = () => {
             debug('Setting like count from API response', result.likeCount);
             setLikeCount(result.likeCount);
           }
-          
-          // Always set isLiked to true after a successful like request
-          setIsLiked(true);
         }
       } catch (parseError) {
         debug('Response is not valid JSON, keeping optimistic update', parseError.message);
       }
       
     } catch (error) {
-      console.error("Error liking article:", error);
+      console.error(`Error ${isLiked ? 'unliking' : 'liking'} article:`, error);
       // If there was an error, revert to the previous state
-      setIsLiked(false);
-      setLikeCount(prevCount => Math.max(0, prevCount - 1));
+      setIsLiked(prevLikeState);
+      setLikeCount(prevLikeCount);
       // Alert the user of the failure
-      alert('Failed to like the article. Please try again.');
+      alert(`Failed to ${isLiked ? 'unlike' : 'like'} the article. Please try again.`);
     }
   };
 
@@ -425,28 +472,32 @@ const TrendingNewsDetails = () => {
       // Configure headers with the token
       const config = {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       };
       
-      // In production, this would be a real API call
-      // const response = await axios.post(`${baseURL}/api/news/${id}/comment`, { content: comment }, config);
+      debug('Submitting comment', comment);
       
-      // For now, simulate by adding to local state
-      const newComment = {
-        id: Date.now(),
-        content: comment,
-        createdAt: new Date().toISOString(),
-        user: {
-          username: 'Current User' // This would come from API or state in production
-        }
-      };
+      // Send the comment to the API
+      const response = await axios.post(
+        `${baseURL}/api/interaction/news/${id}/comment`, 
+        { content: comment },
+        config
+      );
       
-      setComments(prev => [newComment, ...prev]);
+      debug('Comment submission response', response.data);
+      
+      // After successful submission, refresh the comments list
+      fetchComments();
+      
+      // Clear the comment input
       setComment('');
+
+      // Set comment success state
+      setCommentSuccess(true);
     } catch (err) {
       console.error("Error submitting comment:", err);
-      alert("Failed to submit comment. Please try again.");
     }
   };
 
@@ -727,10 +778,10 @@ const TrendingNewsDetails = () => {
             sx={{ 
               display: 'flex', 
               alignItems: 'center', 
-              cursor: isLiked ? 'default' : 'pointer',
-              opacity: isLiked ? 1 : 0.9,
+              cursor: 'pointer',
+              opacity: 0.9,
               '&:hover': {
-                opacity: isLiked ? 1 : 1
+                opacity: 1
               }
             }} 
             onClick={handleLikeToggle}
@@ -738,15 +789,10 @@ const TrendingNewsDetails = () => {
             <IconButton 
               color={isLiked ? 'error' : 'default'} 
               size="small"
-              disabled={isLiked}
               sx={{
                 transition: 'all 0.2s ease-in-out',
                 '&:hover': {
-                  transform: isLiked ? 'none' : 'scale(1.1)',
-                },
-                '&.Mui-disabled': {
-                  opacity: 1,
-                  color: 'error.main'
+                  transform: 'scale(1.1)',
                 }
               }}
             >
@@ -843,9 +889,33 @@ const TrendingNewsDetails = () => {
               </Box>
             )}
             
+            {/* Comment Success Message */}
+            {commentSuccess && (
+              <Box 
+                sx={{ 
+                  backgroundColor: '#ecfdf5', 
+                  color: '#065f46', 
+                  p: 2, 
+                  borderRadius: 2,
+                  mb: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  fontWeight: 'medium'
+                }}
+              >
+                <Typography variant="body2">
+                  Comment posted successfully!
+                </Typography>
+              </Box>
+            )}
+            
             {/* Comments List */}
             <Box>
-              {comments.length === 0 ? (
+              {loadingComments ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                  <CircularProgress size={30} sx={{ color: '#0039CB' }} />
+                </Box>
+              ) : comments.length === 0 ? (
                 <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
                   No comments yet. Be the first to comment!
                 </Typography>
@@ -856,12 +926,12 @@ const TrendingNewsDetails = () => {
                       <Avatar 
                         sx={{ bgcolor: '#0039CB' }}
                       >
-                        {(comment.user?.username || 'U').charAt(0).toUpperCase()}
+                        {(comment.user?.username || comment.user?.name || 'U').charAt(0).toUpperCase()}
                       </Avatar>
                       <Box>
                         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
                           <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
-                            {comment.user?.username || 'Anonymous'}
+                            {comment.user?.username || comment.user?.name || 'Anonymous'}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
                             {formatDate(comment.createdAt)}

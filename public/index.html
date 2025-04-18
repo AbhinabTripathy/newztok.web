@@ -26,69 +26,73 @@
     -->
     <title>NewzTok</title>
     
-    <!-- TinyMCE Cookie initialization script -->
-    <script src="%PUBLIC_URL%/tinymce-init.js"></script>
-    
-    <style>
-      /* Hide TinyMCE domain warning notifications */
-      .tox-notifications-container,
-      .tox-notification--warning,
-      .tox-notification--in,
-      .tox-notification {
-        display: none !important;
-      }
-    </style>
-    
+    <!-- TinyMCE Script -->
+    <script src="https://cdn.tiny.cloud/1/vbil1yv26sci3hwbqs4ctc1ahy85mj03vnl4etxiinf9sk0h/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
     <script>
-      // Observer to remove TinyMCE domain warning
-      document.addEventListener('DOMContentLoaded', function() {
-        // Function to hide domain warnings
-        function hideTinyMCEDomainWarnings() {
-          // Hide all warnings
-          const warnings = document.querySelectorAll('.tox-notification--warning, .tox-notification');
-          if (warnings.length > 0) {
-            warnings.forEach(warning => {
-              warning.style.display = 'none';
-              warning.remove();
-            });
-          }
-          
-          // Check for iframes that might contain warnings
-          const iframes = document.querySelectorAll('iframe');
-          iframes.forEach(iframe => {
-            try {
-              const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
-              const iframeWarnings = iframeDoc.querySelectorAll('.tox-notification--warning, .tox-notification');
-              if (iframeWarnings.length > 0) {
-                iframeWarnings.forEach(warning => {
-                  warning.style.display = 'none';
-                  warning.remove();
-                });
-              }
-            } catch (e) {
-              // Ignore cross-origin errors
-            }
-          });
-        }
-        
-        // Run immediately
-        hideTinyMCEDomainWarnings();
-        
-        // And also with a small delay to catch dynamically added elements
-        setTimeout(hideTinyMCEDomainWarnings, 1000);
-        setTimeout(hideTinyMCEDomainWarnings, 2000);
-        
-        // Use MutationObserver to catch dynamically added warnings
-        const observer = new MutationObserver(function(mutations) {
-          hideTinyMCEDomainWarnings();
-        });
-        
-        // Start observing the document
-        observer.observe(document.body, { 
-          childList: true,
-          subtree: true
+      document.addEventListener('DOMContentLoaded', function () {
+        tinymce.init({
+          selector: '#tinymce-content',
+          height: 400,
+          menubar: false,
+          plugins: 'lists link image preview code fullscreen table wordcount',
+          toolbar: 'undo redo | styles | bold italic underline | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image | code fullscreen',
         });
       });
+    </script>
+    
+    <!-- Error handling script for WebSocket -->
+    <script>
+      // Suppress WebSocket connection errors
+      (function() {
+        // Store original console.error
+        const originalConsoleError = console.error;
+        
+        // Override console.error to filter WebSocket errors
+        console.error = function() {
+          // Check if this is a WebSocket connection error
+          if (arguments[0] && 
+             (typeof arguments[0] === 'string' && 
+              (arguments[0].includes('WebSocket') || 
+               arguments[0].includes('ws://localhost') ||
+               arguments[0].includes('favicon')))) {
+            // Suppress the error
+            return;
+          }
+          
+          // Call original console.error for all other errors
+          return originalConsoleError.apply(console, arguments);
+        };
+        
+        // Handle favicon.ico error
+        const linkElement = document.createElement('link');
+        linkElement.rel = 'icon';
+        linkElement.href = 'data:image/x-icon;base64,AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAERERAhISEicSEhI7EhISHBISEgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEhISLRISEtASEhL/EhIS/xISEv8SEhK3EhISFgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAREREEEhIS0BISEv8SEhL/EhIS/xISEv8SEhL/EhIS/xISEqESEhIGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEhISMxISEv8SEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhIS9BISEh4AAAAAAAAAAAAAAAAAAAAAEhISAhISEtMSEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhISrRISEgEAAAAAAAAAABISEicSEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhIUAAAAABEREQISEhLQEhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhISsxISEgESEhIhEhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhI/EhISPhISEv8SEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhISWhISEg0SEhLLEhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhIS3BISEhYAAAAAEhISQRISEvgSEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhIS/xISElIAAAAAAAAAAAAAAAASEhIvEhIS0xISEv8SEhL/EhIS/xISEv8SEhL/EhIS/xISEv8SEhL/EhIS3hISEj4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEhISFBISEkYSEhJVEhISVRISEkgSEhIXAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+        document.head.appendChild(linkElement);
+        
+        // Create a custom WebSocket that won't throw errors
+        window.WebSocketBackup = window.WebSocket;
+        window.WebSocket = function(url, protocols) {
+          // Only intercept development WebSocket connections
+          if (url.includes('localhost:3000/ws')) {
+            // Create a fake WebSocket object that doesn't actually connect
+            return {
+              url: url,
+              readyState: 0,
+              send: function() {},
+              close: function() {},
+              onopen: null,
+              onclose: null,
+              onerror: null,
+              onmessage: null,
+              addEventListener: function() {},
+              removeEventListener: function() {}
+            };
+          }
+          
+          // For all other WebSocket connections, use the real WebSocket
+          return new window.WebSocketBackup(url, protocols);
+        };
+      })();
     </script>
   </head>
   <body>

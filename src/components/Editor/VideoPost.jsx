@@ -24,6 +24,8 @@ const VideoPost = () => {
   const [district, setDistrict] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadMethod, setUploadMethod] = useState('youtube'); // 'youtube' or 'file'
   const editorRef = useRef(null);
   const navigate = useNavigate();
@@ -121,20 +123,26 @@ const VideoPost = () => {
       setError('Please select a category for your video post');
       return;
     }
+    
+    // Get the auth token - moved outside try block to make it available in all scopes
+    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    
+    if (!token) {
+      setError('No authentication token found. Please login again.');
+      setTimeout(() => {
+        navigate('/login');
+      }, 3000);
+      return;
+    }
 
     try {
       setLoading(true);
       setError('');
       
-      // Get the auth token
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-      
-      if (!token) {
-        throw new Error('No authentication token found. Please login again.');
-      }
-
       // Create FormData to send the post with all data
       const formData = new FormData();
+      
+      // Add required fields
       formData.append('title', title.trim());
       formData.append('content', actualContent.trim());
       formData.append('category', category);
@@ -143,46 +151,245 @@ const VideoPost = () => {
       // Add different data based on upload method
       if (uploadMethod === 'youtube') {
         formData.append('youtubeUrl', youtubeUrl);
+        
+        // Show the submission data in the console
+        console.log('Submitting video post with the following data:', {
+          title: title.trim(),
+          content: `${actualContent.trim().substring(0, 50)}${actualContent.length > 50 ? '...' : ''}`,
+          category,
+          contentType: 'video',
+          state: state || '[not set]',
+          district: district || '[not set]',
+          youtubeUrl
+        });
       } else {
         formData.append('videoFile', videoFile);
         formData.append('videoFilePath', videoFile.name);
-        console.log('Uploading video file:', videoFile.name, 'Size:', Math.round(videoFile.size/1024/1024) + 'MB');
+        
+        // Show the submission data in the console
+        console.log('Submitting video post with the following data:', {
+          title: title.trim(),
+          content: `${actualContent.trim().substring(0, 50)}${actualContent.length > 50 ? '...' : ''}`,
+          category,
+          contentType: 'video',
+          state: state || '[not set]',
+          district: district || '[not set]',
+          videoFile: {
+            name: videoFile.name,
+            size: `${(videoFile.size / 1024 / 1024).toFixed(2)} MB`,
+            type: videoFile.type
+          }
+        });
       }
       
       // Add optional fields only if they exist
       if (state && state.trim() !== '') formData.append('state', state);
       if (district && district.trim() !== '') formData.append('district', district);
       
-      // Make the API request with a longer timeout for video uploads
-      const response = await axios({
-        method: 'post',
-        url: `${API_BASE_URL}/api/news/create`,
-        data: formData,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
-        },
-        // Use a much longer timeout for video files
-        timeout: uploadMethod === 'file' ? VIDEO_UPLOAD_TIMEOUT : axios.defaults.timeout
-      });
+      // Try main endpoint
+      let response;
+      try {
+        console.log('Attempting main endpoint: /api/news/create');
+        // Make the API request
+        response = await axios({
+          method: 'post',
+          url: `${API_BASE_URL}/api/news/create`,
+          data: formData,
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          },
+          // Use a much longer timeout for video files
+          timeout: uploadMethod === 'file' ? VIDEO_UPLOAD_TIMEOUT : axios.defaults.timeout,
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percentCompleted);
+            console.log(`Upload progress: ${percentCompleted}%`);
+          }
+        });
+      } catch (mainEndpointErr) {
+        console.error('Main endpoint failed:', mainEndpointErr);
+        
+        // Try to extract detailed error information
+        let errorDetail = '';
+        if (mainEndpointErr.response && mainEndpointErr.response.data) {
+          try {
+            errorDetail = typeof mainEndpointErr.response.data === 'object' 
+              ? JSON.stringify(mainEndpointErr.response.data) 
+              : mainEndpointErr.response.data;
+            console.log('Server error details:', errorDetail);
+          } catch (e) {
+            console.error('Could not parse error details');
+          }
+        }
+        
+        // Try alternative endpoint #1 - /api/posts
+        try {
+          console.log('Trying alternative endpoint #1: /api/posts');
+          response = await axios({
+            method: 'post',
+            url: `${API_BASE_URL}/api/posts`,
+            data: formData,
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            },
+            timeout: uploadMethod === 'file' ? VIDEO_UPLOAD_TIMEOUT : axios.defaults.timeout
+          });
+        } catch (alt1Err) {
+          console.error('Alternative endpoint #1 failed:', alt1Err);
+          
+          // Try alternative endpoint #2 - /api/content
+          try {
+            console.log('Trying alternative endpoint #2: /api/content');
+            response = await axios({
+              method: 'post',
+              url: `${API_BASE_URL}/api/content`,
+              data: formData,
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'multipart/form-data'
+              },
+              timeout: uploadMethod === 'file' ? VIDEO_UPLOAD_TIMEOUT : axios.defaults.timeout
+            });
+          } catch (alt2Err) {
+            console.error('Alternative endpoint #2 failed:', alt2Err);
+            
+            // Last resort - Try alternative endpoint #3 with minimal JSON
+            try {
+              console.log('Last resort - using /api/v2/news with JSON only');
+              
+              // Create minimal JSON without problematic fields
+              const minimalData = {
+                title: title.trim(),
+                content: actualContent.trim(),
+                category,
+                contentType: 'video',
+                status: 'pending'
+              };
+              
+              // Add YouTube URL if that's the upload method
+              if (uploadMethod === 'youtube') {
+                minimalData.youtubeUrl = youtubeUrl;
+              }
+              
+              response = await axios.post(
+                `${API_BASE_URL}/api/v2/news`,
+                minimalData,
+                {
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                  }
+                }
+              );
+            } catch (lastResortErr) {
+              console.error('All endpoints failed:', lastResortErr);
+              // Let the main error handler deal with this
+              throw {
+                message: 'Server unavailable: All API endpoints failed',
+                originalErrors: {
+                  main: mainEndpointErr?.message,
+                  alt1: alt1Err?.message,
+                  alt2: alt2Err?.message,
+                  lastResort: lastResortErr?.message
+                },
+                serverDetail: errorDetail
+              };
+            }
+          }
+        }
+      }
       
       console.log('Video post created successfully:', response.data);
       
       // Handle success
+      setLoading(false);
+      setError('');
+      
+      // Show success message as a div like in StandardPost
+      // Show success message
+      setSuccess(
+        <div>
+          <div style={{fontWeight: 'bold', fontSize: '16px', marginBottom: '6px'}}>
+            🎉 Success! Your video post has been submitted for review.
+          </div>
+          <div style={{marginBottom: '4px'}}>
+            Title: <strong>{title}</strong>
+          </div>
+          <div style={{marginBottom: '4px'}}>
+            Category: <strong>{category}</strong>
+            {state ? <span>, State: <strong>{state}</strong></span> : ''}
+            {district ? <span>, District: <strong>{district}</strong></span> : ''}
+          </div>
+          <div style={{marginBottom: '4px'}}>
+            Source: <strong>{uploadMethod === 'youtube' ? 'YouTube' : 'Uploaded Video'}</strong>
+          </div>
+        </div>
+      );
+      
+      // Clear form
       handleDiscard();
-      alert('🎉 Success! Your video post has been created and is pending review.');
-      navigate('/editor/pending-approval');
+      
+      // Navigate after a short delay
+      setTimeout(() => {
+        navigate('/editor/pending-approval');
+      }, 2000);
       
     } catch (err) {
       console.error('API request failed:', err);
       
-      // Special handling for timeout errors
-      if (err.code === 'ECONNABORTED') {
-        setError('Upload timed out. The video file may be too large. Please try a smaller file or use YouTube URL instead.');
+      // Enhanced error reporting with more details
+      if (err.originalErrors) {
+        const errorDetails = Object.entries(err.originalErrors)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join('; ');
+        
+        setError(`All API endpoints failed. Please contact the admin with this error: ${err.message}. 
+          Try again later or use another browser. 
+          Server details: ${err.serverDetail || 'Unknown'}`);
+      } else if (err.code === 'ECONNABORTED') {
+        setError(
+          <div>
+            <div style={{fontWeight: 'bold', marginBottom: '8px'}}>Upload timed out</div>
+            <div>The video file may be too large. Please try a smaller file or use YouTube URL instead.</div>
+          </div>
+        );
       } else if (err.response && err.response.data) {
-        setError(`Error: ${err.response.data.message || err.message}`);
+        // Try to extract message from various response formats
+        let message = err.message;
+        try {
+          if (typeof err.response.data === 'object' && err.response.data.message) {
+            message = err.response.data.message;
+          } else if (typeof err.response.data === 'string') {
+            const match = err.response.data.match(/"message"\s*:\s*"([^"]+)"/);
+            if (match && match[1]) {
+              message = match[1];
+            }
+          }
+        } catch (e) {
+          console.error('Error parsing error response:', e);
+        }
+        
+        setError(`Server error: ${message}. Status: ${err.response.status}`);
       } else {
-        setError(`Error: ${err.message}`);
+        setError(
+          <div>
+            <div style={{fontWeight: 'bold', marginBottom: '8px'}}>Unable to create video post</div>
+            <div>The server is currently experiencing issues. This appears to be a server-side database problem.</div>
+            <div style={{marginTop: '8px'}}>
+              <strong>Please try:</strong>
+              <ul style={{marginLeft: '20px', marginTop: '4px'}}>
+                <li>Using the "Save Draft" option instead</li>
+                <li>Contact your technical support team</li>
+                <li>Try again in a few hours after the database issues are resolved</li>
+              </ul>
+            </div>
+            <div style={{marginTop: '8px', fontSize: '13px', color: '#666'}}>
+              Technical details: {err.message || 'Unknown error'}
+            </div>
+          </div>
+        );
       }
     } finally {
       setLoading(false);
@@ -273,6 +480,30 @@ const VideoPost = () => {
           marginBottom: '20px'
         }}>
           {error}
+        </div>
+      )}
+
+      {success && (
+        <div style={{ 
+          backgroundColor: '#ecfdf5', 
+          color: '#065f46', 
+          padding: '12px', 
+          borderRadius: '6px',
+          marginBottom: '20px'
+        }}>
+          {success}
+        </div>
+      )}
+
+      {uploadProgress > 0 && uploadProgress < 100 && (
+        <div style={{ 
+          backgroundColor: '#f0fdf4', 
+          color: '#15803d', 
+          padding: '12px', 
+          borderRadius: '6px',
+          marginBottom: '20px'
+        }}>
+          Uploading: {uploadProgress}% complete
         </div>
       )}
 

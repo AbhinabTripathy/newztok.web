@@ -23,6 +23,7 @@ const StandardPost = () => {
   const [district, setDistrict] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const editorRef = useRef(null);
   const navigate = useNavigate();
@@ -49,6 +50,7 @@ const StandardPost = () => {
     setState('');
     setDistrict('');
     setError('');
+    setSuccess('');
     setUploadProgress(0);
     if (editorRef.current) {
       editorRef.current.setContent('');
@@ -111,26 +113,31 @@ const StandardPost = () => {
       
       // Create FormData to send the post with all data including the image
       const formData = new FormData();
-      formData.append('title', title.trim());
-      formData.append('content', actualContent.trim());
-      formData.append('category', category);
+      
+      // Add required fields
+      formData.append('title', title.trim()); // Post Title/Headline
+      formData.append('content', actualContent.trim()); // Content
+      formData.append('category', category); // CATEGORY
       formData.append('contentType', 'standard');
-      formData.append('featuredImage', file);
+      formData.append('featuredImage', file); // Featured Image
       
       // Add optional fields only if they exist
-      if (state && state.trim() !== '') formData.append('state', state);
-      if (district && district.trim() !== '') formData.append('district', district);
+      if (state && state.trim() !== '') formData.append('state', state); // STATE
+      if (district && district.trim() !== '') formData.append('district', district); // DISTRICT
       
-      // Log the payload for diagnostic purposes (without the file content)
-      console.log('Attempting to submit with payload:', {
+      // Show the submission data in the console
+      console.log('Submitting post with the following data:', {
         title: title.trim(),
-        content: actualContent.trim().substring(0, 50) + '...',
+        content: `${actualContent.trim().substring(0, 50)}${actualContent.length > 50 ? '...' : ''}`,
         category,
         contentType: 'standard',
         state: state || '[not set]',
         district: district || '[not set]',
-        fileSize: file.size,
-        fileType: file.type
+        featuredImage: {
+          name: file.name,
+          size: `${(file.size / 1024).toFixed(2)} KB`,
+          type: file.type
+        }
       });
       
       // Try main endpoint
@@ -241,9 +248,33 @@ const StandardPost = () => {
       console.log('Post created successfully:', response.data);
       
       // Handle success
+      setLoading(false);
+      setError('');
+      
+      // Show success message
+      setSuccess(
+        <div>
+          <div style={{fontWeight: 'bold', fontSize: '16px', marginBottom: '6px'}}>
+            🎉 Success! Your post has been submitted for review.
+          </div>
+          <div style={{marginBottom: '4px'}}>
+            Title: <strong>{title}</strong>
+          </div>
+          <div style={{marginBottom: '4px'}}>
+            Category: <strong>{category}</strong>
+            {state ? <span>, State: <strong>{state}</strong></span> : ''}
+            {district ? <span>, District: <strong>{district}</strong></span> : ''}
+          </div>
+        </div>
+      );
+      
+      // Clear form
       handleDiscard();
-      alert('🎉 Success! Your post has been created and is pending review.');
-      navigate('/editor/pending-approval');
+      
+      // Navigate after a short delay
+      setTimeout(() => {
+        navigate('/editor/pending-approval');
+      }, 2000);
       
     } catch (err) {
       console.error('API request failed:', err);
@@ -383,6 +414,18 @@ const StandardPost = () => {
           marginBottom: '20px'
         }}>
           {error}
+        </div>
+      )}
+
+      {success && (
+        <div style={{ 
+          backgroundColor: '#ecfdf5', 
+          color: '#065f46', 
+          padding: '12px', 
+          borderRadius: '6px',
+          marginBottom: '20px'
+        }}>
+          {success}
         </div>
       )}
 
