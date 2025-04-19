@@ -49,18 +49,7 @@ const VideoPost = () => {
   };
 
   const handleDiscard = () => {
-    setTitle('');
-    setYoutubeUrl('');
-    setVideoFile(null);
-    setContent('');
-    setCategory('');
-    setState('');
-    setDistrict('');
-    setError('');
-    setUploadMethod('youtube');
-    if (editorRef.current) {
-      editorRef.current.setContent('');
-    }
+    alert("We are working on the discard functionality. Please stay tuned!");
   };
 
   const handleSaveDraft = () => {
@@ -426,21 +415,6 @@ const VideoPost = () => {
           <button 
             style={{ 
               padding: '8px 16px', 
-              backgroundColor: 'white', 
-              color: '#4f46e5', 
-              border: '1px solid #e5e7eb', 
-              borderRadius: '6px',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}
-            onClick={handleSaveDraft}
-            disabled={loading}
-          >
-            Save Draft
-          </button>
-          <button 
-            style={{ 
-              padding: '8px 16px', 
               backgroundColor: '#4f46e5', 
               color: 'white', 
               border: 'none', 
@@ -738,7 +712,6 @@ const VideoPost = () => {
                   }}
                 >
                   <option value="">---------</option>
-                  <option value="trending">ट्रेंडिंग | Trending</option>
                   <option value="national">राष्ट्रीय | National</option>
                   <option value="international">अंतरराष्ट्रीय | International</option>
                   <option value="sports">खेल | Sports</option>

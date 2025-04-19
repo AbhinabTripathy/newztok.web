@@ -27,16 +27,35 @@ const VideoPost = () => {
   const [success, setSuccess] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadMethod, setUploadMethod] = useState('youtube'); // 'youtube' or 'file'
+  const [journalistProfile, setJournalistProfile] = useState(null);
   const editorRef = useRef(null);
   const navigate = useNavigate();
 
-  // Fetch journalist profile to get assigned state and district
+  // Function to get auth token
+  const getAuthToken = () => {
+    const storageLocations = [localStorage, sessionStorage];
+    const possibleKeys = ['authToken', 'token', 'jwtToken', 'userToken', 'accessToken'];
+    
+    for (const storage of storageLocations) {
+      for (const key of possibleKeys) {
+        const token = storage.getItem(key);
+        if (token) {
+          console.log(`Found token with key '${key}' in ${storage === localStorage ? 'localStorage' : 'sessionStorage'}`);
+          return token;
+        }
+      }
+    }
+    
+    return null;
+  };
+
+  // Fetch journalist profile on component mount
   useEffect(() => {
     const fetchJournalistProfile = async () => {
       try {
-        const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+        const token = getAuthToken();
         if (!token) {
-          console.error('No authentication token found');
+          setError('Authentication token not found. Please login again.');
           return;
         }
 
@@ -46,20 +65,22 @@ const VideoPost = () => {
           }
         });
 
-        if (response.data) {
-          // Set state and district from the profile
-          const { state: profileState, district: profileDistrict } = response.data;
-          if (profileState) {
-            setState(profileState);
-            console.log('Setting state from profile:', profileState);
-          }
-          if (profileDistrict) {
-            setDistrict(profileDistrict);
-            console.log('Setting district from profile:', profileDistrict);
-          }
+        console.log('Journalist profile:', response.data);
+        setJournalistProfile(response.data);
+        
+        // Set state and district from journalist profile
+        if (response.data.assignState) {
+          setState(response.data.assignState);
+          console.log('Setting assigned state:', response.data.assignState);
+        }
+        
+        if (response.data.assignDistrict) {
+          setDistrict(response.data.assignDistrict);
+          console.log('Setting assigned district:', response.data.assignDistrict);
         }
       } catch (err) {
-        console.error('Error fetching journalist profile:', err);
+        console.error('Failed to fetch journalist profile:', err);
+        // Don't show error to user, just log it
       }
     };
 
@@ -148,9 +169,9 @@ const VideoPost = () => {
       setError('Please select a category for your video post');
       return;
     }
-    
-    // Get the auth token - moved outside try block to make it available in all scopes
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+
+    // Get the auth token
+    const token = getAuthToken();
     
     if (!token) {
       setError('No authentication token found. Please login again.');
@@ -173,9 +194,14 @@ const VideoPost = () => {
       formData.append('category', category);
       formData.append('contentType', 'video');
       
-      // Add state and district from the journalist's profile
-      if (state) formData.append('state', state);
-      if (district) formData.append('district', district);
+      // Add state and district from journalist profile
+      // If journalist has assigned state/district, use those values
+      const stateToUse = journalistProfile?.assignState || state;
+      const districtToUse = journalistProfile?.assignDistrict || district;
+      
+      // Add state and district to formData
+      if (stateToUse && stateToUse.trim() !== '') formData.append('state', stateToUse);
+      if (districtToUse && districtToUse.trim() !== '') formData.append('district', districtToUse);
       
       // Add different data based on upload method
       if (uploadMethod === 'youtube') {
@@ -187,8 +213,8 @@ const VideoPost = () => {
           content: `${actualContent.trim().substring(0, 50)}${actualContent.length > 50 ? '...' : ''}`,
           category,
           contentType: 'video',
-          state: state || '[not set]',
-          district: district || '[not set]',
+          state: stateToUse || '[not set]',
+          district: districtToUse || '[not set]',
           youtubeUrl
         });
       } else {
@@ -201,8 +227,8 @@ const VideoPost = () => {
           content: `${actualContent.trim().substring(0, 50)}${actualContent.length > 50 ? '...' : ''}`,
           category,
           contentType: 'video',
-          state: state || '[not set]',
-          district: district || '[not set]',
+          state: stateToUse || '[not set]',
+          district: districtToUse || '[not set]',
           videoFile: {
             name: videoFile.name,
             size: `${(videoFile.size / 1024 / 1024).toFixed(2)} MB`,
@@ -299,8 +325,8 @@ const VideoPost = () => {
               }
               
               // Add state and district
-              if (state) minimalData.state = state;
-              if (district) minimalData.district = district;
+              if (stateToUse) minimalData.state = stateToUse;
+              if (districtToUse) minimalData.district = districtToUse;
               
               response = await axios.post(
                 `${API_BASE_URL}/api/v2/news`,
@@ -348,8 +374,8 @@ const VideoPost = () => {
           </div>
           <div style={{marginBottom: '4px'}}>
             Category: <strong>{category}</strong>
-            {state ? <span>, State: <strong>{state}</strong></span> : ''}
-            {district ? <span>, District: <strong>{district}</strong></span> : ''}
+            {stateToUse ? <span>, State: <strong>{stateToUse}</strong></span> : ''}
+            {districtToUse ? <span>, District: <strong>{districtToUse}</strong></span> : ''}
           </div>
           <div style={{marginBottom: '4px'}}>
             Source: <strong>{uploadMethod === 'youtube' ? 'YouTube' : 'Uploaded Video'}</strong>
@@ -752,7 +778,6 @@ const VideoPost = () => {
                   }}
                 >
                   <option value="">---------</option>
-                  <option value="trending">ट्रेंडिंग | Trending</option>
                   <option value="national">राष्ट्रीय | National</option>
                   <option value="international">अंतरराष्ट्रीय | International</option>
                   <option value="sports">खेल | Sports</option>
@@ -784,7 +809,7 @@ const VideoPost = () => {
                   textTransform: 'uppercase'
                 }}
               >
-                STATE
+                STATE {journalistProfile?.assignState && '(Pre-assigned)'}
               </label>
               <div style={{ position: 'relative' }}>
                 <select
@@ -800,9 +825,10 @@ const VideoPost = () => {
                     appearance: 'none',
                     border: '1px solid #e5e7eb',
                     borderRadius: '6px',
-                    backgroundColor: 'white',
+                    backgroundColor: journalistProfile?.assignState ? '#f9fafb' : 'white',
                     fontSize: '14px'
                   }}
+                  disabled={!!journalistProfile?.assignState}
                 >
                   <option value="">---------</option>
                   <option value="bihar">बिहार | Bihar</option>
@@ -835,7 +861,7 @@ const VideoPost = () => {
                   textTransform: 'uppercase'
                 }}
               >
-                DISTRICT
+                DISTRICT {journalistProfile?.assignDistrict && '(Pre-assigned)'}
               </label>
               <div style={{ position: 'relative' }}>
                 <select
@@ -848,10 +874,10 @@ const VideoPost = () => {
                     appearance: 'none',
                     border: '1px solid #e5e7eb',
                     borderRadius: '6px',
-                    backgroundColor: 'white',
+                    backgroundColor: journalistProfile?.assignDistrict ? '#f9fafb' : 'white',
                     fontSize: '14px'
                   }}
-                  disabled={!state}
+                  disabled={!state || !!journalistProfile?.assignDistrict}
                 >
                   <option value="">---------</option>
                   {state === 'bihar' && (

@@ -106,7 +106,13 @@ const PendingApprovals = () => {
         newsItems = response.data;
       } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
         newsItems = response.data.data;
+      } else if (response.data && typeof response.data === 'object') {
+        // Handle single object response
+        newsItems = [response.data];
       }
+      
+      console.log('Raw API response:', response.data);
+      console.log('Extracted news items:', newsItems);
       
       // Set total results for pagination if available
       if (response.data && response.data.total) {

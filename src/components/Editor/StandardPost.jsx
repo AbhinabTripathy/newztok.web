@@ -43,18 +43,7 @@ const StandardPost = () => {
   };
 
   const handleDiscard = () => {
-    setTitle('');
-    setFile(null);
-    setContent('');
-    setCategory('');
-    setState('');
-    setDistrict('');
-    setError('');
-    setSuccess('');
-    setUploadProgress(0);
-    if (editorRef.current) {
-      editorRef.current.setContent('');
-    }
+    alert("We are working on the discard functionality. Please stay tuned!");
   };
 
   const handleSaveDraft = () => {
@@ -360,21 +349,6 @@ const StandardPost = () => {
           <button 
             style={{ 
               padding: '8px 16px', 
-              backgroundColor: 'white', 
-              color: '#4f46e5', 
-              border: '1px solid #e5e7eb', 
-              borderRadius: '6px',
-              fontWeight: '500',
-              cursor: 'pointer'
-            }}
-            onClick={handleSaveDraft}
-            disabled={loading}
-          >
-            Save Draft
-          </button>
-          <button 
-            style={{ 
-              padding: '8px 16px', 
               backgroundColor: '#4f46e5', 
               color: 'white', 
               border: 'none', 
@@ -591,7 +565,6 @@ const StandardPost = () => {
                   }}
                 >
                   <option value="">---------</option>
-                  <option value="trending">ट्रेंडिंग | Trending</option>
                   <option value="national">राष्ट्रीय | National</option>
                   <option value="international">अंतरराष्ट्रीय | International</option>
                   <option value="sports">खेल | Sports</option>

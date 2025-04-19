@@ -96,11 +96,6 @@ const StandardPost = () => {
     alert("We are working on the discard functionality. Please stay tuned!");
   };
 
-  const handleSaveDraft = () => {
-    // Save draft logic here
-    console.log('Saving draft...');
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -651,7 +646,6 @@ const StandardPost = () => {
                   }}
                 >
                   <option value="">---------</option>
-                  <option value="trending">ट्रेंडिंग | Trending</option>
                   <option value="national">राष्ट्रीय | National</option>
                   <option value="international">अंतरराष्ट्रीय | International</option>
                   <option value="sports">खेल | Sports</option>
