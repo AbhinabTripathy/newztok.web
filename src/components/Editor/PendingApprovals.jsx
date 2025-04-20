@@ -1,11 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { FiChevronDown, FiEdit } from 'react-icons/fi';
+import { FiChevronDown, FiEdit, FiClock } from 'react-icons/fi';
 import { HiOutlineArrowNarrowRight } from 'react-icons/hi';
 import { FaCheck, FaTimes } from 'react-icons/fa';
 import axios from 'axios';
 import { Editor } from '@tinymce/tinymce-react';
 import './editor.css';
 import { useNavigate, Link } from 'react-router-dom';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  IconButton,
+  Button,
+  Box,
+  Typography,
+  TablePagination,
+  Chip,
+  Tooltip
+} from '@mui/material';
 
 // CSS for spinner animation
 const spinAnimation = `
@@ -680,14 +696,22 @@ const PendingApprovals = () => {
       {/* Add style tag for animations */}
       <style dangerouslySetInnerHTML={{ __html: spinAnimation }} />
       
-      <h1 style={{ 
-        fontSize: '28px', 
-        fontWeight: 'bold', 
-        color: '#111827', 
-        marginBottom: '24px' 
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 1,
+        marginBottom: '24px'
       }}>
-        Pending Approval
-      </h1>
+        <FiClock size={24} color="#6366f1" />
+        <Typography variant="h4" sx={{ 
+          fontSize: '28px', 
+          fontWeight: 'bold', 
+          color: '#111827',
+          margin: 0
+        }}>
+          Pending Approval
+        </Typography>
+      </Box>
 
       {error && (
         <div style={{ 
@@ -731,289 +755,192 @@ const PendingApprovals = () => {
           </div>
         </div>
       ) : (
-        /* Table */
-        <div style={{ 
-          borderRadius: '8px', 
-          overflow: 'hidden',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          marginBottom: '16px'
-        }}>
-          {/* Table Headers */}
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: '1.5fr 1.5fr 1fr 0.8fr 0.8fr 0.5fr', 
-            borderBottom: '1px solid #e5e7eb',
-            backgroundColor: 'white'
-          }}>
-            <div style={{ 
-              color: '#374151', 
-              fontWeight: '500', 
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px 16px',
-              borderRight: '1px solid #e5e7eb'
-            }}>
-              Headline <FiChevronDown size={16} style={{ marginLeft: '4px', color: '#9ca3af' }} />
-            </div>
-            <div style={{ 
-              color: '#374151', 
-              fontWeight: '500', 
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px 16px',
-              borderRight: '1px solid #e5e7eb'
-            }}>
-              Content <FiChevronDown size={16} style={{ marginLeft: '4px', color: '#9ca3af' }} />
-            </div>
-            <div style={{ 
-              color: '#374151', 
-              fontWeight: '500', 
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px 16px',
-              borderRight: '1px solid #e5e7eb'
-            }}>
-              Category <FiChevronDown size={16} style={{ marginLeft: '4px', color: '#9ca3af' }} />
-            </div>
-            <div style={{ 
-              color: '#374151', 
-              fontWeight: '500', 
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px 16px',
-              borderRight: '1px solid #e5e7eb'
-            }}>
-              State <FiChevronDown size={16} style={{ marginLeft: '4px', color: '#9ca3af' }} />
-            </div>
-            <div style={{ 
-              color: '#374151', 
-              fontWeight: '500', 
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px 16px',
-              borderRight: '1px solid #e5e7eb'
-            }}>
-              District <FiChevronDown size={16} style={{ marginLeft: '4px', color: '#9ca3af' }} />
-            </div>
-            <div style={{ 
-              color: '#374151', 
-              fontWeight: '500', 
-              fontSize: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '12px 16px'
-            }}>
-              Action
-            </div>
-          </div>
-
-          {currentItems.length === 0 ? (
-            /* Empty State */
-            <div style={{ 
-              padding: '24px 16px',
-              textAlign: 'center',
-              color: '#6b7280',
-              borderBottom: '1px solid #e5e7eb',
-              backgroundColor: 'white'
-            }}>
-              {error ? (
-                <>
-                  <div style={{fontSize: '20px', marginBottom: '10px', color: '#b91c1c'}}>Error Loading Posts</div>
-                  <div>Please try refreshing the page or check your network connection.</div>
-                  <button 
-                    onClick={fetchPendingNews}
-                    style={{
-                      marginTop: '16px',
-                      padding: '8px 16px',
-                      backgroundColor: '#4f46e5',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Retry Now
-                  </button>
-                </>
+        <TableContainer component={Paper} sx={{ borderRadius: '8px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}>
+          <Table sx={{ minWidth: 650 }} aria-label="pending approvals table">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 600, color: '#374151', fontSize: '14px' }}>
+                  Headline
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#374151', fontSize: '14px' }}>
+                  Content
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#374151', fontSize: '14px' }}>
+                  Category
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#374151', fontSize: '14px' }}>
+                  State
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#374151', fontSize: '14px' }}>
+                  District
+                </TableCell>
+                <TableCell sx={{ fontWeight: 600, color: '#374151', fontSize: '14px' }}>
+                  Action
+                </TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {currentItems.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                    {error ? (
+                      <Box>
+                        <Typography variant="h6" color="error" gutterBottom>
+                          Error Loading Posts
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" paragraph>
+                          Please try refreshing the page or check your network connection.
+                        </Typography>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          onClick={fetchPendingNews}
+                          sx={{ mt: 2 }}
+                        >
+                          Retry Now
+                        </Button>
+                      </Box>
+                    ) : (
+                      <Typography variant="body1" color="text.secondary">
+                        No posts available for approval.
+                      </Typography>
+                    )}
+                  </TableCell>
+                </TableRow>
               ) : (
-                <>No posts available for approval.</>
+                currentItems.map((news, index) => (
+                  <TableRow
+                    key={news.id || index}
+                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                  >
+                    <TableCell sx={{ color: '#1f2937' }}>
+                      {news.title || 'No title'}
+                    </TableCell>
+                    <TableCell sx={{ color: '#1f2937' }}>
+                      {truncateText(news.content)}
+                    </TableCell>
+                    <TableCell sx={{ color: '#1f2937' }}>
+                      <Chip
+                        label={news.category || 'Uncategorized'}
+                        size="small"
+                        sx={{
+                          backgroundColor: '#f3f4f6',
+                          color: '#374151',
+                          fontWeight: 500
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ color: '#1f2937' }}>
+                      {news.state || 'N/A'}
+                    </TableCell>
+                    <TableCell sx={{ color: '#1f2937' }}>
+                      {news.district || 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Tooltip title="Edit">
+                          <IconButton
+                            onClick={() => handleEdit(news.id)}
+                            sx={{
+                              backgroundColor: '#6366f1',
+                              color: 'white',
+                              '&:hover': { backgroundColor: '#4f46e5' }
+                            }}
+                          >
+                            <FiEdit />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Approve">
+                          <IconButton
+                            onClick={() => handleStatusUpdate(news.id, 'approved')}
+                            sx={{
+                              backgroundColor: '#10b981',
+                              color: 'white',
+                              '&:hover': { backgroundColor: '#059669' }
+                            }}
+                          >
+                            <FaCheck />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Reject">
+                          <IconButton
+                            onClick={() => handleStatusUpdate(news.id, 'rejected')}
+                            sx={{
+                              backgroundColor: '#ef4444',
+                              color: 'white',
+                              '&:hover': { backgroundColor: '#dc2626' }
+                            }}
+                          >
+                            <FaTimes />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
-            </div>
-          ) : (
-            /* News Items */
-            currentItems.map((news, index) => (
-              <div 
-                key={news.id || index}
-                style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: '1.5fr 1.5fr 1fr 0.8fr 0.8fr 0.5fr', 
-                  borderBottom: index < currentItems.length - 1 ? '1px solid #e5e7eb' : 'none',
-                  backgroundColor: 'white'
-                }}
-              >
-                <div style={{ 
-                  padding: '16px', 
-                  borderRight: '1px solid #e5e7eb',
-                  color: '#1f2937'
-                }}>
-                  {news.title || 'No title'}
-                </div>
-                <div style={{ 
-                  padding: '16px', 
-                  borderRight: '1px solid #e5e7eb',
-                  color: '#1f2937'
-                }}>
-                  {truncateText(news.content)}
-                </div>
-                <div style={{ 
-                  padding: '16px', 
-                  borderRight: '1px solid #e5e7eb',
-                  color: '#1f2937'
-                }}>
-                  {news.category || 'Uncategorized'}
-                </div>
-                <div style={{ 
-                  padding: '16px', 
-                  borderRight: '1px solid #e5e7eb',
-                  color: '#1f2937'
-                }}>
-                  {news.state || 'N/A'}
-                </div>
-                <div style={{ 
-                  padding: '16px', 
-                  borderRight: '1px solid #e5e7eb',
-                  color: '#1f2937'
-                }}>
-                  {news.district || 'N/A'}
-                </div>
-                <div style={{ 
-                  padding: '16px',
-                  display: 'flex',
-                  gap: '8px',
-                  justifyContent: 'center'
-                }}>
-                  <button
-                    onClick={() => handleEdit(news.id)}
-                    style={{
-                      backgroundColor: '#6366f1',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      padding: '6px 8px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                    title="Edit"
-                  >
-                    <FiEdit />
-                  </button>
-                  <button
-                    onClick={() => handleStatusUpdate(news.id, 'approved')}
-                    style={{
-                      backgroundColor: '#10b981',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      padding: '6px 8px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                    title="Approve"
-                  >
-                    <FaCheck />
-                  </button>
-                  <button
-                    onClick={() => handleStatusUpdate(news.id, 'rejected')}
-                    style={{
-                      backgroundColor: '#ef4444',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      padding: '6px 8px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                    title="Reject"
-                  >
-                    <FaTimes />
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
 
       {/* Pagination */}
       {!loading && pendingNews.length > 0 && (
-        <div style={{ 
+        <Box sx={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
+          mt: 2,
           color: '#6b7280',
           fontSize: '14px'
         }}>
-          <div>
-            {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, pendingNews.length)} Items of {pendingNews.length} — 
-            <button style={{ 
-              color: '#4f46e5', 
-              backgroundColor: 'transparent', 
-              border: 'none', 
-              padding: '0 4px', 
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              fontWeight: '500'
-            }}>
-              View all <HiOutlineArrowNarrowRight style={{ marginLeft: '4px' }} />
-            </button>
-          </div>
+          <Typography variant="body2">
+            {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, pendingNews.length)} Items of {pendingNews.length} —
+            <Button
+              endIcon={<HiOutlineArrowNarrowRight />}
+              sx={{ 
+                color: '#4f46e5',
+                textTransform: 'none',
+                ml: 1
+              }}
+            >
+              View all
+            </Button>
+          </Typography>
           
-          {/* Pagination Buttons */}
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button 
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
               onClick={() => paginate(currentPage > 1 ? currentPage - 1 : 1)}
               disabled={currentPage === 1}
-              style={{ 
-                padding: '8px 16px', 
-                backgroundColor: currentPage === 1 ? '#e5e7eb' : '#e5edff', 
-                color: currentPage === 1 ? '#9ca3af' : '#4f46e5', 
-                border: 'none', 
-                borderRadius: '6px',
-                cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                fontWeight: '500'
+              variant="outlined"
+              sx={{
+                color: currentPage === 1 ? '#9ca3af' : '#4f46e5',
+                borderColor: currentPage === 1 ? '#e5e7eb' : '#4f46e5',
+                '&:hover': {
+                  borderColor: currentPage === 1 ? '#e5e7eb' : '#4f46e5',
+                  backgroundColor: currentPage === 1 ? 'transparent' : 'rgba(79, 70, 229, 0.04)'
+                }
               }}
             >
               Previous
-            </button>
-            <button 
+            </Button>
+            <Button
               onClick={() => paginate(currentPage < Math.ceil(pendingNews.length / itemsPerPage) ? currentPage + 1 : currentPage)}
               disabled={currentPage >= Math.ceil(pendingNews.length / itemsPerPage)}
-              style={{ 
-                padding: '8px 16px', 
-                backgroundColor: currentPage >= Math.ceil(pendingNews.length / itemsPerPage) ? '#e5e7eb' : '#e5edff', 
-                color: currentPage >= Math.ceil(pendingNews.length / itemsPerPage) ? '#9ca3af' : '#4f46e5', 
-                border: 'none', 
-                borderRadius: '6px',
-                cursor: currentPage >= Math.ceil(pendingNews.length / itemsPerPage) ? 'not-allowed' : 'pointer',
-                fontWeight: '500'
+              variant="outlined"
+              sx={{
+                color: currentPage >= Math.ceil(pendingNews.length / itemsPerPage) ? '#9ca3af' : '#4f46e5',
+                borderColor: currentPage >= Math.ceil(pendingNews.length / itemsPerPage) ? '#e5e7eb' : '#4f46e5',
+                '&:hover': {
+                  borderColor: currentPage >= Math.ceil(pendingNews.length / itemsPerPage) ? '#e5e7eb' : '#4f46e5',
+                  backgroundColor: currentPage >= Math.ceil(pendingNews.length / itemsPerPage) ? 'transparent' : 'rgba(79, 70, 229, 0.04)'
+                }
               }}
             >
               Next
-            </button>
-          </div>
-        </div>
+            </Button>
+          </Box>
+        </Box>
       )}
 
       {/* Edit Popup */}

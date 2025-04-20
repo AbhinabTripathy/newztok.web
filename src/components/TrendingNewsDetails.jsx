@@ -391,8 +391,8 @@ const TrendingNewsDetails = () => {
       
       // Determine which endpoint to use based on the action (like or unlike)
       const likeEndpoint = isLiked 
-        ? `http://13.234.42.114:3333/api/interaction/news/${id}/unlike`
-        : `http://13.234.42.114:3333/api/interaction/news/${id}/like`;
+        ? `http://api.newztok.in/api/interaction/news/${id}/unlike`
+        : `http://api.newztok.in/api/interaction/news/${id}/like`;
       
       const requestOptions = {
         method: "POST",
