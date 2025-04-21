@@ -295,8 +295,16 @@ const StandardPost = () => {
       // Show success message
       alert('🎉 Success! Your post has been submitted for review.');
       
-      // Clear form
-      handleDiscard();
+      // Clear form directly instead of calling handleDiscard
+      setTitle('');
+      setContent('');
+      setFile(null);
+      setCategory('');
+      if (!journalistProfile?.assignState) setState('');
+      if (!journalistProfile?.assignDistrict) setDistrict('');
+      if (editorRef.current) {
+        editorRef.current.setContent('');
+      }
       
       // Navigate after a short delay
       setTimeout(() => {

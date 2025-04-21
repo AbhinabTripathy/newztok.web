@@ -10,72 +10,75 @@ import {
   CardContent,
   Divider,
   CircularProgress,
+  Button,
 } from '@mui/material';
 import axios from 'axios';
 import { useStateContext } from './Header'; // Import state context
 
 const StateNews = () => {
   const { state, district } = useParams();
-  const [newsItems, setNewsItems] = useState([]);
+  const [biharNews, setBiharNews] = useState([]);
+  const [jharkhandNews, setJharkhandNews] = useState([]);
+  const [upNews, setUpNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { selectedState } = useStateContext(); // Get selected state from context
   const navigate = useNavigate(); // Add useNavigate import
 
   useEffect(() => {
-    // Simply stop loading to show maintenance message
-    setLoading(false);
-    // No alert dialog or automatic redirect
-  }, []);
-
-  const fetchDistrictNews = async () => {
-    try {
+    const fetchAllStateNews = async () => {
       setLoading(true);
-      const response = await axios.get('https://api.newztok.in/api/news/category/district');
-      console.log('District news API response:', response.data);
-      
-      // Process data from API
-      let fetchedNews = [];
-      if (Array.isArray(response.data)) {
-        fetchedNews = response.data;
-      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
-        fetchedNews = response.data.data;
+      try {
+        // Fetch Bihar news
+        const biharResponse = await axios.get('https://api.newztok.in/api/news/state/bihar', {
+          timeout: 10000,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+        console.log('Bihar API Response:', biharResponse.data);
+        const biharData = Array.isArray(biharResponse.data) ? biharResponse.data : 
+                         (biharResponse.data?.data || []);
+        setBiharNews(biharData.slice(0, 6)); // Only take first 6 posts
+
+        // Fetch Jharkhand news
+        const jharkhandResponse = await axios.get('https://api.newztok.in/api/news/state/jharkhand', {
+          timeout: 10000,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+        console.log('Jharkhand API Response:', jharkhandResponse.data);
+        const jharkhandData = Array.isArray(jharkhandResponse.data) ? jharkhandResponse.data : 
+                             (jharkhandResponse.data?.data || []);
+        setJharkhandNews(jharkhandData.slice(0, 6)); // Only take first 6 posts
+
+        // Fetch UP news
+        const upResponse = await axios.get('https://api.newztok.in/api/news/state/up', {
+          timeout: 10000,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+        console.log('UP API Response:', upResponse.data);
+        const upData = Array.isArray(upResponse.data) ? upResponse.data : 
+                      (upResponse.data?.data || []);
+        setUpNews(upData.slice(0, 6)); // Only take first 6 posts
+
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching state news:', err);
+        setError('Failed to load state news. Please try again later.');
+      } finally {
+        setLoading(false);
       }
-      
-      // Filter news by selected state if one is selected
-      if (selectedState) {
-        console.log(`Filtering district news by state: ${selectedState}`);
-        
-        // First, try to match exact state name
-        let filteredNews = fetchedNews.filter(item => 
-          item.state && (item.state.includes(selectedState) || selectedState.includes(item.state))
-        );
-        
-        // If no exact matches, check if state is mentioned in the content or title
-        if (filteredNews.length === 0) {
-          filteredNews = fetchedNews.filter(item => 
-            (item.content && item.content.includes(selectedState)) || 
-            (item.title && item.title.includes(selectedState))
-          );
-        }
-        
-        // If we found filtered results, use them; otherwise, fall back to all news
-        if (filteredNews.length > 0) {
-          console.log(`Found ${filteredNews.length} district news items for state: ${selectedState}`);
-          fetchedNews = filteredNews;
-        } else {
-          console.log(`No district news items found for state: ${selectedState}, showing all district news`);
-        }
-      }
-      
-      setNewsItems(fetchedNews);
-    } catch (err) {
-      console.error('Error fetching district news:', err);
-      setError('Failed to load district news. Please try again later.');
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchAllStateNews();
+  }, []);
 
   const states = [
     {
@@ -546,11 +549,10 @@ const StateNews = () => {
     </Box>
   );
 
-  // Render the main content for a particular state
+  // Modify the renderStateContent function to use the specific state's news
   const renderStateContent = (stateName, districtName = null) => {
-    const stateData = states.find(s => s.en.toLowerCase() === stateName.toLowerCase());
+    const stateData = states.find(s => s.en.toLowerCase() === stateName?.toLowerCase());
     
-    // Add null check to prevent accessing properties on undefined
     if (!stateData) {
       console.error(`State not found: ${stateName}`);
       return (
@@ -558,13 +560,26 @@ const StateNews = () => {
           <Typography variant="h5" color="error">
             State information not found
           </Typography>
-          <Typography variant="body1" sx={{ mt: 2 }}>
-            The requested state "{stateName}" could not be found in our database.
-          </Typography>
         </Box>
       );
     }
-    
+
+    // Get the appropriate news items based on the state
+    let newsItems = [];
+    switch(stateData.en.toLowerCase()) {
+      case 'bihar':
+        newsItems = biharNews;
+        break;
+      case 'jharkhand':
+        newsItems = jharkhandNews;
+        break;
+      case 'uttar pradesh':
+        newsItems = upNews;
+        break;
+      default:
+        newsItems = [];
+    }
+
     const districtData = districtName ? 
       stateData.districts.find(d => d.en.toLowerCase() === districtName.toLowerCase()) :
       null;
@@ -1151,72 +1166,23 @@ const StateNews = () => {
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 5 }}>
           <CircularProgress />
-          <Typography variant="h6" sx={{ ml: 2 }}>Loading district news...</Typography>
+          <Typography variant="h6" sx={{ ml: 2 }}>Loading state news...</Typography>
         </Box>
       ) : error ? (
-        <Box sx={{ 
-          p: 3, 
-          backgroundColor: '#FFF5F5', 
-          borderRadius: 2, 
-          color: '#E53E3E',
-          textAlign: 'center',
-          mb: 4
-        }}>
+        <Box sx={{ p: 3, backgroundColor: '#FFF5F5', borderRadius: 2, color: '#E53E3E', textAlign: 'center', mb: 4 }}>
           <Typography variant="h6">{error}</Typography>
-          <Typography variant="body2" sx={{ mt: 1 }}>
-            Please try again later or check your connection.
-          </Typography>
         </Box>
       ) : (
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            minHeight: '60vh',
-            p: 4,
-            textAlign: 'center',
-            cursor: 'pointer',
-            transition: 'all 0.2s ease-in-out',
-            '&:hover': {
-              backgroundColor: 'rgba(0, 0, 0, 0.02)',
-            }
-          }}
-          onClick={() => navigate('/')}
-        >
-          <Typography variant="h4" gutterBottom color="primary" sx={{ fontWeight: 'bold' }}>
-            State News Section
-          </Typography>
-          <Typography variant="h5" gutterBottom color="error">
-            Under Maintenance
-          </Typography>
-          <Typography variant="body1" sx={{ mb: 4, maxWidth: '600px', mx: 'auto', color: 'text.secondary' }}>
-            We're currently updating this section to serve you better.
-          </Typography>
-          <Box 
-            sx={{
-              mt: 2,
-              py: 1.5,
-              px: 3,
-              borderRadius: 2,
-              bgcolor: 'primary.main',
-              color: 'white',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'medium',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-              '&:hover': {
-                bgcolor: 'primary.dark',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
-              }
-            }}
-          >
-            Click to Return to Home
-          </Box>
-        </Box>
+        <>
+          {/* Bihar Section */}
+          {renderStateContent('Bihar')}
+          
+          {/* Jharkhand Section */}
+          {renderStateContent('Jharkhand')}
+          
+          {/* Uttar Pradesh Section */}
+          {renderStateContent('Uttar Pradesh')}
+        </>
       )}
     </Box>
   );

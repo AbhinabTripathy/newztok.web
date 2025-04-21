@@ -9,6 +9,7 @@ import InternationalNews from './components/InternationalNews';
 import Sports from './components/Sports';
 import Entertainment from './components/Entertainment';
 import StateNews from './components/State';
+import StateNewsPage from './components/StateNewsPage';
 import Footer from './components/Footer';
 import Login from './components/Login';
 import Register from './components/Register';
@@ -155,7 +156,7 @@ function App() {
                   <Route path="/national" element={<NationalNews />} />
                   <Route path="/international" element={<InternationalNews />} />
                   <Route path="/state" element={<StateNews />} />
-                  <Route path="/state/:state" element={<StateNews />} />
+                  <Route path="/state/:state" element={<StateNewsPage />} />
                   <Route path="/state/:state/:district" element={<StateNews />} />
                   <Route path="/sports" element={<Sports />} />
                   <Route path="/entertainment" element={<Entertainment />} />

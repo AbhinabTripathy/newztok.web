@@ -45,6 +45,11 @@ const PendingApprovals = () => {
   // API Base URL
   const baseURL = 'https://api.newztok.in';
 
+  // Add useEffect to fetch pending news when component mounts
+  useEffect(() => {
+    fetchPendingNews();
+  }, []);
+
   // Add mock data generator
   const getMockPendingNews = () => {
     return [

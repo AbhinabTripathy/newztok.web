@@ -384,11 +384,19 @@ const VideoPost = () => {
       );
       
       // Clear form
-      handleDiscard();
+      setTitle('');
+      setYoutubeUrl('');
+      setVideoFile(null);
+      setContent('');
+      setCategory('');
+      setState('');
+      setDistrict('');
+      setUploadProgress(0);
+      setUploadMethod('youtube');
       
       // Navigate after a short delay
       setTimeout(() => {
-        navigate('/journalist/pending-approval');
+        navigate('/journalist/pendingApprovals');
       }, 2000);
       
     } catch (err) {

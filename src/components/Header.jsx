@@ -330,10 +330,22 @@ const Header = () => {
 
   // Handle state selection
   const handleStateSelect = (state) => {
+    console.log('Selected state:', state);
     setSelectedState(state);
     
-    // Navigate to the state page with the selected state
-    navigate(`/state/${state}`);
+    // Map Hindi state names to their respective endpoints and English names
+    const stateMapping = {
+      'झारखंड': { endpoint: 'jharkhand', name: 'jharkhand' },
+      'बिहार': { endpoint: 'bihar', name: 'bihar' },
+      'उत्तर प्रदेश': { endpoint: 'up', name: 'uttar-pradesh' }
+    };
+
+    const selectedStateInfo = stateMapping[state];
+    if (selectedStateInfo) {
+      console.log('Navigating to:', `/state/${selectedStateInfo.name}`);
+      // Navigate to the state page with the correct URL parameter
+      navigate(`/state/${selectedStateInfo.name}`);
+    }
     
     // Close drawer if open
     if (drawerOpen) {

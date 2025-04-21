@@ -19,6 +19,7 @@ const EditPost = () => {
   const [state, setState] = useState('');
   const [district, setDistrict] = useState('');
   const [featuredImage, setFeaturedImage] = useState('');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   
   // UI states
@@ -257,12 +258,14 @@ const EditPost = () => {
     setState(data.state !== undefined ? data.state : '');
     setDistrict(data.district !== undefined ? data.district : '');
     setFeaturedImage(data.featuredImage !== undefined ? data.featuredImage : '');
+    setYoutubeUrl(data.youtubeUrl || '');
     
     console.log('Setting initial data with fields:');
     console.log('- Title:', data.title);
     console.log('- State:', data.state);
     console.log('- District:', data.district);
     console.log('- FeaturedImage:', data.featuredImage);
+    console.log('- YouTube URL:', data.youtubeUrl);
   };
 
   const handleSaveChanges = async () => {
@@ -276,25 +279,57 @@ const EditPost = () => {
         throw new Error('No authentication token found');
       }
 
-      // Configure headers with token
-      const config = {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      };
+      // Configure headers for multipart form data if we have a new file
+      const hasNewFile = selectedFile !== null;
+      const contentType = hasNewFile ? 'multipart/form-data' : 'application/json';
+      
+      console.log('Update type:', hasNewFile ? 'With new image file' : 'JSON only update');
 
-      // Prepare the update data
-      const updateData = {
-        title: title,
-        content: content,
-        category: category || '',
-        state: state || '',
-        district: district || '',
-        featuredImage: featuredImage || ''
-      };
+      // Prepare the update data - use FormData if we have a file, otherwise use JSON
+      let updateData;
+      let config;
+      
+      if (hasNewFile) {
+        // Create FormData to handle file upload
+        updateData = new FormData();
+        updateData.append('title', title);
+        updateData.append('content', content);
+        updateData.append('category', category || '');
+        updateData.append('state', state || '');
+        updateData.append('district', district || '');
+        updateData.append('featuredImage', selectedFile);
+        updateData.append('youtubeUrl', youtubeUrl || '');
+        
+        // Set headers for multipart form data
+        config = {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        };
+        
+        console.log('Sending update with new file:', selectedFile.name);
+      } else {
+        // Use regular JSON if no file
+        updateData = {
+          title: title,
+          content: content,
+          category: category || '',
+          state: state || '',
+          district: district || '',
+          featuredImage: featuredImage || '',
+          youtubeUrl: youtubeUrl || ''
+        };
+        
+        config = {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        };
+      }
 
-      console.log('Sending update request with data:', updateData);
+      console.log('Sending update request with data:', hasNewFile ? 'FormData with file' : updateData);
 
       // Send PUT request to update the news
       const response = await axios.put(
@@ -313,7 +348,8 @@ const EditPost = () => {
         category: category || '',
         state: state || '',
         district: district || '',
-        featuredImage: featuredImage || '',
+        // If we got a response with a new featuredImage path, use that, otherwise keep existing
+        featuredImage: response.data?.featuredImage || response.data?.data?.featuredImage || featuredImage || '',
         updatedAt: new Date().toISOString(),
         _updatedLocally: true // Flag to highlight updated items in PendingApprovals
       };
@@ -460,7 +496,7 @@ const EditPost = () => {
           {/* Buttons at top right */}
           <div style={{ 
             position: 'absolute', 
-            top: '120px', // Changed from 90px to 120px to move buttons down
+            top: '120px',
             right: '30px',
             display: 'flex',
             gap: '10px'
@@ -543,7 +579,7 @@ const EditPost = () => {
                 />
               </div>
 
-              {/* Featured Image */}
+              {/* Featured Media Section */}
               <div style={{ marginBottom: '24px' }}>
                 <label 
                   style={{ 
@@ -554,7 +590,7 @@ const EditPost = () => {
                     color: '#111827'
                   }}
                 >
-                  Featured Image
+                  Featured Media
                 </label>
                 
                 <div style={{
@@ -563,15 +599,26 @@ const EditPost = () => {
                   padding: '10px',
                   backgroundColor: '#f9fafb'
                 }}>
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: '500', color: '#4B5563' }}>Current Image Path:</span>
-                    </div>
+                  {/* Video URL Section */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <label 
+                      htmlFor="youtubeUrl"
+                      style={{ 
+                        display: 'block', 
+                        fontSize: '14px', 
+                        fontWeight: '500', 
+                        color: '#4B5563',
+                        marginBottom: '8px'
+                      }}
+                    >
+                      Video URL (YouTube, Vimeo, etc.)
+                    </label>
                     <input
                       type="text"
-                      value={featuredImage || ''}
-                      onChange={(e) => setFeaturedImage(e.target.value)}
-                      placeholder="Image path or URL"
+                      id="youtubeUrl"
+                      value={youtubeUrl}
+                      onChange={(e) => setYoutubeUrl(e.target.value)}
+                      placeholder="Enter video URL here..."
                       style={{
                         width: '100%',
                         padding: '8px 12px',
@@ -580,15 +627,45 @@ const EditPost = () => {
                         fontSize: '14px'
                       }}
                     />
+                    {youtubeUrl && (
+                      <div style={{ marginTop: '12px' }}>
+                        <p style={{ fontSize: '14px', color: '#10B981', marginBottom: '8px', fontWeight: '500' }}>
+                          ✓ Video URL added
+                        </p>
+                        <div style={{ 
+                          position: 'relative', 
+                          paddingBottom: '56.25%', 
+                          height: 0, 
+                          overflow: 'hidden',
+                          borderRadius: '4px',
+                          border: '2px solid #10B981',
+                          padding: '2px'
+                        }}>
+                          <iframe
+                            src={`https://www.youtube.com/embed/${getYouTubeId(youtubeUrl)}`}
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              width: '100%',
+                              height: '100%',
+                              border: 0
+                            }}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  
+
                   <div style={{
                     borderTop: '1px solid #E5E7EB',
                     paddingTop: '12px',
                     marginTop: '12px'
                   }}>
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: '500', color: '#4B5563' }}>Upload New Image:</span>
+                      <span style={{ fontSize: '14px', fontWeight: '500', color: '#4B5563' }}>Featured Image:</span>
                     </div>
                     
                     <input
@@ -652,7 +729,7 @@ const EditPost = () => {
                         }}
                       />
                     </div>
-                  ) : featuredImage && (
+                  ) : featuredImage && !youtubeUrl && (
                     <div style={{ marginTop: '10px' }}>
                       <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '8px' }}>Current image:</p>
                       <img 
@@ -679,7 +756,7 @@ const EditPost = () => {
                 </div>
               </div>
 
-              {/* Content Editor using TinyMCE */}
+              {/* Content Editor */}
               <div style={{ marginBottom: '24px' }}>
                 <label 
                   htmlFor="content"
@@ -696,23 +773,8 @@ const EditPost = () => {
                 <Editor
                   apiKey="omxjaluaxpgfpa6xkfadimoprrirfmhozsrtpb3o1uimu4c5"
                   value={content}
-                  onEditorChange={(newContent, editor) => {
-                    // Get current selection
-                    const selection = editor.selection.getSel();
-                    if (selection) {
-                      // Store the current cursor position
-                      const range = selection.getRangeAt(0);
-                      const bookmark = editor.selection.getBookmark();
-                      
-                      // Update content
-                      setContent(newContent);
-                      
-                      // Restore cursor position
-                      editor.selection.moveToBookmark(bookmark);
-                    } else {
-                      setContent(newContent);
-                    }
-                  }}
+                  onEditorChange={handleEditorChange}
+                  onInit={handleEditorInit}
                   init={{
                     height: 500,
                     menubar: true,
@@ -1065,6 +1127,12 @@ const EditPost = () => {
       <JournalistFooter />
     </div>
   );
+};
+
+const getYouTubeId = (url) => {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
 };
 
 export default EditPost; 

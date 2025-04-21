@@ -11,6 +11,9 @@ const Posts = () => {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [actionDropdowns, setActionDropdowns] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [postsPerPage, setPostsPerPage] = useState(5);
+  const [showAllPosts, setShowAllPosts] = useState(false);
   const dropdownRef = useRef(null);
   const actionDropdownRefs = useRef({});
   const navigate = useNavigate();
@@ -333,50 +336,44 @@ const Posts = () => {
 
       console.log("Trying to delete post:", postId);
       const token = getAuthToken();
-      const res = await axios.delete(`https://api.newztok.in/api/news/${postId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      console.log("Delete successful:", res.data);
       
-      // Handle successful deletion
-      handleSuccessfulDeletion(postId);
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
+      // Use the direct endpoint without formatApiUrl
+      const deleteUrl = `${baseURL}/api/news/delete/${postId}`;
+      console.log("Making delete request to:", deleteUrl);
+
+      const response = await axios({
+        method: 'DELETE',
+        url: deleteUrl,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log("Delete response:", response);
+
+      if (response.status === 200 || response.status === 204) {
+        // Remove post from UI and show success message
+        setPosts(prevPosts => prevPosts.filter(post => 
+          String(post.id) !== String(postId) && String(post._id) !== String(postId)
+        ));
+        setSuccessMessage("Post has been permanently deleted");
+        setTimeout(() => setSuccessMessage(null), 3000);
+        
+        // Close the dropdown
+        toggleActionDropdown(postId);
+      }
       
     } catch (error) {
       console.error("Error deleting post:", error);
-      setError('Failed to delete post. Please try again.');
-      setTimeout(() => setError(null), 3000);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to delete post';
+      setError(`Failed to delete post: ${errorMessage}. Please try again or contact support.`);
+      setTimeout(() => setError(null), 5000);
     }
-  };
-  
-  // Helper function to handle successful deletion
-  const handleSuccessfulDeletion = (postId) => {
-    // Remove the post from the local state
-    setPosts(prevPosts => prevPosts.filter(post => 
-      String(post.id) !== String(postId) && String(post._id) !== String(postId)
-    ));
-    
-    // Store the deleted post ID in localStorage to prevent it from reappearing
-    try {
-      const deletedPosts = JSON.parse(localStorage.getItem('deletedPosts') || '[]');
-      if (!deletedPosts.includes(postId)) {
-        deletedPosts.push(postId);
-        localStorage.setItem('deletedPosts', JSON.stringify(deletedPosts));
-      }
-    } catch (storageError) {
-      console.warn('Could not store deleted post ID in localStorage:', storageError);
-    }
-    
-    setSuccessMessage("Post permanently deleted from the database");
-    
-    // Clear the message after 3 seconds
-    setTimeout(() => {
-      setSuccessMessage(null);
-    }, 3000);
-    
-    // Close the dropdown
-    toggleActionDropdown(postId);
   };
 
   // Toggle action dropdown for a specific post
@@ -422,6 +419,34 @@ const Posts = () => {
     } else if (path === 'video') {
       navigate('/editor/videoPost');
     }
+  };
+
+  // Calculate pagination
+  const indexOfLastPost = showAllPosts ? posts.length : currentPage * postsPerPage;
+  const indexOfFirstPost = showAllPosts ? 0 : (currentPage - 1) * postsPerPage;
+  const currentPosts = posts.slice(indexOfFirstPost, indexOfLastPost);
+  const totalPages = Math.ceil(posts.length / postsPerPage);
+
+  // Handle pagination navigation
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(prev => prev + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+    }
+  };
+
+  const handleViewAll = () => {
+    setShowAllPosts(true);
+  };
+
+  const handleViewPaginated = () => {
+    setShowAllPosts(false);
+    setCurrentPage(1);
   };
 
   return (
@@ -648,7 +673,7 @@ const Posts = () => {
                 </tr>
               </thead>
               <tbody>
-                {posts.map((post, index) => {
+                {currentPosts.map((post, index) => {
                   const postId = post._id || post.id || `post-${index}`;
                   // Check for either featured or isFeatured property being true
                   const isPostFeatured = post.featured || post.isFeatured;
@@ -796,38 +821,66 @@ const Posts = () => {
               borderTop: '1px solid #e5e7eb'
             }}>
               <div style={{ color: '#6b7280', fontSize: '14px' }}>
-                1 to {Math.min(posts.length, 5)} Items of {posts.length} — <Link to="#" style={{ color: '#3b82f6', textDecoration: 'none' }}>View all</Link>
+                {showAllPosts ? (
+                  <span>
+                    Showing all {posts.length} items — <Link 
+                      to="#" 
+                      onClick={handleViewPaginated}
+                      style={{ color: '#3b82f6', textDecoration: 'none' }}
+                    >
+                      View paginated
+                    </Link>
+                  </span>
+                ) : (
+                  <span>
+                    {indexOfFirstPost + 1} to {Math.min(indexOfLastPost, posts.length)} of {posts.length} items — <Link 
+                      to="#" 
+                      onClick={handleViewAll}
+                      style={{ color: '#3b82f6', textDecoration: 'none' }}
+                    >
+                      View all
+                    </Link>
+                  </span>
+                )}
               </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button 
-                  style={{ 
-                    padding: '8px 16px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    backgroundColor: '#e2e8f0',
-                    color: '#6b7280',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Previous
-                </button>
-                <button 
-                  style={{ 
-                    padding: '8px 16px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    backgroundColor: '#3b82f6',
-                    color: 'white',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Next
-                </button>
-              </div>
+              {!showAllPosts && (
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button 
+                    style={{ 
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      backgroundColor: currentPage === 1 ? '#e2e8f0' : '#3b82f6',
+                      color: currentPage === 1 ? '#6b7280' : 'white',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                      opacity: currentPage === 1 ? 0.7 : 1
+                    }}
+                    onClick={handlePrevPage}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </button>
+                  <button 
+                    style={{ 
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      border: 'none',
+                      backgroundColor: currentPage === totalPages ? '#e2e8f0' : '#3b82f6',
+                      color: currentPage === totalPages ? '#6b7280' : 'white',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                      opacity: currentPage === totalPages ? 0.7 : 1
+                    }}
+                    onClick={handleNextPage}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
