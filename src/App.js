@@ -30,6 +30,8 @@ import ProtectedEditorRoute from './components/ProtectedEditorRoute';
 import NewsFeed from './components/NewsFeed';
 import { ThemeProvider, createTheme, Box, Button } from '@mui/material';
 import PersonIcon from '@mui/icons-material/Person';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import TermsAndConditions from './components/TermsAndConditions';
 
 // Create theme with custom fonts
 const theme = createTheme({
@@ -75,6 +77,8 @@ function App() {
   const isStateDetailPage = location.pathname.match(/^\/state\/[^/]+\/\d+/);
   const isEntertainmentDetailPage = location.pathname.startsWith('/entertainment/') && location.pathname !== '/entertainment';
   const isSportsDetailPage = location.pathname.startsWith('/sports/') && location.pathname !== '/sports';
+  const isPolicyPage = location.pathname === '/privacy-policy';
+  const isTermsPage = location.pathname === '/terms-conditions';
 
   // Define the activeTab state and its setter function
   const [activeTab, setActiveTab] = useState('');
@@ -115,6 +119,10 @@ function App() {
           } 
         />
 
+        {/* Privacy Policy and Terms & Conditions Routes - Without Header and Footer */}
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-conditions" element={<TermsAndConditions />} />
+
         {/* Profile Route - Without Header and Footer */}
         <Route path="/profile" element={<Profile />} />
         
@@ -144,7 +152,7 @@ function App() {
           path="/*"
           element={
             <>
-              {!isLoginPage && !isRegisterPage && !isJournalistPage && !isProfilePage && !isNewsDetailPage && !isTrendingDetailPage && !isInternationalDetailPage && !isNationalDetailPage && !isStateDetailPage && !isEntertainmentDetailPage && !isSportsDetailPage && <Header />}
+              {!isLoginPage && !isRegisterPage && !isJournalistPage && !isProfilePage && !isNewsDetailPage && !isTrendingDetailPage && !isInternationalDetailPage && !isNationalDetailPage && !isStateDetailPage && !isEntertainmentDetailPage && !isSportsDetailPage && !isPolicyPage && !isTermsPage && <Header />}
               <Box component="main" sx={{ flexGrow: 1 }}>
                 <Routes>
                   <Route
@@ -164,7 +172,7 @@ function App() {
                   <Route path="/register" element={<Register />} />
                 </Routes>
               </Box>
-              {!isLoginPage && !isRegisterPage && !isJournalistPage && !isProfilePage && !isNewsDetailPage && !isTrendingDetailPage && !isInternationalDetailPage && !isNationalDetailPage && !isStateDetailPage && !isEntertainmentDetailPage && !isSportsDetailPage && <Footer />}
+              {!isLoginPage && !isRegisterPage && !isJournalistPage && !isProfilePage && !isNewsDetailPage && !isTrendingDetailPage && !isInternationalDetailPage && !isNationalDetailPage && !isStateDetailPage && !isEntertainmentDetailPage && !isSportsDetailPage && !isPolicyPage && !isTermsPage && <Footer />}
             </>
           }
         />

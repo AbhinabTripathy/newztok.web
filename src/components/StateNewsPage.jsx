@@ -36,17 +36,17 @@ const StateNewsPage = () => {
     'jharkhand': {
       hindi: 'झारखंड',
       endpoint: 'api/news/state/jharkhand',
-      bannerColor: '#1B5E20'
+      bannerColor: '#7B1FA2' // Purple shade for Jharkhand
     },
     'bihar': {
       hindi: 'बिहार',
       endpoint: 'api/news/state/bihar',
-      bannerColor: '#1B5E20'
+      bannerColor: '#1565C0' // Blue shade for Bihar
     },
     'uttar-pradesh': {
       hindi: 'उत्तर प्रदेश',
       endpoint: 'api/news/state/up',
-      bannerColor: '#1B5E20'
+      bannerColor: '#C62828' // Red shade for Uttar Pradesh
     }
   };
 
@@ -118,6 +118,22 @@ const StateNewsPage = () => {
       return `https://api.newztok.in${imagePath}`;
     };
 
+    // Generate appropriate location display
+    const getLocationDisplay = () => {
+      if (item.location) return item.location;
+      
+      // If no specific location, show state and district if available
+      if (state === 'uttar-pradesh') {
+        return item.district ? `Uttar Pradesh, ${item.district}` : 'Uttar Pradesh';
+      } else if (state === 'jharkhand') {
+        return item.district ? `Jharkhand, ${item.district}` : 'Jharkhand';
+      } else if (state === 'bihar') {
+        return item.district ? `Bihar, ${item.district}` : 'Bihar, Patna';
+      }
+      
+      return 'Location not available';
+    };
+
     return (
       <Link 
         to={`/state/${state}/${item.id || item._id}`} 
@@ -152,7 +168,7 @@ const StateNewsPage = () => {
                 position: 'absolute',
                 top: 16,
                 left: 16,
-                bgcolor: '#1B5E20',
+                bgcolor: stateConfig[state]?.bannerColor || '#1B5E20',
                 color: 'white',
                 px: 2,
                 py: 0.5,
@@ -178,7 +194,7 @@ const StateNewsPage = () => {
                 fontSize: '1rem',
                 cursor: 'pointer',
                 transition: 'color 0.2s ease',
-                '&:hover': { color: '#1B5E20' }
+                '&:hover': { color: stateConfig[state]?.bannerColor || '#1B5E20' }
               }}
             >
               {item.title || 'No Title'}
@@ -186,7 +202,7 @@ const StateNewsPage = () => {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#888' }}>
               <LocationOnIcon sx={{ fontSize: 14 }} />
               <Typography variant="caption" sx={{ color: '#888' }}>
-                {item.location || 'Bihar, patna'}
+                {getLocationDisplay()}
               </Typography>
               <FiberManualRecordIcon sx={{ fontSize: 6, mx: 0.5 }} />
               <AccessTimeIcon sx={{ fontSize: 14 }} />
@@ -216,12 +232,13 @@ const StateNewsPage = () => {
         sx={{ 
           width: '100%',
           position: 'relative',
-          py: 5,
+          py: 8,
           color: 'white',
           textAlign: 'center',
           mb: 8,
           overflow: 'hidden',
-          background: 'linear-gradient(180deg, #1B5E20 0%, #2E7D32 100%)',
+          background: `linear-gradient(180deg, ${currentState?.bannerColor || '#1B5E20'} 0%, ${currentState?.bannerColor ? currentState.bannerColor + '99' : '#2E7D32'} 100%)`,
+          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
           '&::before': {
             content: '""',
             position: 'absolute',
@@ -229,10 +246,37 @@ const StateNewsPage = () => {
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpath fill='%2343A047' fill-opacity='0.2' d='M0,0 L50,0 L50,50 L0,50 Z M50,50 L100,50 L100,100 L50,100 Z M0,50 L50,50 L50,100 L0,100 Z M50,0 L100,0 L100,50 L50,50 Z'/%3E%3C/svg%3E")`,
-            backgroundSize: '40px 40px',
+            backgroundImage: state === 'uttar-pradesh' ?
+              // UP pattern - temple/gate silhouettes
+              `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpath fill='%23FFFFFF' fill-opacity='0.15' d='M10,90 L10,60 L20,60 L20,70 L30,70 L30,60 L40,60 L40,70 L50,70 L50,60 L60,60 L60,70 L70,70 L70,60 L80,60 L80,90 L10,90 Z M20,60 L20,50 L30,40 L40,50 L40,60 L20,60 Z M60,60 L60,50 L70,40 L80,50 L80,60 L60,60 Z'/%3E%3C/svg%3E")` :
+            state === 'jharkhand' ?
+              // Jharkhand pattern - tribal art inspired
+              `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpath fill='%23FFFFFF' fill-opacity='0.15' d='M10,10 L20,20 L30,10 L40,20 L50,10 L60,20 L70,10 L80,20 L90,10 L90,30 L80,40 L90,50 L80,60 L90,70 L80,80 L90,90 L70,90 L60,80 L50,90 L40,80 L30,90 L20,80 L10,90 L10,70 L20,60 L10,50 L20,40 L10,30 L10,10 Z'/%3E%3C/svg%3E")` :
+              // Bihar pattern - river/waves
+              `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='100' viewBox='0 0 200 100'%3E%3Cpath fill='%23FFFFFF' fill-opacity='0.15' d='M0,20 C40,10 60,30 100,20 C140,10 160,30 200,20 L200,30 C160,40 140,20 100,30 C60,40 40,20 0,30 L0,20 Z M0,50 C40,40 60,60 100,50 C140,40 160,60 200,50 L200,60 C160,70 140,50 100,60 C60,70 40,50 0,60 L0,50 Z M0,80 C40,70 60,90 100,80 C140,70 160,90 200,80 L200,90 C160,100 140,80 100,90 C60,100 40,80 0,90 L0,80 Z'/%3E%3C/svg%3E")`,
+            backgroundSize: state === 'bihar' ? '200px 100px' : '100px 100px',
+            backgroundPosition: 'center',
             zIndex: 1,
-            opacity: 0.4
+            opacity: 0.7,
+            animation: 'backgroundScroll 30s linear infinite'
+          },
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: state === 'uttar-pradesh' ?
+              'radial-gradient(circle at 30% 50%, rgba(198, 40, 40, 0.4) 0%, rgba(198, 40, 40, 0) 60%)' :
+            state === 'jharkhand' ?
+              'radial-gradient(circle at 70% 50%, rgba(123, 31, 162, 0.4) 0%, rgba(123, 31, 162, 0) 60%)' :
+              'radial-gradient(circle at 50% 50%, rgba(21, 101, 192, 0.4) 0%, rgba(21, 101, 192, 0) 60%)',
+            zIndex: 0
+          },
+          '@keyframes backgroundScroll': {
+            '0%': { backgroundPosition: '0 0' },
+            '100%': { backgroundPosition: state === 'bihar' ? '200px 0' : '100px 0' }
           }
         }}
       >
@@ -244,36 +288,104 @@ const StateNewsPage = () => {
           }}>
             <Box sx={{ 
               display: 'inline-block',
-              px: 5, 
-              py: 2,
+              px: 6, 
+              py: 3,
               position: 'relative',
-              backgroundColor: 'rgba(0,0,0,0.2)',
-              borderRadius: 3,
-              backdropFilter: 'blur(3px)'
+              backgroundColor: 'rgba(0,0,0,0.3)',
+              borderRadius: 4,
+              backdropFilter: 'blur(4px)',
+              boxShadow: '0 4px 30px rgba(0,0,0,0.1)',
+              border: '1px solid rgba(255,255,255,0.2)'
             }}>
               <Typography 
                 variant="h3" 
                 component="h1" 
                 sx={{ 
-                  fontWeight: 700,
-                  mb: 1,
-                  textShadow: '2px 2px 4px rgba(0,0,0,0.3)'
+                  fontWeight: 800,
+                  mb: 1.5,
+                  textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
+                  letterSpacing: '1px'
                 }}
               >
-                {state?.replace('-', ' ')?.toUpperCase() || 'State'}
+                {state === 'uttar-pradesh' ? 'UTTAR PRADESH' : 
+                 state === 'jharkhand' ? 'JHARKHAND' : 
+                 state === 'bihar' ? 'BIHAR' : 
+                 state?.replace('-', ' ')?.toUpperCase() || 'State'}
               </Typography>
               <Typography 
                 variant="subtitle1" 
                 sx={{ 
-                  opacity: 0.9,
-                  textShadow: '1px 1px 2px rgba(0,0,0,0.3)'
+                  opacity: 0.95,
+                  textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
+                  fontSize: '1.2rem',
+                  fontWeight: 500,
+                  letterSpacing: '0.5px'
                 }}
               >
-                News from {state?.replace('-', ' ')?.toUpperCase() || 'State'} / बिहार
+                News from {state === 'uttar-pradesh' ? 'Uttar Pradesh' : 
+                           state === 'jharkhand' ? 'Jharkhand' : 
+                           state === 'bihar' ? 'Bihar' : 
+                           state?.replace('-', ' ')} / {currentState?.hindi || ''}
               </Typography>
+              {/* Small accent decoration */}
+              <Box sx={{
+                position: 'absolute',
+                width: '60px',
+                height: '3px',
+                backgroundColor: 'white',
+                bottom: '-10px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                borderRadius: '3px'
+              }} />
             </Box>
           </Box>
         </Container>
+        
+        {/* Decorative elements for each state */}
+        {state === 'uttar-pradesh' && (
+          <Box sx={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            width: '100%',
+            height: '25px',
+            background: 'rgba(255,255,255,0.1)',
+            clipPath: 'polygon(0% 0%, 4% 100%, 8% 0%, 12% 100%, 16% 0%, 20% 100%, 24% 0%, 28% 100%, 32% 0%, 36% 100%, 40% 0%, 44% 100%, 48% 0%, 52% 100%, 56% 0%, 60% 100%, 64% 0%, 68% 100%, 72% 0%, 76% 100%, 80% 0%, 84% 100%, 88% 0%, 92% 100%, 96% 0%, 100% 100%, 100% 100%, 0% 100%)'
+          }} />
+        )}
+        {state === 'jharkhand' && (
+          <Box sx={{
+            position: 'absolute',
+            top: '15px',
+            right: '15px',
+            width: '70px',
+            height: '70px',
+            background: 'rgba(255,255,255,0.1)',
+            borderRadius: '50%',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              border: '2px solid rgba(255,255,255,0.3)'
+            }
+          }} />
+        )}
+        {state === 'bihar' && (
+          <Box sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '10px',
+            background: 'linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0) 100%)'
+          }} />
+        )}
       </Box>
 
       {/* Main Content - First Section */}
@@ -475,12 +587,16 @@ const StateNewsPage = () => {
                     key={index}
                     fullWidth
                     sx={{
-                      bgcolor: '#1B5E20',
+                      bgcolor: currentState?.bannerColor || '#1B5E20',
                       color: 'white',
                       py: 1.5,
                       borderRadius: 2,
                       justifyContent: 'space-between',
-                      '&:hover': { bgcolor: '#2E7D32' }
+                      '&:hover': { 
+                        bgcolor: currentState?.bannerColor ? 
+                          currentState.bannerColor + 'CC' : 
+                          '#2E7D32'  
+                      }
                     }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>

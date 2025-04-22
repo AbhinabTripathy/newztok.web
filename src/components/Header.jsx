@@ -42,6 +42,7 @@ import PermIdentityIcon from '@mui/icons-material/PermIdentity';
 import PrivacyTipIcon from '@mui/icons-material/PrivacyTip';
 import DescriptionIcon from '@mui/icons-material/Description';
 import Logo from '../assets/images/NewzTok logo-2.svg';
+import axios from 'axios';
 
 // Create a context for the selected state
 export const StateContext = createContext({
@@ -71,16 +72,59 @@ const Header = () => {
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
   const accountMenuOpen = Boolean(anchorEl);
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const navItems = ['Trending', 'International', 'National', 'State', 'Entertainment', 'Sports'];
   const stateItems = ['उत्तर प्रदेश', 'बिहार', 'झारखंड'];
 
-  // Check if user is logged in
+  // Check if user is logged in and fetch profile data
   useEffect(() => {
     const userAuthToken = localStorage.getItem('userAuthToken');
-    setIsUserLoggedIn(!!userAuthToken);
+    const isLoggedIn = !!userAuthToken;
+    setIsUserLoggedIn(isLoggedIn);
+    
+    if (isLoggedIn) {
+      fetchUserProfile(userAuthToken);
+    }
   }, [location.pathname]); // Re-check when route changes
 
+  // Fetch user profile data from API
+  const fetchUserProfile = async (token) => {
+    try {
+      setLoading(true);
+      
+      // API Base URL
+      const baseURL = 'https://api.newztok.in';
+      
+      // Configure axios headers with the token
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      };
+      
+      const response = await axios.get(`${baseURL}/api/auth/profile`, config);
+      console.log('Profile response:', response.data);
+      
+      if (response.data) {
+        setUserData(response.data.data || response.data);
+      }
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get initial letter from username
+  const getInitial = () => {
+    if (userData && userData.username) {
+      return userData.username.charAt(0).toUpperCase();
+    }
+    return 'U'; // Default if no username
+  };
+  
   // Sample search results for demonstration
   const searchResults = [
     {
@@ -243,6 +287,7 @@ const Header = () => {
       
       // Update login state
       setIsUserLoggedIn(false);
+      setUserData(null);
     }
   };
 
@@ -392,20 +437,24 @@ const Header = () => {
             {/* Account Icon with Dropdown */}
             {isUserLoggedIn ? (
               <>
-                <Tooltip title="Account">
-                  <IconButton 
-                    size="small" 
-                    onClick={handleAccountClick}
-                    sx={{ 
-                      color: 'white',
-                      '&:hover': {
-                        bgcolor: 'rgba(255, 255, 255, 0.1)'
-                      }
-                    }}
-                  >
-                    <AccountCircleIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
+                <Box
+                  onClick={handleAccountClick}
+                  sx={{
+                    width: '28px',
+                    height: '28px',
+                    borderRadius: '50%',
+                    backgroundColor: '#3b82f6',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    color: 'white',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {getInitial()}
+                </Box>
                 <Menu
                   anchorEl={anchorEl}
                   open={accountMenuOpen}

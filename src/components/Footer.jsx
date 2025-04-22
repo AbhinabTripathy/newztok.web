@@ -21,7 +21,7 @@ const Footer = () => {
     { name: 'National', count: 0, endpoint: 'national' },
     { name: 'Sports', count: 0, endpoint: 'sports' },
     { name: 'Entertainment', count: 0, endpoint: 'entertainment' },
-    { name: 'State', count: 0, endpoint: 'district' }
+    { name: 'State', count: 0, endpoint: 'state' }
   ]);
   
   const baseUrl = 'https://api.newztok.in/api/news';
@@ -111,19 +111,46 @@ const Footer = () => {
         for (let i = 0; i < updatedCategories.length; i++) {
           const category = updatedCategories[i];
           try {
-            const response = await axios.get(`${baseUrl}/category/${category.endpoint}`);
-            let newsData = [];
-            
-            if (response.data && Array.isArray(response.data.data)) {
-              newsData = response.data.data;
-            } else if (response.data && Array.isArray(response.data)) {
-              newsData = response.data;
+            // Special handling for state category
+            if (category.endpoint === 'state') {
+              // Define states to fetch
+              const states = ['up', 'bihar', 'jharkhand'];
+              let totalStateCount = 0;
+              
+              // Fetch news for each state and add to total count
+              for (const state of states) {
+                const stateResponse = await axios.get(`${baseUrl}/state/${state}`);
+                let stateNewsData = [];
+                
+                if (stateResponse.data && Array.isArray(stateResponse.data.data)) {
+                  stateNewsData = stateResponse.data.data;
+                } else if (stateResponse.data && Array.isArray(stateResponse.data)) {
+                  stateNewsData = stateResponse.data;
+                }
+                
+                totalStateCount += stateNewsData.length;
+              }
+              
+              updatedCategories[i] = {
+                ...category,
+                count: totalStateCount
+              };
+            } else {
+              // Regular category handling (unchanged)
+              const response = await axios.get(`${baseUrl}/category/${category.endpoint}`);
+              let newsData = [];
+              
+              if (response.data && Array.isArray(response.data.data)) {
+                newsData = response.data.data;
+              } else if (response.data && Array.isArray(response.data)) {
+                newsData = response.data;
+              }
+              
+              updatedCategories[i] = {
+                ...category,
+                count: newsData.length
+              };
             }
-            
-            updatedCategories[i] = {
-              ...category,
-              count: newsData.length
-            };
           } catch (error) {
             console.error(`Error fetching ${category.name} count:`, error);
           }

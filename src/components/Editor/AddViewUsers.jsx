@@ -479,7 +479,7 @@ const AddViewUsers = () => {
                 type="text"
                 id="username"
                 name="username"
-                placeholder="Username (optional)"
+                placeholder="Please enter your username"
                 value={formData.username}
                 onChange={handleInputChange}
                 style={{ 
@@ -663,7 +663,7 @@ const AddViewUsers = () => {
                 type="text"
                 id="phoneNumber"
                 name="phoneNumber"
-                placeholder="Enter your phone number (optional)"
+                placeholder="Enter your phone number"
                 value={formData.phoneNumber}
                 onChange={handleInputChange}
                 style={{ 

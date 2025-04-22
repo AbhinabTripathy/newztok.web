@@ -48,7 +48,7 @@ const EditorFooter = () => {
       }}>
         <div style={{ width: '100px' }}></div>
         <div>
-          Built @ Boldtribe | 2025 © <Link to="/" style={{ color: '#3b82f6', textDecoration: 'none' }}>Newztok</Link>
+          © Newztok Media Solutions Pvt. Ltd.
         </div>
         <div style={{ width: '100px', textAlign: 'right' }}>
           v1.14.0

@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaSearch, FaBell } from 'react-icons/fa';
 import { BsSun, BsMoon } from 'react-icons/bs';
-import { BsGrid3X3GapFill } from 'react-icons/bs';
-import { CgProfile } from 'react-icons/cg';
 import Logo from '../../assets/images/NewzTok logo-2.svg';
 import AccountDropdown from './AccountDropdown';
 
@@ -10,6 +7,7 @@ const EditorHeader = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [accountDropdownOpen, setAccountDropdownOpen] = useState(false);
   const [editorEmail, setEditorEmail] = useState('');
+  const [showNotification, setShowNotification] = useState(false);
   const dropdownRef = useRef(null);
   
   // Get editor information from localStorage or sessionStorage
@@ -42,30 +40,53 @@ const EditorHeader = () => {
     setAccountDropdownOpen(!accountDropdownOpen);
   };
 
+  const handleDarkModeClick = () => {
+    setShowNotification(true);
+    setTimeout(() => {
+      setShowNotification(false);
+    }, 3000);
+  };
+
+  // Get the first letter of the username, or use 'U' as default
+  const getInitial = () => {
+    if (editorEmail && editorEmail.length > 0) {
+      return editorEmail.charAt(0).toUpperCase();
+    }
+    return 'U';
+  };
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px', backgroundColor: '#1a1a1a', position: 'relative' }}>
-      <img src={Logo} alt="NewzTok Logo" style={{ height: '50px' }} />
+      <img src={Logo} alt="NewzTok Logo" style={{ height: '60px' }} />
       
-      <div style={{ display: 'flex', alignItems: 'center', backgroundColor: '#2a2a2a', borderRadius: '5px', padding: '5px 10px' }}>
-        <FaSearch color="#ccc" size={20} />
-        <input type="text" placeholder="Search articles..." style={{ backgroundColor: 'transparent', border: 'none', color: '#ccc', marginLeft: '5px', outline: 'none', width: '220px' }} />
-      </div>
+      {/* Empty middle space where search was */}
+      <div></div>
       
       <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
         {darkMode ? (
-          <BsMoon color="#ccc" size={20} onClick={() => setDarkMode(false)} style={{ cursor: 'pointer' }} />
+          <BsMoon color="#ccc" size={20} onClick={handleDarkModeClick} style={{ cursor: 'pointer' }} />
         ) : (
-          <BsSun color="#ccc" size={20} onClick={() => setDarkMode(true)} style={{ cursor: 'pointer' }} />
+          <BsSun color="#ccc" size={20} onClick={handleDarkModeClick} style={{ cursor: 'pointer' }} />
         )}
-        <FaBell color="#ccc" size={20} />
-        <BsGrid3X3GapFill color="#ccc" size={20} />
         <div ref={dropdownRef}>
-          <CgProfile 
-            color="#ccc" 
-            size={20} 
+          <div 
             onClick={toggleAccountDropdown} 
-            style={{ cursor: 'pointer' }}
-          />
+            style={{ 
+              cursor: 'pointer',
+              width: '32px',
+              height: '32px',
+              backgroundColor: '#3b82f6',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontWeight: 'bold',
+              fontSize: '16px'
+            }}
+          >
+            {getInitial()}
+          </div>
           <AccountDropdown 
             isOpen={accountDropdownOpen} 
             onClose={() => setAccountDropdownOpen(false)}
@@ -73,6 +94,24 @@ const EditorHeader = () => {
           />
         </div>
       </div>
+
+      {/* Notification for dark mode */}
+      {showNotification && (
+        <div style={{
+          position: 'absolute',
+          top: '70px',
+          right: '20px',
+          backgroundColor: '#2a2a2a',
+          color: 'white',
+          padding: '10px 15px',
+          borderRadius: '4px',
+          boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+          zIndex: 100,
+          animation: 'fadeIn 0.3s ease-in'
+        }}>
+          We're working on this feature. Coming soon!
+        </div>
+      )}
     </div>
   );
 };

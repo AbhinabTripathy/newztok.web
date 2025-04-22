@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiUser, FiSettings, FiHelpCircle, FiLogOut } from 'react-icons/fi';
-import { FaQuestionCircle } from 'react-icons/fa';
+import { FiUser, FiLogOut } from 'react-icons/fi';
+import { FaQuestionCircle, FaShieldAlt, FaFileAlt } from 'react-icons/fa';
 import axios from 'axios';
 
 const AccountDropdown = ({ isOpen, onClose }) => {
@@ -140,6 +140,16 @@ const AccountDropdown = ({ isOpen, onClose }) => {
     onClose();
   };
 
+  const handlePrivacyPolicyClick = () => {
+    navigate('/privacy-policy');
+    onClose();
+  };
+
+  const handleTermsConditionsClick = () => {
+    navigate('/terms-conditions');
+    onClose();
+  };
+
   return (
     <div 
       style={{ 
@@ -157,8 +167,8 @@ const AccountDropdown = ({ isOpen, onClose }) => {
       <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div 
           style={{ 
-            width: '50px', 
-            height: '50px', 
+            width: '70px', 
+            height: '70px', 
             borderRadius: '50%', 
             backgroundColor: '#4f46e5',
             display: 'flex',
@@ -166,7 +176,7 @@ const AccountDropdown = ({ isOpen, onClose }) => {
             alignItems: 'center',
             marginBottom: '10px',
             color: 'white',
-            fontSize: '20px',
+            fontSize: '28px',
             fontWeight: 'bold'
           }}
         >
@@ -193,6 +203,7 @@ const AccountDropdown = ({ isOpen, onClose }) => {
         </div>
         
         <div 
+          onClick={handlePrivacyPolicyClick}
           style={{ 
             display: 'flex', 
             alignItems: 'center', 
@@ -201,8 +212,22 @@ const AccountDropdown = ({ isOpen, onClose }) => {
             color: '#4b5563'
           }}
         >
-          <FiSettings size={20} style={{ marginRight: '12px' }} />
-          <span style={{ fontSize: '16px' }}>Settings & Privacy</span>
+          <FaShieldAlt size={20} style={{ marginRight: '12px' }} />
+          <span style={{ fontSize: '16px' }}>Privacy Policy</span>
+        </div>
+        
+        <div 
+          onClick={handleTermsConditionsClick}
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            padding: '12px 0', 
+            cursor: 'pointer',
+            color: '#4b5563'
+          }}
+        >
+          <FaFileAlt size={20} style={{ marginRight: '12px' }} />
+          <span style={{ fontSize: '16px' }}>Terms and Conditions</span>
         </div>
         
         <div 
@@ -216,7 +241,7 @@ const AccountDropdown = ({ isOpen, onClose }) => {
             marginBottom: '12px'
           }}
         >
-          <FiHelpCircle size={20} style={{ marginRight: '12px' }} />
+          <FaQuestionCircle size={20} style={{ marginRight: '12px' }} />
           <span style={{ fontSize: '16px' }}>Help Center</span>
         </div>
       </div>
@@ -241,14 +266,6 @@ const AccountDropdown = ({ isOpen, onClose }) => {
         >
           <FiLogOut style={{ marginRight: '8px' }} /> Sign out
         </button>
-        
-        <div style={{ display: 'flex', justifyContent: 'center', fontSize: '14px', color: '#6b7280' }}>
-          <span style={{ margin: '0 5px', cursor: 'pointer' }}>Privacy policy</span>
-          <span>•</span>
-          <span style={{ margin: '0 5px', cursor: 'pointer' }}>Terms</span>
-          <span>•</span>
-          <span style={{ margin: '0 5px', cursor: 'pointer' }}>Cookies</span>
-        </div>
       </div>
     </div>
   );
