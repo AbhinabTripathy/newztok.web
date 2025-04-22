@@ -129,6 +129,7 @@ const StateNews = () => {
   const NewsCard = ({ item }) => {
     // Check if item has youtubeUrl for video content
     const isVideo = item.youtubeUrl || item.contentType === 'video';
+    const navigate = useNavigate(); // Add useNavigate import
     
     // Add base URL to image path if it's a relative path
     const getFullImageUrl = (imagePath) => {
@@ -168,97 +169,94 @@ const StateNews = () => {
       }
     };
 
+    const handleCardClick = () => {
+      navigate(`/state/${item.state ? item.state.toLowerCase() : 'all'}/${item.id}`);
+    };
+
     return (
       <Box sx={{ position: 'relative', height: '100%', mb: 2 }}>
-        <Link 
-          to={`/state/${item.state ? item.state.toLowerCase() : 'all'}/${item.id}`}
-          style={{ textDecoration: 'none', color: 'inherit' }}
+        <Card 
+          onClick={handleCardClick}
+          sx={{ 
+            position: 'relative',
+            borderRadius: 2,
+            overflow: 'hidden',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            height: 360,
+            display: 'flex',
+            flexDirection: 'column',
+            cursor: 'pointer',
+            backgroundColor: 'white',
+            transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+            '&:hover': {
+              transform: 'translateY(-5px)',
+              boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+            }
+          }}
         >
-          <Card 
-            sx={{ 
-              position: 'relative',
-              borderRadius: 2,
-              overflow: 'hidden',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-              height: 360,
-              display: 'flex',
-              flexDirection: 'column',
+          {isVideo && youtubeEmbedUrl ? (
+            <iframe
+              width="100%"
+              height="360"
+              src={youtubeEmbedUrl}
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              title={item.title}
+            />
+          ) : (
+            <CardMedia
+              component="img"
+              height="360"
+              image={mediaUrl}
+              alt={item.title}
+              sx={{
+                objectFit: 'cover',
+              }}
+              onError={(e) => {
+                e.target.src = 'https://via.placeholder.com/400x300?text=Error+Loading+Image';
+              }}
+            />
+          )}
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 16,
+              left: 16,
+              zIndex: 2,
+              backgroundColor: '#673AB7',
+              color: 'white',
+              fontWeight: 'bold',
+              fontSize: '0.75rem',
+              padding: '6px 16px',
+              borderRadius: '4px',
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase',
+            }}
+          >
+            {item.category || 'STATE'}
+          </Box>
+        </Card>
+        
+        <Box sx={{ pt: 2 }}>
+          <Typography
+            variant="h6"
+            onClick={handleCardClick}
+            sx={{
+              color: 'black',
+              fontWeight: '700',
+              mb: 1,
+              lineHeight: 1.3,
+              fontSize: '1rem',
+              transition: 'color 0.2s ease',
               cursor: 'pointer',
-              backgroundColor: 'white',
-              transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
-              '&:hover': {
-                transform: 'translateY(-5px)',
-                boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+              '&:hover': { 
+                color: '#3f51b5' 
               }
             }}
           >
-            {isVideo && youtubeEmbedUrl ? (
-              <iframe
-                width="100%"
-                height="360"
-                src={youtubeEmbedUrl}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={item.title}
-              />
-            ) : (
-              <CardMedia
-                component="img"
-                height="360"
-                image={mediaUrl}
-                alt={item.title}
-                sx={{
-                  objectFit: 'cover',
-                }}
-                onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/400x300?text=Error+Loading+Image';
-                }}
-              />
-            )}
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 16,
-                left: 16,
-                zIndex: 2,
-                backgroundColor: '#673AB7',
-                color: 'white',
-                fontWeight: 'bold',
-                fontSize: '0.75rem',
-                padding: '6px 16px',
-                borderRadius: '4px',
-                letterSpacing: '0.5px',
-                textTransform: 'uppercase',
-              }}
-            >
-              {item.category || 'STATE'}
-            </Box>
-          </Card>
-        </Link>
-        
-        <Box sx={{ pt: 2 }}>
-          <Link 
-            to={`/state/${item.state ? item.state.toLowerCase() : 'all'}/${item.id}`}
-            style={{ textDecoration: 'none', color: 'inherit' }}
-          >
-            <Typography
-              variant="h6"
-              sx={{
-                color: 'black',
-                fontWeight: '700',
-                mb: 1,
-                lineHeight: 1.3,
-                fontSize: '1rem',
-                transition: 'color 0.2s ease',
-                '&:hover': { 
-                  color: '#3f51b5' 
-                }
-              }}
-            >
-              {item.title || 'No title available'}
-            </Typography>
-          </Link>
+            {item.title || 'No title available'}
+          </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Box
               component="span"
@@ -323,6 +321,7 @@ const StateNews = () => {
   const SecondSectionNewsCard = ({ item }) => {
     // Check if item has youtubeUrl for video content
     const isVideo = item.youtubeUrl || item.contentType === 'video';
+    const navigate = useNavigate(); // Add useNavigate import
     
     // Add base URL to image path if it's a relative path
     const getFullImageUrl = (imagePath) => {
@@ -362,99 +361,97 @@ const StateNews = () => {
       }
     };
 
+    const handleCardClick = () => {
+      navigate(`/state/${item.state ? item.state.toLowerCase() : 'all'}/${item.id}`);
+    };
+
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', mb: 4, height: '100%' }}>
-        <Link 
-          to={`/state/${item.state ? item.state.toLowerCase() : 'all'}/${item.id}`}
-          style={{ textDecoration: 'none', color: 'inherit' }}
+        <Card 
+          onClick={handleCardClick}
+          sx={{ 
+            position: 'relative',
+            borderRadius: 2,
+            overflow: 'hidden',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            height: 280,
+            backgroundColor: 'white',
+            transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+            cursor: 'pointer',
+            '&:hover': {
+              transform: 'translateY(-5px)',
+              boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+            }
+          }}
         >
-          <Card 
-            sx={{ 
-              position: 'relative',
-              borderRadius: 2,
+          {isVideo && youtubeEmbedUrl ? (
+            <iframe
+              width="100%"
+              height="280"
+              src={youtubeEmbedUrl}
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              title={item.title}
+            />
+          ) : (
+            <CardMedia
+              component="img"
+              height="280"
+              image={mediaUrl}
+              alt={item.title}
+              sx={{
+                objectFit: 'cover',
+              }}
+              onError={(e) => {
+                e.target.src = 'https://via.placeholder.com/400x300?text=Error+Loading+Image';
+              }}
+            />
+          )}
+          <Box
+            sx={{
+              position: 'absolute',
+              top: 16,
+              left: 16,
+              zIndex: 2,
+              backgroundColor: '#673AB7',
+              color: 'white',
+              fontWeight: 'bold',
+              fontSize: '0.75rem',
+              padding: '6px 16px',
+              borderRadius: '4px',
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase',
+            }}
+          >
+            {item.category || 'STATE'}
+          </Box>
+        </Card>
+        
+        <Box sx={{ pt: 2 }}>
+          <Typography
+            variant="h6"
+            onClick={handleCardClick}
+            sx={{
+              color: 'black',
+              fontWeight: '700',
+              mb: 1,
+              lineHeight: 1.3,
+              fontSize: '1rem',
+              height: '2.6rem',
               overflow: 'hidden',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-              height: 280,
-              backgroundColor: 'white',
-              transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
-              '&:hover': {
-                transform: 'translateY(-5px)',
-                boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              transition: 'color 0.2s ease',
+              cursor: 'pointer',
+              '&:hover': { 
+                color: '#3f51b5' 
               }
             }}
           >
-            {isVideo && youtubeEmbedUrl ? (
-              <iframe
-                width="100%"
-                height="280"
-                src={youtubeEmbedUrl}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={item.title}
-              />
-            ) : (
-              <CardMedia
-                component="img"
-                height="280"
-                image={mediaUrl}
-                alt={item.title}
-                sx={{
-                  objectFit: 'cover',
-                }}
-                onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/400x300?text=Error+Loading+Image';
-                }}
-              />
-            )}
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 16,
-                left: 16,
-                zIndex: 2,
-                backgroundColor: '#673AB7',
-                color: 'white',
-                fontWeight: 'bold',
-                fontSize: '0.75rem',
-                padding: '6px 16px',
-                borderRadius: '4px',
-                letterSpacing: '0.5px',
-                textTransform: 'uppercase',
-              }}
-            >
-              {item.category || 'STATE'}
-            </Box>
-          </Card>
-        </Link>
-        
-        <Box sx={{ pt: 2 }}>
-          <Link 
-            to={`/state/${item.state ? item.state.toLowerCase() : 'all'}/${item.id}`}
-            style={{ textDecoration: 'none', color: 'inherit' }}
-          >
-            <Typography
-              variant="h6"
-              sx={{
-                color: 'black',
-                fontWeight: '700',
-                mb: 1,
-                lineHeight: 1.3,
-                fontSize: '1rem',
-                height: '2.6rem',
-                overflow: 'hidden',
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                transition: 'color 0.2s ease',
-                '&:hover': { 
-                  color: '#3f51b5' 
-                }
-              }}
-            >
-              {item.title || 'No title available'}
-            </Typography>
-          </Link>
+            {item.title || 'No title available'}
+          </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <Box
               component="img"

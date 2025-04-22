@@ -5,825 +5,983 @@ import {
   Box,
   Container,
   Typography,
-  Card,
-  CardMedia,
   Divider,
-  Button,
-  Grid,
   Avatar,
+  Button,
   TextField,
-  IconButton,
   CircularProgress,
-  Alert,
+  IconButton,
+  Grid,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ThumbUpIcon from '@mui/icons-material/ThumbUp';
-import ThumbUpOutlinedIcon from '@mui/icons-material/ThumbUpOutlined';
-import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
-import ShareIcon from '@mui/icons-material/Share';
-import BookmarkBorderIcon from '@mui/icons-material/BookmarkBorder';
-import BookmarkIcon from '@mui/icons-material/Bookmark';
-import SendIcon from '@mui/icons-material/Send';
-import VisibilityIcon from '@mui/icons-material/Visibility';
+import {
+  AccessTime as AccessTimeIcon,
+  LocationOn as LocationOnIcon,
+  Favorite as FavoriteIcon,
+  FavoriteBorder as FavoriteBorderIcon,
+  Visibility as VisibilityIcon,
+  Share as ShareIcon,
+  Send as SendIcon,
+  ArrowBack as ArrowBackIcon,
+} from '@mui/icons-material';
 
 const StateNewsDetails = () => {
-  const { state, id } = useParams();
+  const { id, state } = useParams();
   const navigate = useNavigate();
   const [newsData, setNewsData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [liked, setLiked] = useState(false);
-  const [bookmarked, setBookmarked] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
-  const [viewsCount, setViewsCount] = useState(0);
   const [comment, setComment] = useState('');
   const [comments, setComments] = useState([]);
-  const [relatedNews, setRelatedNews] = useState([]);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [viewCount, setViewCount] = useState(0);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [commentSuccess, setCommentSuccess] = useState(false);
+  
+  // API base URL
+  const baseURL = 'https://api.newztok.in';
+  
+  // Primary color for state theme
+  const themeColor = '#1B5E20'; // Green color for state news
+  
+  // Check if user is logged in (has auth token)
+  const isLoggedIn = !!localStorage.getItem('userAuthToken');
+
+  // Get the user token for API requests
+  const getUserToken = () => {
+    return localStorage.getItem('userAuthToken');
+  };
+
+  // Add a debug helper
+  const debug = (message, data) => {
+    console.log(`[StateNewsDetails ${id}] ${message}`, data !== undefined ? data : '');
+  };
 
   useEffect(() => {
+    debug('Component mounted with ID', id);
+    debug('User logged in?', isLoggedIn);
+    
     fetchStateNewsDetail();
-    incrementViewCount();
+    fetchComments();
     
-    // Check if user has liked or bookmarked this article
-    const likedArticles = JSON.parse(localStorage.getItem('likedArticles')) || [];
-    const bookmarkedArticles = JSON.parse(localStorage.getItem('bookmarkedArticles')) || [];
-    
-    setLiked(likedArticles.includes(id));
-    setBookmarked(bookmarkedArticles.includes(id));
-  }, [id, state]);
+    // Check if user has already liked the article when component mounts
+    if (isLoggedIn) {
+      checkLikeStatus();
+    }
+  }, [id]);
+
+  // Clear comment success message after 3 seconds
+  useEffect(() => {
+    if (commentSuccess) {
+      const timer = setTimeout(() => {
+        setCommentSuccess(false);
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [commentSuccess]);
+
+  // Re-check like status whenever login state changes
+  useEffect(() => {
+    if (isLoggedIn) {
+      debug('User login state changed, checking like status');
+      checkLikeStatus();
+      fetchComments();
+    } else {
+      // Reset like status if user logs out
+      setIsLiked(false);
+    }
+  }, [isLoggedIn]);
 
   const fetchStateNewsDetail = async () => {
-    setLoading(true);
-    
-    // List of potential API endpoints to try
-    const apiEndpoints = [
-      `https://api.newztok.in/api/news/${id}`,
-      `https://api.newztok.in/api/news/id/${id}`,
-      `https://api.newztok.in/api/news/state/${state}/${id}`
-    ];
-    
-    let success = false;
-    
-    for (const endpoint of apiEndpoints) {
-      try {
-        const response = await axios.get(endpoint);
-        console.log(`Success fetching state news data from ${endpoint}:`, response.data);
-        
-        // Extract data depending on API response structure
-        let newsItem = null;
-        if (response.data && response.data.data) {
-          newsItem = response.data.data;
-        } else if (response.data) {
-          newsItem = response.data;
-        }
-        
-        if (newsItem) {
-          setNewsData(newsItem);
-          setLikesCount(newsItem.likes || Math.floor(Math.random() * 100) + 10);
-          setViewsCount(newsItem.views || Math.floor(Math.random() * 500) + 50);
-          setComments(newsItem.comments || []);
-          
-          // Also fetch related news
-          fetchRelatedNews(newsItem.state || state, newsItem.category);
-          
-          success = true;
-          break;
-        }
-      } catch (err) {
-        console.log(`Failed to fetch from ${endpoint}:`, err);
-      }
-    }
-    
-    // If all API calls failed, use mock data
-    if (!success) {
-      console.log('All API calls failed, using mock data');
+    try {
+      setLoading(true);
+      console.log('Starting to fetch state news details...');
+      console.log('State:', state);
+      console.log('ID:', id);
       
-      // Generate mock data
+      // Try different API endpoints that might work
+      const endpoints = [
+        `/api/news/state/${state}/${id}`,
+        `/api/news/${id}`,
+        `/api/news/by-id/${id}`,
+        `/api/news/details/${id}`,
+        `/api/news/post/${id}`
+      ];
+      
+      console.log('Trying endpoints:', endpoints);
+      
+      let response = null;
+      let foundEndpoint = null;
+      
+      // First try individual fetch for each endpoint
+      for (const endpoint of endpoints) {
+        try {
+          const url = `${baseURL}${endpoint}`;
+          console.log(`Attempting to fetch from: ${url}`);
+          response = await axios.get(url);
+          console.log(`Response from ${endpoint}:`, response.data);
+          
+          if (response.status === 200 && response.data) {
+            console.log(`Success with endpoint: ${endpoint}`);
+            foundEndpoint = endpoint;
+            break;
+          }
+        } catch (err) {
+          console.error(`Error with endpoint ${endpoint}:`, err.message);
+        }
+      }
+      
+      // If all individual endpoints failed, try to get listing and filter by ID
+      if (!response || !foundEndpoint) {
+        console.log("Individual endpoints failed, trying to find article in state news listing...");
+        
+        try {
+          const stateUrl = `${baseURL}/api/news/state/${state}`;
+          console.log(`Attempting to fetch state listing from: ${stateUrl}`);
+          const listResponse = await axios.get(stateUrl);
+          console.log('State listing response:', listResponse.data);
+          
+          if (listResponse.status === 200 && listResponse.data) {
+            // Extract the array of news items
+            let newsItems = [];
+            if (Array.isArray(listResponse.data)) {
+              newsItems = listResponse.data;
+            } else if (listResponse.data.data && Array.isArray(listResponse.data.data)) {
+              newsItems = listResponse.data.data;
+            } else if (listResponse.data.posts && Array.isArray(listResponse.data.posts)) {
+              newsItems = listResponse.data.posts;
+            }
+            
+            console.log('Extracted news items:', newsItems);
+            
+            // Find the article with matching ID
+            const article = newsItems.find(item => {
+              const matches = 
+                item.id === id || 
+                item.id === parseInt(id) || 
+                item._id === id || 
+                String(item.id) === String(id);
+              console.log(`Checking item ${item.id}: matches=${matches}`);
+              return matches;
+            });
+            
+            if (article) {
+              console.log(`Found article in state news:`, article);
+              response = { 
+                data: article,
+                status: 200
+              };
+              foundEndpoint = `/api/news/state/${state}`;
+            } else {
+              console.log('No matching article found in state listing');
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching state listing:', err);
+        }
+      }
+      
+      if (!response || !foundEndpoint) {
+        console.warn("All API endpoints failed, using mocked data...");
+        // Use a mock response with the ID
+        const mockData = {
+          id: id,
+          title: `State News Article ${id}`,
+          content: "This is sample content since the API endpoint couldn't be reached. The content would normally include details about this state news article.",
+          createdAt: new Date().toISOString(),
+          state: state,
+          district: "Sample District",
+          category: "STATE",
+          featuredImage: "https://via.placeholder.com/800x400?text=State+News+Image"
+        };
+        console.log('Setting mock data:', mockData);
+        setNewsData(mockData);
+      } else {
+        console.log(`Successfully fetched data from ${foundEndpoint}`, response.data);
+        
+        // Process the API response
+        if (response.data) {
+          const articleData = response.data.data || response.data;
+          console.log("Setting state news data:", articleData);
+          setNewsData(articleData);
+          
+          // If comments are included in the API response
+          if (response.data.comments || (response.data.data && response.data.data.comments)) {
+            setComments(response.data.comments || response.data.data.comments || []);
+          }
+          // Initialize like count from API if available
+          const likes = response.data.likes || (response.data.data && response.data.data.likes) || 0;
+          setLikeCount(likes);
+          // Initialize view count from API if available
+          const views = response.data.views || (response.data.data && response.data.data.views) || 0;
+          setViewCount(views);
+          
+          // Now that we have data, try to increment view count
+          incrementViewCount(foundEndpoint);
+        }
+      }
+      
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching state news details:", err);
+      // Use mock data in case of error
       const mockData = {
         id: id,
-        title: `State News Article about ${state}`,
-        content: `This is a sample content for the state news article from ${state}. The actual content would be loaded from the API.`,
-        featuredImage: 'https://via.placeholder.com/1200x630?text=State+News+Image',
+        title: `State News Article ${id}`,
+        content: "This is sample content since the API endpoint couldn't be reached. The content would normally include details about this state news article.",
+        createdAt: new Date().toISOString(),
         state: state,
-        district: '',
-        category: 'Politics',
-        author: 'John Doe',
-        publishedAt: new Date().toISOString(),
-        likes: Math.floor(Math.random() * 100) + 10,
-        views: Math.floor(Math.random() * 500) + 50,
+        district: "Sample District",
+        category: "STATE",
+        featuredImage: "https://via.placeholder.com/800x400?text=State+News+Image"
       };
-      
+      console.log('Setting mock data due to error:', mockData);
       setNewsData(mockData);
-      setLikesCount(mockData.likes);
-      setViewsCount(mockData.views);
-      
-      // Generate mock comments
-      const mockComments = [
-        {
-          id: '1',
-          user: 'User1',
-          text: 'Great article about this state news!',
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-        },
-        {
-          id: '2',
-          user: 'User2',
-          text: 'I found this very informative, thanks for sharing.',
-          createdAt: new Date(Date.now() - 7200000).toISOString(),
-        },
-      ];
-      
-      setComments(mockComments);
-      
-      // Generate mock related news
-      const mockRelated = [
-        {
-          id: '101',
-          title: `Another important news from ${state}`,
-          featuredImage: 'https://via.placeholder.com/400x300?text=Related+News+1',
-          state: state,
-          publishedAt: new Date(Date.now() - 86400000).toISOString(),
-        },
-        {
-          id: '102',
-          title: `Recent developments in ${state} politics`,
-          featuredImage: 'https://via.placeholder.com/400x300?text=Related+News+2',
-          state: state,
-          publishedAt: new Date(Date.now() - 172800000).toISOString(),
-        },
-        {
-          id: '103',
-          title: `${state} infrastructure update`,
-          featuredImage: 'https://via.placeholder.com/400x300?text=Related+News+3',
-          state: state,
-          publishedAt: new Date(Date.now() - 259200000).toISOString(),
-        },
-      ];
-      
-      setRelatedNews(mockRelated);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const incrementViewCount = async (endpoint) => {
+    if (!endpoint) return;
     
-    setLoading(false);
-  };
-
-  const fetchRelatedNews = async (stateName, category) => {
     try {
-      // Try to fetch related news by state and category
-      const response = await axios.get(`https://api.newztok.in/api/news/category/district`);
+      // Use a standardized view endpoint with the ID
+      const viewEndpoint = `/api/news/view/${id}`;
       
-      let relatedItems = [];
-      if (response.data && Array.isArray(response.data)) {
-        relatedItems = response.data;
-      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
-        relatedItems = response.data.data;
-      }
+      console.log(`Attempting to increment view count with endpoint: ${baseURL}${viewEndpoint}`);
       
-      // Filter by state
-      if (stateName) {
-        relatedItems = relatedItems.filter(item => 
-          item.state && item.state.toLowerCase() === stateName.toLowerCase()
-        );
-      }
+      // Add a proper request body with the news ID
+      await axios.post(`${baseURL}${viewEndpoint}`, { newsId: id });
       
-      // Filter by category if available
-      if (category && relatedItems.length > 5) {
-        const categoryItems = relatedItems.filter(item => 
-          item.category && item.category === category
-        );
-        
-        if (categoryItems.length >= 3) {
-          relatedItems = categoryItems;
-        }
-      }
-      
-      // Exclude current article
-      relatedItems = relatedItems.filter(item => item.id !== id);
-      
-      // Limit to 3 items
-      setRelatedNews(relatedItems.slice(0, 3));
-      
+      // For now, increment the view locally regardless of API success
+      setViewCount(prev => prev + 1);
+      console.log(`View count incremented locally to: ${viewCount + 1}`);
     } catch (err) {
-      console.error('Error fetching related news:', err);
-      // If API fails, we already have mock data from fetchStateNewsDetail
-    }
-  };
-
-  const incrementViewCount = async () => {
-    try {
-      // Try to update view count on the server
-      await axios.post(`https://api.newztok.in/api/news/${id}/view`);
-      
-      // Update local view count
-      setViewsCount(prev => prev + 1);
-    } catch (err) {
-      console.log('Error updating view count:', err);
-      // Still increment the local count even if the API call fails
-      setViewsCount(prev => prev + 1);
+      console.error("Error incrementing view count:", err);
+      // Increment locally anyway as fallback
+      setViewCount(prev => prev + 1);
+      console.log(`View count incremented locally (after API failure) to: ${viewCount + 1}`);
+      // Just silently fail, this is not critical
     }
   };
 
   const handleLikeToggle = async () => {
-    const newLikedState = !liked;
-    setLiked(newLikedState);
-    
-    // Update likes count
-    setLikesCount(prev => newLikedState ? prev + 1 : prev - 1);
-    
-    // Store liked state in localStorage
-    const likedArticles = JSON.parse(localStorage.getItem('likedArticles')) || [];
-    
-    if (newLikedState) {
-      if (!likedArticles.includes(id)) {
-        likedArticles.push(id);
-      }
-    } else {
-      const index = likedArticles.indexOf(id);
-      if (index > -1) {
-        likedArticles.splice(index, 1);
-      }
+    if (!isLoggedIn) {
+      // Prompt user to login
+      navigate('/user/login');
+      return;
     }
-    
-    localStorage.setItem('likedArticles', JSON.stringify(likedArticles));
-    
-    try {
-      // Try to update like on the server
-      await axios.post(`https://api.newztok.in/api/news/${id}/like`, { 
-        liked: newLikedState 
-      });
-    } catch (err) {
-      console.log('Error updating like:', err);
-      // The UI is already updated, so we don't revert on error
-    }
-  };
 
-  const handleBookmarkToggle = () => {
-    const newBookmarkState = !bookmarked;
-    setBookmarked(newBookmarkState);
-    
-    // Store bookmarked state in localStorage
-    const bookmarkedArticles = JSON.parse(localStorage.getItem('bookmarkedArticles')) || [];
-    
-    if (newBookmarkState) {
-      if (!bookmarkedArticles.includes(id)) {
-        bookmarkedArticles.push(id);
+    // Store current state before any async operations
+    let prevLikeState = isLiked;
+    let prevLikeCount = likeCount;
+
+    try {
+      // Get the auth token
+      const token = getUserToken();
+      debug('Toggling like with token');
+      
+      if (!token) {
+        throw new Error('No authentication token found');
       }
-    } else {
-      const index = bookmarkedArticles.indexOf(id);
-      if (index > -1) {
-        bookmarkedArticles.splice(index, 1);
+      
+      // Optimistically update UI for both like and unlike
+      const newLikedState = !isLiked;
+      setIsLiked(newLikedState);
+      setLikeCount(prevCount => newLikedState ? prevCount + 1 : Math.max(0, prevCount - 1));
+      debug(`Optimistically updated like state to ${newLikedState ? 'liked' : 'unliked'}`);
+
+      // Create headers with auth token
+      const myHeaders = new Headers();
+      myHeaders.append("Authorization", `Bearer ${token}`);
+      
+      // Determine which endpoint to use based on the action (like or unlike)
+      const likeEndpoint = isLiked 
+        ? `http://13.234.42.114:3333/api/interaction/news/${id}/unlike`
+        : `http://13.234.42.114:3333/api/interaction/news/${id}/like`;
+      
+      const requestOptions = {
+        method: "POST",
+        headers: myHeaders,
+        redirect: "follow"
+      };
+
+      // Make the API call
+      debug(`Sending ${isLiked ? 'unlike' : 'like'} request to API`);
+      const response = await fetch(likeEndpoint, requestOptions);
+
+      if (!response.ok) {
+        throw new Error(`${isLiked ? 'Unlike' : 'Like'} request failed with status: ${response.status}`);
       }
+      
+      const resultText = await response.text();
+      debug('Received like/unlike response', resultText);
+      
+      try {
+        if (resultText && resultText.trim()) {
+          const result = JSON.parse(resultText);
+          debug('Parsed like/unlike response', result);
+          
+          // Update like count from server response if available
+          if (result && typeof result.likesCount !== 'undefined') {
+            debug('Setting like count from API response', result.likesCount);
+            setLikeCount(result.likesCount);
+          } else if (result && typeof result.likeCount !== 'undefined') {
+            debug('Setting like count from API response', result.likeCount);
+            setLikeCount(result.likeCount);
+          }
+        }
+      } catch (parseError) {
+        debug('Response is not valid JSON, keeping optimistic update', parseError.message);
+      }
+      
+    } catch (error) {
+      console.error(`Error ${isLiked ? 'unliking' : 'liking'} article:`, error);
+      // If there was an error, revert to the previous state
+      setIsLiked(prevLikeState);
+      setLikeCount(prevLikeCount);
+      // Alert the user of the failure
+      alert(`Failed to ${isLiked ? 'unlike' : 'like'} the article. Please try again.`);
     }
-    
-    localStorage.setItem('bookmarkedArticles', JSON.stringify(bookmarkedArticles));
   };
 
   const handleShareClick = () => {
+    // For simplicity, use browser's share API if available
     if (navigator.share) {
       navigator.share({
-        title: newsData?.title,
-        text: 'Check out this news article',
+        title: newsData?.title || 'State NewzTok Article',
         url: window.location.href,
-      })
-      .catch(err => console.log('Error sharing:', err));
+      }).catch(err => console.error("Error sharing:", err));
     } else {
-      // Fallback - copy to clipboard
+      // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href)
-        .then(() => {
-          alert('Link copied to clipboard!');
-        })
-        .catch(err => {
-          console.log('Error copying to clipboard:', err);
-        });
+        .then(() => alert('Link copied to clipboard!'))
+        .catch(err => console.error("Error copying to clipboard:", err));
     }
   };
 
-  const handleCommentSubmit = () => {
-    if (!comment.trim()) return;
-    
-    const newComment = {
-      id: Date.now().toString(),
-      user: 'Guest User',
-      text: comment,
-      createdAt: new Date().toISOString(),
-    };
-    
-    setComments(prev => [newComment, ...prev]);
-    setComment('');
-    
-    // Try to post comment to server (this would normally be implemented)
-    // For now we just update the local state
+  const handleLoginRedirect = () => {
+    navigate('/user/login');
   };
 
+  const handleCommentSubmit = async () => {
+    if (!comment.trim()) return;
+
+    try {
+      // Get the auth token
+      const token = localStorage.getItem('userAuthToken');
+      
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      // Configure headers with the token
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      };
+      
+      debug('Submitting comment', comment);
+      
+      // Send the comment to the API
+      const response = await axios.post(
+        `${baseURL}/api/interaction/news/${id}/comment`, 
+        { content: comment },
+        config
+      );
+      
+      debug('Comment submission response', response.data);
+      
+      // After successful submission, refresh the comments list
+      fetchComments();
+      
+      // Clear the comment input
+      setComment('');
+
+      // Set comment success state
+      setCommentSuccess(true);
+    } catch (err) {
+      console.error("Error submitting comment:", err);
+    }
+  };
+
+  const handleBackClick = () => {
+    navigate(`/state/${state}`);
+  };
+
+  // Format date to readable string
   const formatDate = (dateString) => {
-    if (!dateString) return 'No date';
+    if (!dateString) return '';
+    
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
+      return date.toLocaleDateString('en-US', {
+        month: 'long',
         day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        year: 'numeric',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true
       });
-    } catch (e) {
+    } catch (err) {
+      console.error('Date formatting error:', err);
       return dateString;
     }
   };
 
-  // Get full image URL (handling relative paths)
-  const getFullImageUrl = (imagePath) => {
-    if (!imagePath) return 'https://via.placeholder.com/1200x630?text=No+Image';
-    if (imagePath.startsWith('http')) return imagePath;
-    return `https://api.newztok.in${imagePath}`;
+  // Get image or video URL
+  const getMediaUrl = (item) => {
+    if (!item) return null;
+    
+    console.log("Getting media URL for item:", item);
+    
+    // Handle YouTube URLs - Get thumbnail instead of embed
+    if (item.youtubeUrl) {
+      console.log("Found YouTube URL:", item.youtubeUrl);
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+      const match = item.youtubeUrl.match(regExp);
+      
+      // Return YouTube thumbnail instead of embed URL
+      return (match && match[2].length === 11)
+        ? `https://img.youtube.com/vi/${match[2]}/maxresdefault.jpg`
+        : null;
+    }
+    
+    // Handle images with various property names
+    const possibleImageProps = ['featuredImage', 'image', 'images', 'thumbnail', 'thumbnailUrl', 'imageUrl', 'featured_image'];
+    
+    for (const prop of possibleImageProps) {
+      if (item[prop]) {
+        // Handle array of images
+        if (Array.isArray(item[prop]) && item[prop].length > 0) {
+          const imgSrc = item[prop][0];
+          console.log(`Found image in ${prop} array:`, imgSrc);
+          return typeof imgSrc === 'string' 
+            ? (imgSrc.startsWith('http') ? imgSrc : `${baseURL}${imgSrc}`)
+            : (imgSrc.url || imgSrc.src || null);
+        }
+        
+        // Handle direct string or object
+        if (typeof item[prop] === 'string') {
+          console.log(`Found image in ${prop}:`, item[prop]);
+          return item[prop].startsWith('http') 
+            ? item[prop] 
+            : `${baseURL}${item[prop]}`;
+        } else if (typeof item[prop] === 'object' && (item[prop].url || item[prop].src)) {
+          const imgSrc = item[prop].url || item[prop].src;
+          console.log(`Found image in ${prop} object:`, imgSrc);
+          return imgSrc.startsWith('http') ? imgSrc : `${baseURL}${imgSrc}`;
+        }
+      }
+    }
+    
+    console.log("No media URL found in the item");
+    return 'https://via.placeholder.com/800x400?text=State+News+Image';
+  };
+
+  // Capitalize text - Enhanced to handle multiple word capitalization
+  const capitalizeFirstLetter = (string) => {
+    if (!string) return '';
+    
+    // Convert to lowercase first to ensure consistent casing
+    const lowerCaseString = string.toLowerCase();
+    
+    // Split by spaces and capitalize first letter of each word
+    return lowerCaseString
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
+  // Add function to fetch comments
+  const fetchComments = async () => {
+    try {
+      setLoadingComments(true);
+      debug('Fetching comments for news ID', id);
+      
+      // Prepare headers with token if available
+      const headers = {};
+      const token = getUserToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const commentsUrl = `${baseURL}/api/interaction/news/${id}/comments`;
+      debug('Comments API URL', commentsUrl);
+      
+      const response = await axios.get(commentsUrl, { headers });
+      debug('Comments API response', response.data);
+      
+      if (response.data) {
+        let fetchedComments = [];
+        if (Array.isArray(response.data)) {
+          fetchedComments = response.data;
+        } else if (response.data.data && Array.isArray(response.data.data)) {
+          fetchedComments = response.data.data;
+        } else if (response.data.comments && Array.isArray(response.data.comments)) {
+          fetchedComments = response.data.comments;
+        }
+        
+        debug('Fetched comments count', fetchedComments.length);
+        setComments(fetchedComments);
+      }
+    } catch (err) {
+      console.error("Error fetching comments:", err);
+      // Don't set error state, just log it to avoid disrupting the UI
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  // Add function to check if user has already liked the article
+  const checkLikeStatus = async () => {
+    try {
+      const token = getUserToken();
+      
+      if (!token) {
+        debug('No token found for like status check');
+        return;
+      }
+
+      debug('Checking like status with token');
+
+      // Create request headers
+      const myHeaders = new Headers();
+      myHeaders.append("Authorization", `Bearer ${token}`);
+      
+      const requestOptions = {
+        method: "GET",
+        headers: myHeaders,
+        redirect: "follow"
+      };
+
+      // Make the API call to check like status
+      const response = await fetch(
+        `http://13.234.42.114:3333/api/interaction/news/${id}/like/status`,
+        requestOptions
+      );
+
+      if (!response.ok) {
+        throw new Error(`Status check failed with status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      debug('Like status response received', result);
+
+      // Update like status based on response
+      if (result.liked || result.isLiked || result.hasLiked) {
+        debug('User has liked this article', true);
+        setIsLiked(true);
+      } else {
+        debug('User has not liked this article', false);
+        setIsLiked(false);
+      }
+
+      // Update like count from response if available
+      if (result.likesCount !== undefined) {
+        debug('Setting like count from API', result.likesCount);
+        setLikeCount(result.likesCount);
+      } else if (result.likeCount !== undefined) {
+        debug('Setting like count from API', result.likeCount);
+        setLikeCount(result.likeCount);
+      }
+      
+    } catch (error) {
+      console.error("Error checking like status:", error);
+    }
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <CircularProgress />
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        bgcolor: '#f5f5f5'
+      }}>
+        <CircularProgress size={60} sx={{ color: themeColor }} />
+        <Typography variant="h6" sx={{ mt: 2 }}>
+          Loading state article...
+        </Typography>
       </Box>
     );
   }
 
-  if (error) {
+  if (!newsData) {
     return (
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)}>
-          Go Back
+      <Box sx={{ 
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        p: 3,
+        bgcolor: '#f5f5f5'
+      }}>
+        <Typography variant="h5" color="error" gutterBottom>
+          State article not found
+        </Typography>
+        <Typography variant="body1" color="textSecondary" sx={{ mb: 3, textAlign: 'center' }}>
+          The state article you are looking for could not be found or has been removed.
+        </Typography>
+        <Button 
+          variant="contained" 
+          onClick={handleBackClick}
+          sx={{ 
+            bgcolor: themeColor,
+            '&:hover': { bgcolor: '#1B5E20' } 
+          }}
+        >
+          Back to State News
         </Button>
-      </Container>
+      </Box>
     );
   }
 
+  // Determine media type and URL
+  const mediaUrl = getMediaUrl(newsData);
+  const isYoutubeVideo = mediaUrl && newsData.youtubeUrl;
+  const isContentVideo = newsData.contentType === 'video';
+  const createdDate = formatDate(newsData.createdAt || newsData.publishedAt || newsData.updatedAt);
+  
+  // Process state and district with proper capitalization
+  let stateValue = '';
+  let districtValue = '';
+  
+  if (newsData.state) {
+    console.log('Original state:', newsData.state);
+    stateValue = capitalizeFirstLetter(newsData.state);
+    console.log('Capitalized state:', stateValue);
+  }
+  
+  if (newsData.district) {
+    console.log('Original district:', newsData.district);
+    districtValue = capitalizeFirstLetter(newsData.district);
+    console.log('Capitalized district:', districtValue);
+  }
+  
+  // Build location string with properly capitalized values
+  const location = [stateValue, districtValue].filter(Boolean).join(', ');
+  console.log('Final location string:', location);
+
   return (
-    <Box sx={{ backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-      {/* Header with back button */}
-      <Box 
-        sx={{ 
-          position: 'sticky', 
-          top: 0, 
-          backgroundColor: 'white', 
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          zIndex: 100,
-          py: 1
-        }}
-      >
+    <Box sx={{ bgcolor: 'white', minHeight: '100vh' }}>
+      {/* Back Button with State Theme */}
+      <Box sx={{ 
+        background: `linear-gradient(135deg, ${themeColor}, #1B5E20)`,
+        color: 'white',
+        py: 1.5,
+        px: 2,
+        position: 'relative',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.1) 2px, transparent 2px)',
+          backgroundSize: '20px 20px',
+          opacity: 0.5,
+          zIndex: 1
+        }
+      }}>
         <Container maxWidth="lg">
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Button 
-              startIcon={<ArrowBackIcon />} 
-              onClick={() => navigate(`/state/${state?.toLowerCase()}`)}
-              sx={{ fontWeight: 'medium' }}
-            >
-              Back to {state} News
-            </Button>
-            
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <VisibilityIcon fontSize="small" sx={{ color: '#666' }} />
-                <Typography variant="body2" sx={{ color: '#666' }}>
-                  {viewsCount}
-                </Typography>
-              </Box>
-              
-              <IconButton onClick={handleBookmarkToggle} size="small">
-                {bookmarked ? 
-                  <BookmarkIcon sx={{ color: '#673AB7' }} /> : 
-                  <BookmarkBorderIcon />
-                }
-              </IconButton>
-              
-              <IconButton onClick={handleShareClick} size="small">
-                <ShareIcon />
-              </IconButton>
-            </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', position: 'relative', zIndex: 2 }}>
+            <IconButton color="inherit" onClick={handleBackClick} sx={{ mr: 1 }}>
+              <ArrowBackIcon />
+            </IconButton>
+            <Typography variant="subtitle1" sx={{ fontWeight: 'medium' }}>
+              Back to State News
+            </Typography>
           </Box>
         </Container>
       </Box>
-      
+
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        {/* Article Content */}
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={8}>
-            <Card sx={{ 
-              mb: 4, 
-              borderRadius: 2,
-              overflow: 'hidden',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
-            }}>
-              {/* Featured Image */}
-              <CardMedia
-                component="img"
-                height="400"
-                image={getFullImageUrl(newsData?.featuredImage || newsData?.image)}
-                alt={newsData?.title}
-                sx={{ objectFit: 'cover' }}
-                onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/1200x630?text=Error+Loading+Image';
+        {/* Article Header */}
+        <Typography variant="h4" component="h1" sx={{ fontWeight: 'bold', mb: 2 }}>
+          {newsData.title}
+        </Typography>
+        
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 3 }}>
+          {/* Category Badge */}
+          <Box
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              bgcolor: themeColor,
+              color: 'white',
+              px: 2,
+              py: 0.5,
+              borderRadius: '4px',
+              fontSize: '0.75rem',
+              fontWeight: 'bold',
+              letterSpacing: '0.5px',
+              textTransform: 'uppercase',
+            }}
+          >
+            {newsData.category || 'STATE'}
+          </Box>
+
+          {/* Date and Time */}
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <AccessTimeIcon sx={{ fontSize: 20, mr: 1, color: 'text.secondary' }} />
+            <Typography variant="body2" color="text.secondary">
+              {createdDate}
+            </Typography>
+          </Box>
+          
+          {/* Location (State, District) */}
+          {location && (
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <LocationOnIcon sx={{ fontSize: 20, mr: 1, color: 'text.secondary' }} />
+              <Typography variant="body2" color="text.secondary">
+                {location}
+              </Typography>
+            </Box>
+          )}
+        </Box>
+        
+        {/* Media (Image or Video) */}
+        {mediaUrl && (
+          <Box sx={{ width: '100%', mb: 3, borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
+            <Box 
+              component="img"
+              src={mediaUrl}
+              alt={newsData.title}
+              sx={{
+                width: '100%',
+                maxHeight: '500px',
+                objectFit: 'cover',
+                borderRadius: '8px',
+              }}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = 'https://via.placeholder.com/800x400?text=State+News+Image';
+              }}
+            />
+            {isYoutubeVideo && (
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '68px',
+                  height: '48px',
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
                 }}
-              />
-              
-              <Box sx={{ p: 3 }}>
-                {/* Category Tag */}
-                <Box
-                  sx={{
-                    display: 'inline-block',
-                    backgroundColor: '#673AB7',
-                    color: 'white',
-                    fontWeight: 'bold',
-                    fontSize: '0.75rem',
-                    padding: '4px 12px',
-                    borderRadius: '4px',
-                    letterSpacing: '0.5px',
-                    textTransform: 'uppercase',
-                    mb: 2
-                  }}
-                >
-                  {newsData?.category || 'STATE'}
-                </Box>
-                
-                {/* Title */}
-                <Typography 
-                  variant="h4" 
-                  component="h1"
-                  sx={{ 
-                    fontWeight: 'bold',
-                    mb: 2,
-                    lineHeight: 1.3,
-                  }}
-                >
-                  {newsData?.title}
-                </Typography>
-                
-                {/* Metadata */}
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 3 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Avatar 
-                      src="https://i.pravatar.cc/150?img=12" 
-                      alt={newsData?.author} 
-                      sx={{ width: 36, height: 36, mr: 1 }}
-                    />
-                    <Box>
-                      <Typography variant="subtitle2" sx={{ fontWeight: 'medium' }}>
-                        {newsData?.author || 'Unknown Author'}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: '#666' }}>
-                        {formatDate(newsData?.publishedAt || newsData?.createdAt || newsData?.updatedAt)}
-                      </Typography>
-                    </Box>
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Box
-                      component="span"
-                      sx={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#777',
-                      }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#888888"/>
-                      </svg>
-                    </Box>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: '#666',
-                        fontSize: '0.8rem',
-                      }}
-                    >
-                      {[newsData?.state, newsData?.district].filter(Boolean).join(', ')}
-                    </Typography>
-                  </Box>
-                </Box>
-                
-                {/* Article Content */}
-                <Typography
-                  variant="body1"
-                  sx={{ 
-                    mb: 4,
-                    lineHeight: 1.7,
-                    color: '#333',
-                    fontSize: '1.1rem',
-                    '& p': {
-                      mb: 2
-                    }
-                  }}
-                >
-                  {/* If content has HTML, render it safely */}
-                  {newsData?.content ? (
-                    <div dangerouslySetInnerHTML={{ __html: newsData.content }} />
-                  ) : (
-                    'Content not available'
-                  )}
-                </Typography>
-                
-                {/* Social Interaction Bar */}
-                <Divider sx={{ mb: 3 }} />
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Button
-                      variant={liked ? "contained" : "outlined"}
-                      startIcon={liked ? <ThumbUpIcon /> : <ThumbUpOutlinedIcon />}
-                      onClick={handleLikeToggle}
-                      sx={{ 
-                        borderRadius: 8,
-                        px: 2,
-                        backgroundColor: liked ? '#673AB7' : 'transparent',
-                        color: liked ? 'white' : '#673AB7',
-                        borderColor: '#673AB7',
-                        '&:hover': {
-                          backgroundColor: liked ? '#5E35B1' : 'rgba(103, 58, 183, 0.08)',
-                        }
-                      }}
-                    >
-                      {likesCount} {likesCount === 1 ? 'Like' : 'Likes'}
-                    </Button>
-                    
-                    <Button
-                      variant="outlined"
-                      startIcon={<ChatBubbleOutlineIcon />}
-                      sx={{ 
-                        borderRadius: 8,
-                        px: 2,
-                        color: '#666',
-                        borderColor: '#ddd',
-                      }}
-                      onClick={() => document.getElementById('comments-section').scrollIntoView({ behavior: 'smooth' })}
-                    >
-                      {comments.length} {comments.length === 1 ? 'Comment' : 'Comments'}
-                    </Button>
-                  </Box>
-                  
-                  <Button
-                    variant="outlined"
-                    startIcon={<ShareIcon />}
-                    onClick={handleShareClick}
-                    sx={{ 
-                      borderRadius: 8,
-                      px: 2,
-                      color: '#666',
-                      borderColor: '#ddd',
-                    }}
-                  >
-                    Share
-                  </Button>
-                </Box>
-              </Box>
-            </Card>
-            
-            {/* Comments Section */}
-            <Box id="comments-section" sx={{ mb: 4 }}>
-              <Typography 
-                variant="h5" 
-                component="h2" 
-                sx={{ 
-                  fontWeight: 'bold',
-                  mb: 3
+                onClick={() => {
+                  if (newsData.youtubeUrl) {
+                    window.open(newsData.youtubeUrl, '_blank');
+                  }
                 }}
               >
-                Comments ({comments.length})
-              </Typography>
-              
-              {/* Comment Form */}
-              <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 4, gap: 2 }}>
-                <Avatar 
-                  sx={{ width: 40, height: 40 }}
-                  src="https://i.pravatar.cc/150?img=5"
-                />
+                <svg height="24" width="34" viewBox="0 0 68 48">
+                  <path d="M66.52,7.74c-0.78-2.93-2.49-5.41-5.42-6.19C55.79,.13,34,0,34,0S12.21,.13,6.9,1.55 C3.97,2.33,2.27,4.81,1.48,7.74C0.06,13.05,0,24,0,24s0.06,10.95,1.48,16.26c0.78,2.93,2.49,5.41,5.42,6.19 C12.21,47.87,34,48,34,48s21.79-0.13,27.1-1.55c2.93-0.78,4.64-3.26,5.42-6.19C67.94,34.95,68,24,68,24S67.94,13.05,66.52,7.74z" fill="#f00"></path>
+                  <path d="M 45,24 27,14 27,34" fill="#fff"></path>
+                </svg>
+              </Box>
+            )}
+          </Box>
+        )}
+        
+        {/* Action Buttons (Like, View, Share) */}
+        <Box sx={{ py: 2, display: 'flex', alignItems: 'center', gap: 4, borderBottom: '1px solid #eee', mb: 3 }}>
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              cursor: 'pointer',
+              opacity: 0.9,
+              '&:hover': {
+                opacity: 1
+              }
+            }} 
+            onClick={handleLikeToggle}
+          >
+            <IconButton 
+              color={isLiked ? 'error' : 'default'} 
+              size="small"
+              sx={{
+                transition: 'all 0.2s ease-in-out',
+                '&:hover': {
+                  transform: 'scale(1.1)',
+                }
+              }}
+            >
+              {isLiked ? <FavoriteIcon color="error" /> : <FavoriteBorderIcon />}
+            </IconButton>
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                ml: 0.5,
+                color: isLiked ? 'error.main' : 'text.primary',
+                fontWeight: isLiked ? 'medium' : 'regular'
+              }}
+            >
+              {likeCount} {likeCount === 1 ? 'Like' : 'Likes'}
+            </Typography>
+          </Box>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <IconButton color="default" size="small">
+              <VisibilityIcon />
+            </IconButton>
+            <Typography variant="body2" sx={{ ml: 0.5 }}>
+              {viewCount} {viewCount === 1 ? 'View' : 'Views'}
+            </Typography>
+          </Box>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={handleShareClick}>
+            <IconButton color="default" size="small">
+              <ShareIcon />
+            </IconButton>
+            <Typography variant="body2" sx={{ ml: 0.5 }}>
+              Share
+            </Typography>
+          </Box>
+        </Box>
+        
+        {/* Article Content */}
+        <Box 
+          sx={{ lineHeight: 1.8, mb: 4 }}
+          dangerouslySetInnerHTML={{ 
+            __html: newsData.content || "No content available for this state article." 
+          }}
+        />
+        
+        {/* Comments Section */}
+        <Box sx={{ py: 3, bgcolor: '#f9f9f9', borderRadius: 2, mt: 4 }}>
+          <Box sx={{ px: 3 }}>
+            <Typography variant="h6" sx={{ mb: 3, fontWeight: 'bold' }}>
+              Comments
+            </Typography>
+            
+            {/* Comment Success Message */}
+            {commentSuccess && (
+              <Box 
+                sx={{ 
+                  backgroundColor: '#ecfdf5', 
+                  color: '#065f46', 
+                  p: 2, 
+                  borderRadius: 2,
+                  mb: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  fontWeight: 'medium'
+                }}
+              >
+                <Typography variant="body2">
+                  Comment posted successfully!
+                </Typography>
+              </Box>
+            )}
+
+            {/* Loading indicator */}
+            {loadingComments && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
+                <CircularProgress size={30} sx={{ color: themeColor }} />
+              </Box>
+            )}
+            
+            {/* Comment Input - Show only if logged in */}
+            {isLoggedIn ? (
+              <Box sx={{ display: 'flex', mb: 4, gap: 2 }}>
                 <TextField
                   fullWidth
                   variant="outlined"
-                  placeholder="Add a comment..."
+                  placeholder="Write a comment..."
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  sx={{ 
+                  sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: 2,
+                      bgcolor: 'white'
                     }
                   }}
-                  InputProps={{
-                    endAdornment: (
-                      <IconButton 
-                        edge="end" 
-                        onClick={handleCommentSubmit}
-                        disabled={!comment.trim()}
-                        sx={{ color: '#673AB7' }}
-                      >
-                        <SendIcon />
-                      </IconButton>
-                    ),
-                  }}
                 />
+                <Button
+                  variant="contained"
+                  disabled={!comment.trim()}
+                  onClick={handleCommentSubmit}
+                  sx={{ 
+                    minWidth: '46px', 
+                    bgcolor: themeColor,
+                    borderRadius: 2,
+                    '&:hover': { bgcolor: '#1B5E20' }
+                  }}
+                >
+                  <SendIcon />
+                </Button>
               </Box>
-              
-              {/* Comments List */}
-              <Box>
-                {comments.length > 0 ? (
-                  comments.map((comment) => (
-                    <Box 
-                      key={comment.id} 
-                      sx={{ 
-                        mb: 3,
-                        p: 2,
-                        backgroundColor: 'white',
-                        borderRadius: 2,
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                        <Avatar 
-                          sx={{ width: 32, height: 32, mr: 1 }}
-                          src={`https://i.pravatar.cc/150?img=${parseInt(comment.id) % 70}`}
-                        />
-                        <Box>
-                          <Typography variant="subtitle2" sx={{ fontWeight: 'medium' }}>
-                            {comment.user}
+            ) : (
+              <Box sx={{ mb: 4, textAlign: 'center' }}>
+                <Button
+                  variant="contained"
+                  onClick={handleLoginRedirect}
+                  sx={{ 
+                    bgcolor: themeColor,
+                    '&:hover': { bgcolor: '#1B5E20' }
+                  }}
+                >
+                  Login to comment
+                </Button>
+              </Box>
+            )}
+            
+            {/* Comments List */}
+            <Box>
+              {loadingComments ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                  <CircularProgress size={30} sx={{ color: themeColor }} />
+                </Box>
+              ) : comments.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                  No comments yet. Be the first to comment!
+                </Typography>
+              ) : (
+                comments.map((comment, index) => (
+                  <Box key={comment.id || index} sx={{ mb: 3, pb: 3, borderBottom: index < comments.length - 1 ? '1px solid #eee' : 'none' }}>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                      <Avatar 
+                        sx={{ bgcolor: themeColor }}
+                      >
+                        {(comment.user?.username || comment.user?.name || 'U').charAt(0).toUpperCase()}
+                      </Avatar>
+                      <Box>
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mb: 0.5 }}>
+                          <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                            {comment.user?.username || comment.user?.name || 'Anonymous'}
                           </Typography>
-                          <Typography variant="caption" sx={{ color: '#666' }}>
+                          <Typography variant="caption" color="text.secondary">
                             {formatDate(comment.createdAt)}
                           </Typography>
                         </Box>
+                        <Typography variant="body2">
+                          {comment.content}
+                        </Typography>
                       </Box>
-                      <Typography variant="body2">
-                        {comment.text}
-                      </Typography>
                     </Box>
-                  ))
-                ) : (
-                  <Box sx={{ textAlign: 'center', py: 3, backgroundColor: 'white', borderRadius: 2 }}>
-                    <Typography variant="body1" sx={{ color: '#666' }}>
-                      Be the first to comment on this article!
-                    </Typography>
                   </Box>
-                )}
-              </Box>
+                ))
+              )}
             </Box>
-          </Grid>
-          
-          {/* Sidebar */}
-          <Grid item xs={12} md={4}>
-            {/* Related News */}
-            <Card sx={{ 
-              mb: 4, 
-              borderRadius: 2,
-              overflow: 'hidden',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
-            }}>
-              <Box sx={{ 
-                p: 2, 
-                backgroundColor: '#673AB7', 
-                color: 'white',
-                fontWeight: 'bold',
-              }}>
-                <Typography variant="h6">Related Articles</Typography>
-              </Box>
-              <Box sx={{ p: 2 }}>
-                {relatedNews.length > 0 ? (
-                  relatedNews.map((item) => (
-                    <Box 
-                      key={item.id} 
-                      sx={{ 
-                        mb: 2, 
-                        '&:last-child': { mb: 0 },
-                        '&:not(:last-child)': {
-                          pb: 2,
-                          borderBottom: '1px solid #eee'
-                        }
-                      }}
-                    >
-                      <Link 
-                        to={`/state/${item.state ? item.state.toLowerCase() : 'all'}/${item.id}`}
-                        style={{ textDecoration: 'none', color: 'inherit' }}
-                      >
-                        <Box sx={{ display: 'flex', gap: 2 }}>
-                          <Box 
-                            component="img"
-                            src={getFullImageUrl(item.featuredImage || item.image)}
-                            alt={item.title}
-                            sx={{ 
-                              width: 80, 
-                              height: 60, 
-                              objectFit: 'cover',
-                              borderRadius: 1
-                            }}
-                            onError={(e) => {
-                              e.target.src = 'https://via.placeholder.com/80x60?text=No+Image';
-                            }}
-                          />
-                          <Box>
-                            <Typography 
-                              variant="subtitle2" 
-                              sx={{ 
-                                fontWeight: 'medium',
-                                lineHeight: 1.3,
-                                mb: 0.5,
-                                overflow: 'hidden',
-                                display: '-webkit-box',
-                                WebkitLineClamp: 2,
-                                WebkitBoxOrient: 'vertical',
-                              }}
-                            >
-                              {item.title}
-                            </Typography>
-                            <Typography 
-                              variant="caption" 
-                              sx={{ 
-                                color: '#666',
-                                display: 'block'
-                              }}
-                            >
-                              {formatDate(item.publishedAt || item.createdAt || item.updatedAt)}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </Link>
-                    </Box>
-                  ))
-                ) : (
-                  <Box sx={{ textAlign: 'center', py: 3 }}>
-                    <Typography variant="body2" sx={{ color: '#666' }}>
-                      No related articles found
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-            </Card>
-            
-            {/* Advertisement */}
-            <Box 
-              sx={{ 
-                width: '100%', 
-                height: 300, 
-                bgcolor: '#E0E0E0', 
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#999',
-                borderRadius: 2,
-                position: 'relative',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                mb: 4
-              }}
-            >
-              300 x 300
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  position: 'absolute', 
-                  bottom: 5, 
-                  right: 10, 
-                  fontSize: '0.6rem',
-                  color: '#AAA' 
-                }}
-              >
-                Advertisement
-              </Typography>
-            </Box>
-            
-            {/* State Information */}
-            <Card sx={{ 
-              borderRadius: 2,
-              overflow: 'hidden',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
-            }}>
-              <Box sx={{ 
-                p: 2, 
-                backgroundColor: '#673AB7', 
-                color: 'white',
-                fontWeight: 'bold',
-              }}>
-                <Typography variant="h6">About {state}</Typography>
-              </Box>
-              <Box sx={{ p: 2 }}>
-                <Typography variant="body2" sx={{ mb: 2 }}>
-                  {state === 'Bihar' && 'Bihar is a state in eastern India. It is the third-largest state by population and thirteenth-largest by territory, with an area of 94,163 km².'}
-                  {state === 'Jharkhand' && 'Jharkhand is a state in eastern India. It was carved out of the southern part of Bihar on 15 November 2000.'}
-                  {state === 'Uttar Pradesh' && 'Uttar Pradesh is a state in northern India. With over 200 million inhabitants, it is the most populated state in India.'}
-                  {!['Bihar', 'Jharkhand', 'Uttar Pradesh'].includes(state) && `${state} is an important state in India with rich cultural heritage and diverse population.`}
-                </Typography>
-                <Button 
-                  variant="outlined" 
-                  fullWidth
-                  component={Link}
-                  to={`/state/${state.toLowerCase()}`}
-                  sx={{
-                    borderRadius: 2,
-                    color: '#673AB7',
-                    borderColor: '#673AB7',
-                  }}
-                >
-                  View All {state} News
-                </Button>
-              </Box>
-            </Card>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </Container>
     </Box>
   );

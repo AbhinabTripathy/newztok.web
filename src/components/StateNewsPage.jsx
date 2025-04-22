@@ -119,79 +119,84 @@ const StateNewsPage = () => {
     };
 
     return (
-      <Box sx={{ position: 'relative', height: '100%', mb: 2 }}>
-        <Card sx={{ 
-          position: 'relative',
-          borderRadius: 2,
-          overflow: 'hidden',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-          height: 360,
-          display: 'flex',
-          flexDirection: 'column',
-          cursor: 'pointer',
-          backgroundColor: 'white',
-          transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
-          '&:hover': {
-            transform: 'translateY(-5px)',
-            boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
-          }
-        }}>
-          <CardMedia
-            component="img"
-            height="360"
-            image={getFullImageUrl(item.image || item.featuredImage)}
-            alt={item.title || ''}
-            sx={{ objectFit: 'cover' }}
-          />
-          <Box
-            sx={{
-              position: 'absolute',
-              top: 16,
-              left: 16,
-              bgcolor: '#1B5E20',
-              color: 'white',
-              px: 2,
-              py: 0.5,
-              borderRadius: '4px',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}
-          >
-            {item.category || 'STATE'}
-          </Box>
-        </Card>
-        
-        <Box sx={{ pt: 2 }}>
-          <Typography
-            variant="h6"
-            sx={{
-              color: 'black',
-              fontWeight: 700,
-              mb: 1,
-              lineHeight: 1.3,
-              fontSize: '1rem',
-              cursor: 'pointer',
-              transition: 'color 0.2s ease',
-              '&:hover': { color: '#1B5E20' }
-            }}
-          >
-            {item.title || 'No Title'}
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#888' }}>
-            <LocationOnIcon sx={{ fontSize: 14 }} />
-            <Typography variant="caption" sx={{ color: '#888' }}>
-              {item.location || 'Bihar, patna'}
+      <Link 
+        to={`/state/${state}/${item.id || item._id}`} 
+        style={{ textDecoration: 'none' }}
+      >
+        <Box sx={{ position: 'relative', height: '100%', mb: 2 }}>
+          <Card sx={{ 
+            position: 'relative',
+            borderRadius: 2,
+            overflow: 'hidden',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+            height: 360,
+            display: 'flex',
+            flexDirection: 'column',
+            cursor: 'pointer',
+            backgroundColor: 'white',
+            transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+            '&:hover': {
+              transform: 'translateY(-5px)',
+              boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+            }
+          }}>
+            <CardMedia
+              component="img"
+              height="360"
+              image={getFullImageUrl(item.image || item.featuredImage)}
+              alt={item.title || ''}
+              sx={{ objectFit: 'cover' }}
+            />
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 16,
+                left: 16,
+                bgcolor: '#1B5E20',
+                color: 'white',
+                px: 2,
+                py: 0.5,
+                borderRadius: '4px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px'
+              }}
+            >
+              {item.category || 'STATE'}
+            </Box>
+          </Card>
+          
+          <Box sx={{ pt: 2 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                color: 'black',
+                fontWeight: 700,
+                mb: 1,
+                lineHeight: 1.3,
+                fontSize: '1rem',
+                cursor: 'pointer',
+                transition: 'color 0.2s ease',
+                '&:hover': { color: '#1B5E20' }
+              }}
+            >
+              {item.title || 'No Title'}
             </Typography>
-            <FiberManualRecordIcon sx={{ fontSize: 6, mx: 0.5 }} />
-            <AccessTimeIcon sx={{ fontSize: 14 }} />
-            <Typography variant="caption" sx={{ color: '#888' }}>
-              {item.date || 'April 21, 2025 at 11:03 AM'}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#888' }}>
+              <LocationOnIcon sx={{ fontSize: 14 }} />
+              <Typography variant="caption" sx={{ color: '#888' }}>
+                {item.location || 'Bihar, patna'}
+              </Typography>
+              <FiberManualRecordIcon sx={{ fontSize: 6, mx: 0.5 }} />
+              <AccessTimeIcon sx={{ fontSize: 14 }} />
+              <Typography variant="caption" sx={{ color: '#888' }}>
+                {item.date || 'April 21, 2025 at 11:03 AM'}
+              </Typography>
+            </Box>
           </Box>
         </Box>
-      </Box>
+      </Link>
     );
   };
 

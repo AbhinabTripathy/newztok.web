@@ -249,21 +249,29 @@ const HomeScreen = () => {
 
   // Fetch state news
   const fetchStateNews = async () => {
-    setLoading(prev => ({ ...prev, state: true }));
-    setError(prev => ({ ...prev, state: null }));
-    
     try {
-      console.log('Fetching state news...');
-      const response = await axios.get(`${baseUrl}/api/news/category/district`);
-      const news = processApiResponse(response, 'state');
-      console.log('State news:', news);
-      setStateNews(news);
+      setLoading(prev => ({ ...prev, state: true }));
+      setError(prev => ({ ...prev, state: null }));
+
+      // Fetch news from all three states
+      const [biharNews, jharkhandNews, upNews] = await Promise.all([
+        axios.get('https://api.newztok.in/api/news/state/bihar'),
+        axios.get('https://api.newztok.in/api/news/state/jharkhand'),
+        axios.get('https://api.newztok.in/api/news/state/up')
+      ]);
+
+      // Combine and sort all news by date
+      const allStateNews = [
+        ...(biharNews.data.data || []),
+        ...(jharkhandNews.data.data || []),
+        ...(upNews.data.data || [])
+      ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      // Take the most recent 2 news items
+      setStateNews(allStateNews.slice(0, 2));
     } catch (err) {
       console.error('Error fetching state news:', err);
-      setError(prev => ({ 
-        ...prev, 
-        state: err.response?.data?.message || err.message || 'Failed to fetch state news' 
-      }));
+      setError(prev => ({ ...prev, state: 'Failed to load state news' }));
     } finally {
       setLoading(prev => ({ ...prev, state: false }));
     }
@@ -991,22 +999,11 @@ const HomeScreen = () => {
         {/* STATE NEWS SECTION */}
         <Typography 
           variant="h5" 
-          component="h2" 
           sx={{ 
-            mb: 3, 
-            fontWeight: 'bold',
-            position: 'relative',
-            pl: 2,
-            '&:before': {
-              content: '""',
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 5,
-              backgroundColor: '#FFC107',
-              borderRadius: 1
-            }
+            fontWeight: 'bold', 
+            mb: 2,
+            color: '#111827',
+            fontSize: { xs: '1.25rem', md: '1.5rem' }
           }}
         >
           STATE NEWS
