@@ -703,7 +703,7 @@ const NationalNews = () => {
             top: -30,
           }}>
             <Typography 
-              color='black' 
+              color='white' 
               variant="h3" 
               component="h1" 
               fontWeight="bold" 

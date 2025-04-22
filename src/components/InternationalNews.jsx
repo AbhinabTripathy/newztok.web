@@ -606,10 +606,10 @@ const InternationalNews = () => {
             borderRadius: 2,
             boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
           }}>
-            <Typography variant="h3" color='black' component="h1" fontWeight="bold" sx={{ mb: 1 }}>
+            <Typography variant="h3" color='white' component="h1" fontWeight="bold" sx={{ mb: 1 }}>
               International News
             </Typography>
-            <Typography color='black' variant="subtitle1">
+            <Typography color='white' variant="subtitle1">
               Breaking news and updates from around the world
             </Typography>
           </Box>
