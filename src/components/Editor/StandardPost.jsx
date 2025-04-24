@@ -32,9 +32,9 @@ const StandardPost = () => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       
-      // Check file size (limit to 10MB)
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        setError('File size exceeds 10MB. Please select a smaller image.');
+      // Check file size (limit to 50MB)
+      if (selectedFile.size > 50 * 1024 * 1024) {
+        setError('File size exceeds 50MB. Please select a smaller image.');
         return;
       }
       
@@ -460,7 +460,7 @@ const StandardPost = () => {
                   color: '#111827'
                 }}
               >
-                Featured Image <span style={{ color: '#6b7280', fontSize: '12px' }}>(Max 10MB)</span>
+                Featured Image <span style={{ color: '#6b7280', fontSize: '12px' }}>(Max 50MB)</span>
               </label>
               <div style={{ 
                 display: 'flex', 

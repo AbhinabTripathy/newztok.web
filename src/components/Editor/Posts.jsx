@@ -102,7 +102,7 @@ const Posts = () => {
       // Set posts with a clean object to ensure reactivity and handle missing properties
       const processedPosts = fetchedPosts.map(post => {
         // More comprehensive check for featured status
-        const isFeaturedValue = 
+        let isFeaturedValue = 
           post.isFeatured === true || 
           post.featured === true || 
           post.is_featured === true ||
@@ -112,6 +112,25 @@ const Posts = () => {
           post.isFeatured === 1 ||
           post.featured === 1 ||
           post.is_featured === 1;
+        
+        const postId = post._id || post.id;
+        
+        // Also check localStorage for featured status which may have been set by user
+        try {
+          const localStorageFeatured = localStorage.getItem(`featured_post_${postId}`);
+          if (localStorageFeatured === 'true') {
+            isFeaturedValue = true;
+          }
+        } catch (error) {
+          console.warn(`Could not check localStorage for post ${postId}:`, error);
+        }
+        
+        // Log the featured status
+        console.log(`Post ${postId} featured status:`, {
+          originalValue: post.isFeatured,
+          processed: isFeaturedValue,
+          localStorage: localStorage.getItem(`featured_post_${postId}`)
+        });
         
         // Extract journalist information with proper logging for debugging
         let journalistName = 'Unknown';
@@ -223,82 +242,98 @@ const Posts = () => {
         throw new Error('Authentication token not found. Please log in again.');
       }
 
-      // Check if we're trying to mark a post as featured (not unfeature it)
-      if (!currentFeatured) {
-        // First, check if the token already indicates this post is featured
-        // We do this by checking local storage or any other token storage mechanism
-        try {
-          const storedFeaturedKey = `featured_post_${postId}`;
-          const storedFeatured = localStorage.getItem(storedFeaturedKey);
-          
-          // If we already have a stored token for this post being featured,
-          // we can update the UI immediately without making an API call
-          if (storedFeatured === 'true') {
-            console.log(`Post ${postId} already marked as featured in local storage`);
-            
-            // Update UI state only
-            updatePostFeaturedState(postId, true);
-            return;
-          }
-        } catch (storageError) {
-          // If localStorage access fails, continue with API call
-          console.warn('Could not access localStorage:', storageError);
-        }
-      }
-
-      // Setup headers with the token
-      const config = getAuthConfig();
-
-      // Create request body - explicitly setting the new status
+      // Update UI optimistically
       const newFeaturedStatus = !currentFeatured;
+      
+      // Update UI state immediately for better UX and also update localStorage before the API call
+      if (newFeaturedStatus) {
+        localStorage.setItem(`featured_post_${postId}`, 'true');
+        console.log(`Stored featured status in localStorage for post ${postId}`);
+      } else {
+        localStorage.removeItem(`featured_post_${postId}`);
+        console.log(`Removed featured status from localStorage for post ${postId}`);
+      }
+      
+      // Update post state in the UI
+      updatePostFeaturedState(postId, newFeaturedStatus);
+      
+      // Create request body with the new status
       const requestBody = {
         isFeatured: newFeaturedStatus
       };
       console.log('Request body:', requestBody);
 
-      // Setup and make the request
-      const endpoint = formatApiUrl(baseURL, `/api/news/featured/${postId}`);
-      console.log('Making request to:', endpoint);
+      // Direct API call without using formatApiUrl
+      const endpoint = `${baseURL}/api/news/featured/${postId}`;
+      console.log('Making PUT request to:', endpoint);
 
-      // Make the PUT request using axios
-      const response = await axios.put(endpoint, requestBody, config);
+      // Create headers manually instead of using getAuthConfig
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      // Make the PUT request using axios with explicit configuration
+      const response = await axios({
+        method: 'PUT',  // Explicitly using PUT method
+        url: endpoint,
+        data: requestBody,
+        headers: headers
+      });
+      
       console.log('Response data:', response.data);
 
+      // Handle successful response
       if (response.status >= 200 && response.status < 300) {
-        // If successfully marked as featured, store this information
-        if (newFeaturedStatus) {
-          try {
-            localStorage.setItem(`featured_post_${postId}`, 'true');
-          } catch (storageError) {
-            console.warn('Could not store featured state in localStorage:', storageError);
-          }
-        } else {
-          // If unfeatured, remove the local storage token
-          try {
-            localStorage.removeItem(`featured_post_${postId}`);
-          } catch (storageError) {
-            console.warn('Could not remove featured state from localStorage:', storageError);
-          }
-        }
-
-        // Update post state with the new featured status
-        updatePostFeaturedState(postId, newFeaturedStatus);
+        // Show success message
+        setSuccessMessage(newFeaturedStatus 
+          ? "News marked as featured successfully!" 
+          : "Featured status removed successfully!"
+        );
+        
+        // Refresh the list after a delay
+        setTimeout(() => {
+          fetchApprovedPosts();
+        }, 1000);
       } else {
         throw new Error(`Server returned status: ${response.status}`);
       }
-
     } catch (err) {
       console.error('Featured toggle error:', err);
-      setError('Failed to update featured status. Please try again.');
+      
+      // Revert the optimistic UI update and localStorage since the API call failed
+      if (!currentFeatured) {
+        localStorage.removeItem(`featured_post_${postId}`);
+      } else {
+        localStorage.setItem(`featured_post_${postId}`, 'true');
+      }
+      
+      // Revert the posts state
+      setPosts(prevPosts => 
+        prevPosts.map(post => {
+          if (String(post.id) === String(postId) || String(post._id) === String(postId)) {
+            return {
+              ...post,
+              isFeatured: currentFeatured,
+              featured: currentFeatured
+            };
+          }
+          return post;
+        })
+      );
+      
+      setError(`Failed to update featured status. Please try again.`);
       setTimeout(() => setError(null), 3000);
       
-      // Close dropdown in case of error too
+      // Close dropdown in case of error
       toggleActionDropdown(postId);
     }
   };
 
   // Helper function to update featured state in UI
   const updatePostFeaturedState = (postId, newFeaturedStatus) => {
+    console.log(`Updating featured status for post ${postId} to ${newFeaturedStatus}`);
+    
     // Update the posts state with the new featured status
     setPosts(prevPosts => 
       prevPosts.map(post => {
@@ -316,13 +351,13 @@ const Posts = () => {
       })
     );
 
+    // Show success message but don't close dropdown yet
     setSuccessMessage(newFeaturedStatus 
       ? "News marked as featured successfully!" 
       : "Featured status removed successfully!"
     );
 
-    // Don't automatically refresh - it's losing our state
-    // Instead, close the dropdown and let the current state persist
+    // Close the dropdown
     toggleActionDropdown(postId);
   };
 
@@ -677,6 +712,9 @@ const Posts = () => {
                   const postId = post._id || post.id || `post-${index}`;
                   // Check for either featured or isFeatured property being true
                   const isPostFeatured = post.featured || post.isFeatured;
+                  
+                  console.log(`Rendering post ${postId} with featured status:`, isPostFeatured);
+                  
                   return (
                     <tr key={postId} style={{ borderBottom: '1px solid #e5e7eb' }}>
                       <td style={{ padding: '16px', maxWidth: '300px' }}>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FiChevronDown, FiEdit, FiX } from 'react-icons/fi';
+import { FiChevronDown, FiEdit, FiX, FiClock } from 'react-icons/fi';
 import { HiOutlineArrowNarrowRight } from 'react-icons/hi';
+import { FaCheck, FaTimes } from 'react-icons/fa';
 import axios from 'axios';
 import { Editor } from '@tinymce/tinymce-react';
 import { useNavigate } from 'react-router-dom';
@@ -18,9 +19,19 @@ import {
   Box,
   CircularProgress,
   TablePagination,
-  Chip
+  Chip,
+  Tooltip,
+  Button
 } from '@mui/material';
-import { Edit as EditIcon } from '@mui/icons-material';
+import { Edit as EditIcon, VideoFile as VideoFileIcon, Image as ImageIcon } from '@mui/icons-material';
+
+// CSS for spinner animation
+const spinAnimation = `
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
 
 const PendingApprovals = () => {
   const [pendingNews, setPendingNews] = useState([]);
@@ -38,16 +49,62 @@ const PendingApprovals = () => {
   const [editorRef, setEditorRef] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const navigate = useNavigate();
+  const [currentPage, setCurrentPage] = useState(1);
   const [totalResults, setTotalResults] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [lastFetchTime, setLastFetchTime] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [isVideoContent, setIsVideoContent] = useState(false);
   
   // API Base URL
   const baseURL = 'https://api.newztok.in';
 
   // Add useEffect to fetch pending news when component mounts
   useEffect(() => {
+    console.log('PendingApprovals component mounted at:', new Date().toISOString());
+    console.log('Starting to fetch pending news...');
     fetchPendingNews();
+    
+    // Add page visibility change listener to refresh data when tab becomes active
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        // Only fetch if data is stale (more than 2 minutes old)
+        const now = new Date();
+        const twoMinutes = 2 * 60 * 1000;
+        if (!lastFetchTime || (now - lastFetchTime) > twoMinutes) {
+          console.log('Page became visible and data is stale, refreshing data...');
+          fetchPendingNews();
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Check for refresh flag set by EditPost component
+    const refreshFlag = localStorage.getItem('pendingApprovals_refresh');
+    if (refreshFlag === 'true') {
+      console.log('Refresh flag detected, fetching fresh data');
+      fetchPendingNews();
+      localStorage.removeItem('pendingApprovals_refresh');
+    }
+    
+    // Set up interval to refresh data every 5 minutes
+    const refreshInterval = setInterval(() => {
+      const now = new Date();
+      const fiveMinutes = 5 * 60 * 1000;
+      if (!lastFetchTime || (now - lastFetchTime) > fiveMinutes) {
+        console.log('Auto-refresh interval triggered, data is stale');
+        fetchPendingNews();
+      }
+    }, 5 * 60 * 1000);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(refreshInterval);
+      console.log('PendingApprovals component unmounting');
+    };
   }, []);
 
   // Add mock data generator
@@ -69,7 +126,8 @@ const PendingApprovals = () => {
         category: 'Sports',
         district: 'Mumbai',
         status: 'pending', 
-        createdAt: new Date().toISOString() 
+        createdAt: new Date().toISOString(),
+        videoPath: '/uploads/videos/video-1745501187515-471719446.mp4'
       },
       { 
         id: 'mock-p3', 
@@ -78,12 +136,13 @@ const PendingApprovals = () => {
         category: 'Business',
         district: 'Bengaluru',
         status: 'pending', 
-        createdAt: new Date().toISOString() 
+        createdAt: new Date().toISOString(),
+        featuredImage: '/uploads/images/sample-image.jpg'
       }
     ];
   };
 
-  const fetchPendingNews = async () => {
+  const fetchPendingNews = async (retryCount = 0, delay = 1000) => {
     try {
       setLoading(true);
       setError(null);
@@ -101,6 +160,8 @@ const PendingApprovals = () => {
       console.log('Fetching pending posts from API with token');
       // Using formatApiUrl to prevent double slash issues
       const url = formatApiUrl(baseURL, '/api/news/my-pending-news');
+      console.log(`Requesting: ${url}`);
+      
       const response = await axios.get(url, config);
       
       console.log('API Response:', response.data);
@@ -137,9 +198,6 @@ const PendingApprovals = () => {
       
       // Process each news item to ensure it has all required fields
       const processedItems = newsItems.map(item => {
-        // Log each item to see its structure
-        console.log('Processing item:', item);
-        
         // Create a clean copy with all required fields
         return {
           ...item,
@@ -150,7 +208,9 @@ const PendingApprovals = () => {
           state: item.state || '',
           district: item.district || '',
           featuredImage: item.featuredImage || '',
-          status: item.status || 'pending'
+          videoPath: item.videoPath || '',
+          status: item.status || 'pending',
+          contentType: item.videoPath || item.youtubeUrl ? 'video' : 'article'
         };
       });
       
@@ -160,23 +220,53 @@ const PendingApprovals = () => {
       const updatedItems = checkForLocallyUpdatedItems(processedItems);
       
       setPendingNews(updatedItems);
+      setLastFetchTime(new Date());
       
       // Cache the result for future use
       try {
         localStorage.setItem('cached_pending_news', JSON.stringify(updatedItems));
+        localStorage.setItem('cached_pending_news_timestamp', new Date().toISOString());
       } catch (cacheError) {
         console.warn('Failed to cache pending news:', cacheError);
       }
       
     } catch (err) {
       console.error('Error fetching pending news:', err);
-      setError('Failed to fetch pending posts. Using demo data instead.');
+      
+      // Detailed error logging
+      if (err.response) {
+        console.error('Server Error Details:', {
+          status: err.response.status,
+          statusText: err.response.statusText,
+          data: err.response.data
+        });
+        
+        // Check for 500 error
+        if (err.response.status === 500) {
+          setError('Server error occurred. The server is experiencing issues processing your request.');
+        } else if (err.response.status === 401) {
+          setError('Authentication error. Please log in again.');
+        } else {
+          setError(`Failed to fetch pending posts (${err.response.status}). Using cached data if available.`);
+        }
+      } else {
+        setError('Network error. Please check your connection. Using cached data if available.');
+      }
+      
+      // Retry logic for network errors
+      if (!err.response && retryCount < 3) {
+        console.log(`Retrying fetch (attempt ${retryCount + 1}) after ${delay}ms delay...`);
+        setTimeout(() => fetchPendingNews(retryCount + 1, delay * 2), delay);
+        return;
+      }
       
       // Try to load from cache first
       try {
         const cachedData = localStorage.getItem('cached_pending_news');
+        const cachedTimestamp = localStorage.getItem('cached_pending_news_timestamp');
+        
         if (cachedData) {
-          console.log('Using cached pending news data');
+          console.log('Using cached pending news data from:', cachedTimestamp || 'unknown time');
           const parsedData = JSON.parse(cachedData);
           
           // Even when using cached data, check for local updates
@@ -229,6 +319,7 @@ const PendingApprovals = () => {
               state: localItem.state || item.state, 
               district: localItem.district || item.district,
               featuredImage: localItem.featuredImage || item.featuredImage,
+              videoPath: localItem.videoPath || item.videoPath,
               _updatedLocally: true // Add flag to indicate this was updated locally
             };
           }
@@ -260,6 +351,7 @@ const PendingApprovals = () => {
         ...existingNewsItem,
         // Ensure these fields have fallback values and are never null
         featuredImage: existingNewsItem.featuredImage || '',
+        videoPath: existingNewsItem.videoPath || '',
         state: existingNewsItem.state || '',
         district: existingNewsItem.district || '',
         category: existingNewsItem.category || ''
@@ -348,6 +440,7 @@ const PendingApprovals = () => {
         const safeApiData = {
           ...apiData,
           featuredImage: apiData.featuredImage || workingCopy.featuredImage || '',
+          videoPath: apiData.videoPath || workingCopy.videoPath || '',
           state: apiData.state || workingCopy.state || '',
           district: apiData.district || workingCopy.district || '',
           category: apiData.category || workingCopy.category || ''
@@ -364,8 +457,9 @@ const PendingApprovals = () => {
           category: safeApiData.category || workingCopy.category || '',
           state: safeApiData.state || workingCopy.state || '',
           district: safeApiData.district || workingCopy.district || '',
-          // Make sure featuredImage is always present and never null
-          featuredImage: safeApiData.featuredImage || workingCopy.featuredImage || ''
+          // Make sure featuredImage and videoPath are always present and never null
+          featuredImage: safeApiData.featuredImage || workingCopy.featuredImage || '',
+          videoPath: safeApiData.videoPath || workingCopy.videoPath || ''
         };
       }
       
@@ -379,6 +473,7 @@ const PendingApprovals = () => {
       workingCopy.state = workingCopy.state || '';
       workingCopy.district = workingCopy.district || '';
       workingCopy.featuredImage = workingCopy.featuredImage || '';
+      workingCopy.videoPath = workingCopy.videoPath || '';
       
       return workingCopy;
       
@@ -392,6 +487,7 @@ const PendingApprovals = () => {
           ...existingNewsItem,
           // Ensure these fields have fallback values
           featuredImage: existingNewsItem.featuredImage || '',
+          videoPath: existingNewsItem.videoPath || '',
           state: existingNewsItem.state || '',
           district: existingNewsItem.district || '',
           category: existingNewsItem.category || ''
@@ -406,7 +502,8 @@ const PendingApprovals = () => {
         category: '',
         state: '',
         district: '',
-        featuredImage: ''
+        featuredImage: '',
+        videoPath: ''
       };
     }
   };
@@ -452,35 +549,6 @@ const PendingApprovals = () => {
     }
   };
 
-  // Fetch both pending and approved news on component mount
-  useEffect(() => {
-    fetchPendingNews();
-    // Comment out the approved news fetch since it's causing errors and not being used
-    // fetchApprovedNews();
-    
-    // Add page visibility change listener to refresh data when tab becomes active
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        console.log('Page became visible, refreshing data...');
-        fetchPendingNews();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    // Check for refresh flag set by EditPost component
-    const refreshFlag = localStorage.getItem('pendingApprovals_refresh');
-    if (refreshFlag === 'true') {
-      console.log('Refresh flag detected, fetching fresh data');
-      fetchPendingNews();
-      localStorage.removeItem('pendingApprovals_refresh');
-    }
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-
   // Function to truncate and sanitize HTML content for display
   const truncateText = (text, maxLength = 80) => {
     if (!text) return '';
@@ -514,12 +582,70 @@ const PendingApprovals = () => {
     return { __html: html };
   };
 
+  // Format date helper function
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'Invalid date';
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+  
   const handleEditClick = (news) => {
     try {
       console.log("Redirecting to edit screen for news ID:", news.id);
       
-      // Instead of storing the full news object, just store the ID
-      // The EditPost component will fetch the complete data using this ID
+      // Process the news data for consistency
+      const processedNewsData = {
+        id: news.id,
+        title: news.title || '',
+        content: news.content || '',
+        featuredImage: news.featuredImage || news.image || '',
+        category: news.category || '',
+        state: news.state || '',
+        district: news.district || '',
+        contentType: news.contentType || 'standard',
+        status: news.status || 'pending',
+        youtubeUrl: news.youtubeUrl || '',
+        
+        // Enhanced video path handling with proper synchronization
+        videoPath: news.videoPath || news.video || '',
+        video: news.video || news.videoPath || '',
+        
+        // Original data for reference
+        originalVideoData: {
+          videoPath: news.videoPath || '',
+          video: news.video || ''
+        }
+      };
+      
+      // Log video-related fields for debugging
+      console.log("VIDEO FIELDS BEING PASSED:", {
+        videoPath: processedNewsData.videoPath,
+        video: processedNewsData.video,
+        originalVideoData: processedNewsData.originalVideoData
+      });
+      
+      // Set the appropriate content type if video-related fields are present
+      if (news.contentType === 'video' || 
+          news.youtubeUrl || 
+          news.videoPath || 
+          news.video) {
+        processedNewsData.contentType = 'video';
+        console.log("Video content detected, setting contentType to 'video'");
+      }
+      
+      console.log("Processed news data:", processedNewsData);
+      
+      // Add the news item to localStorage with complete data
+      localStorage.setItem('editNewsItem', JSON.stringify(processedNewsData));
+      
+      // Also store just the ID for compatibility
       localStorage.setItem('editNewsId', news.id);
       
       // Redirect to the edit screen with the news ID in the URL
@@ -532,30 +658,101 @@ const PendingApprovals = () => {
 
   return (
     <div style={{ padding: '30px', backgroundColor: '#f9fafb' }}>
-      <h1 style={{ 
-        fontSize: '28px', 
-        fontWeight: 'bold', 
-        color: '#111827', 
+      {/* Add style tag for animations */}
+      <style dangerouslySetInnerHTML={{ __html: spinAnimation }} />
+      
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between',
+        alignItems: 'center', 
         marginBottom: '24px' 
       }}>
-        Pending Approval
-      </h1>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1
+        }}>
+          <FiClock size={24} color="#4f46e5" />
+          <Typography variant="h4" sx={{ 
+            fontSize: '28px', 
+            fontWeight: 'bold', 
+            color: '#111827',
+            margin: 0
+          }}>
+            Pending Approval
+          </Typography>
+        </Box>
+        
+        <Button 
+          variant="outlined"
+          onClick={() => fetchPendingNews()}
+          startIcon={
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 2v6h-6"></path>
+              <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
+              <path d="M3 12a9 9 0 0 0 6.7 15L13 21"></path>
+              <path d="M14 21.5A9 9 0 0 0 21 15l-3-2"></path>
+            </svg>
+          }
+          sx={{ 
+            borderColor: '#4f46e5',
+            color: '#4f46e5',
+            '&:hover': {
+              borderColor: '#4338ca',
+              backgroundColor: 'rgba(79, 70, 229, 0.04)'
+            }
+          }}
+        >
+          Refresh
+        </Button>
+      </Box>
 
       {error && (
         <div style={{ 
-          backgroundColor: '#ffe6e6', 
-          color: '#ff0000', 
-          padding: '10px', 
-          borderRadius: '4px', 
-          marginBottom: '20px' 
+          backgroundColor: '#fee2e2', 
+          color: '#b91c1c', 
+          padding: '12px', 
+          borderRadius: '8px', 
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
         }}>
+          <FaTimes color="#b91c1c" />
           {error}
         </div>
+      )}
+      
+      {successMessage && (
+        <div style={{ 
+          backgroundColor: '#ecfdf5', 
+          color: '#065f46', 
+          padding: '12px', 
+          borderRadius: '8px', 
+          marginBottom: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px' 
+        }}>
+          <FaCheck color="#065f46" />
+          {successMessage}
+        </div>
+      )}
+
+      {lastFetchTime && (
+        <Typography variant="body2" sx={{ 
+          fontSize: '12px', 
+          color: '#6b7280', 
+          marginBottom: '12px',
+          fontStyle: 'italic'
+        }}>
+          Last updated: {formatDate(lastFetchTime)}
+        </Typography>
       )}
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-          <CircularProgress />
+          <CircularProgress sx={{ color: '#4f46e5' }} />
         </Box>
       ) : (
         <TableContainer 
@@ -585,18 +782,40 @@ const PendingApprovals = () => {
                 <TableCell>State</TableCell>
                 <TableCell>District</TableCell>
                 <TableCell>Status</TableCell>
+                <TableCell>Media</TableCell>
                 <TableCell align="center">Action</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {pendingNews.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ 
+                  <TableCell colSpan={8} align="center" sx={{ 
                     padding: '32px 16px',
                     color: '#64748b',
                     fontSize: '14px'
                   }}>
-                    No posts available for approval.
+                    {error ? (
+                      <Box>
+                        <Typography variant="h6" color="error" gutterBottom>
+                          Error Loading Posts
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" paragraph>
+                          Please try refreshing the page or check your network connection.
+                        </Typography>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          onClick={fetchPendingNews}
+                          sx={{ mt: 2 }}
+                        >
+                          Retry Now
+                        </Button>
+                      </Box>
+                    ) : (
+                      <Typography variant="body1" color="text.secondary">
+                        No posts available for approval.
+                      </Typography>
+                    )}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -682,21 +901,56 @@ const PendingApprovals = () => {
                         }}
                       />
                     </TableCell>
+                    <TableCell>
+                      {news.videoPath ? (
+                        <Tooltip title="Video Content">
+                          <Chip
+                            label="Video"
+                            size="small"
+                            icon={<VideoFileIcon />}
+                            sx={{ 
+                              backgroundColor: '#e0f2fe',
+                              color: '#0284c7',
+                              fontWeight: 500
+                            }}
+                          />
+                        </Tooltip>
+                      ) : news.featuredImage ? (
+                        <Tooltip title="Has Featured Image">
+                          <Chip
+                            label="Image"
+                            size="small"
+                            icon={<ImageIcon />}
+                            sx={{ 
+                              backgroundColor: '#dcfce7',
+                              color: '#16a34a',
+                              fontWeight: 500
+                            }}
+                          />
+                        </Tooltip>
+                      ) : (
+                        <Typography sx={{ color: '#94a3b8', fontSize: '12px' }}>
+                          None
+                        </Typography>
+                      )}
+                    </TableCell>
                     <TableCell align="center">
-                      <IconButton
-                        onClick={() => handleEditClick(news)}
-                        sx={{ 
-                          backgroundColor: '#4f46e5',
-                          color: 'white',
-                          '&:hover': {
-                            backgroundColor: '#4338ca',
-                            transform: 'scale(1.05)',
-                            transition: 'all 0.2s ease'
-                          }
-                        }}
-                      >
-                        <EditIcon />
-                      </IconButton>
+                      <Tooltip title="Edit Post">
+                        <IconButton
+                          onClick={() => handleEditClick(news)}
+                          sx={{ 
+                            backgroundColor: '#4f46e5',
+                            color: 'white',
+                            '&:hover': {
+                              backgroundColor: '#4338ca',
+                              transform: 'scale(1.05)',
+                              transition: 'all 0.2s ease'
+                            }
+                          }}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))
@@ -716,51 +970,40 @@ const PendingApprovals = () => {
           padding: '0 8px'
         }}>
           <Typography>
-            1 to {pendingNews.length} Items of {totalResults} — 
-            <IconButton 
+            Showing {pendingNews.length} of {totalResults} items
+          </Typography>
+          
+          <Box sx={{ display: 'flex', gap: '16px' }}>
+            <Button
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(currentPage - 1)}
               sx={{ 
-                color: '#4f46e5',
+                color: currentPage === 1 ? '#9ca3af' : '#4f46e5',
                 fontSize: '14px',
-                padding: '0 4px',
-                '&:hover': { 
+                fontWeight: 500,
+                '&:hover': {
                   backgroundColor: 'transparent',
                   textDecoration: 'underline'
                 }
               }}
             >
-              View all <HiOutlineArrowNarrowRight style={{ marginLeft: '4px' }} />
-            </IconButton>
-          </Typography>
-          
-          <Box sx={{ display: 'flex', gap: '16px' }}>
-            <Typography
-              component="span"
-              sx={{ 
-                color: '#4f46e5',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: 500,
-                '&:hover': {
-                  textDecoration: 'underline'
-                }
-              }}
-            >
               Previous
-            </Typography>
-            <Typography
-              component="span"
+            </Button>
+            <Button
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(currentPage + 1)}
               sx={{ 
-                color: '#4f46e5',
-                cursor: 'pointer',
+                color: currentPage === totalPages ? '#9ca3af' : '#4f46e5',
                 fontSize: '14px',
                 fontWeight: 500,
                 '&:hover': {
+                  backgroundColor: 'transparent',
                   textDecoration: 'underline'
                 }
               }}
             >
               Next
-            </Typography>
+            </Button>
           </Box>
         </Box>
       )}

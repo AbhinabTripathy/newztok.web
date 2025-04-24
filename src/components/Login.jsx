@@ -42,6 +42,7 @@ const Login = () => {
   
   // Common state
   const [error, setError] = useState('');
+  const [errorType, setErrorType] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -71,6 +72,7 @@ const Login = () => {
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
     setError('');
+    setErrorType('');
   };
 
   const handleClickShowPassword = () => {
@@ -220,12 +222,16 @@ const Login = () => {
         data: error.response?.data
       });
       
-      setError(
-        error.response?.data?.message || 
-        error.response?.data?.error || 
-        error.message || 
-        'Invalid credentials. Please try again.'
-      );
+      if (error.response?.status === 502) {
+        setError('We are working on the Server. Please try after some time');
+        setErrorType('server');
+      } else if (error.response?.status === 500) {
+        setError('Internal Server Error! We are fixing it');
+        setErrorType('server');
+      } else {
+        setError('Invalid credentials. Please try again.');
+        setErrorType('auth');
+      }
     } finally {
       setLoading(false);
     }
@@ -339,12 +345,16 @@ const Login = () => {
         data: error.response?.data
       });
       
-      setError(
-        error.response?.data?.message || 
-        error.response?.data?.error || 
-        error.message || 
-        'Login failed. Please try again.'
-      );
+      if (error.response?.status === 502) {
+        setError('We are working on the Server. Please try after some time');
+        setErrorType('server');
+      } else if (error.response?.status === 500) {
+        setError('Internal Server Error! We are fixing it');
+        setErrorType('server');
+      } else {
+        setError('Invalid credentials. Please try again.');
+        setErrorType('auth');
+      }
     } finally {
       setLoading(false);
     }
@@ -445,7 +455,7 @@ const Login = () => {
           />
         </Tabs>
 
-        {error && (
+        {error && errorType === 'server' && (
           <Alert severity="error" sx={{ width: '100%', mb: 2 }}>
             {error}
           </Alert>
@@ -528,6 +538,15 @@ const Login = () => {
             >
               {loading ? 'Signing In...' : 'Sign In'}
             </Button>
+            
+            {error && errorType === 'auth' && activeTab === 0 && (
+              <Typography 
+                variant="body2" 
+                sx={{ color: 'error.main', textAlign: 'center', mt: 1, fontWeight: 500 }}
+              >
+                {error}
+              </Typography>
+            )}
             
             <Box sx={{ mt: 2, textAlign: 'center' }}>
               <Typography variant="body2" sx={{ color: '#666' }}>
@@ -621,6 +640,15 @@ const Login = () => {
             >
               {loading ? 'Signing In...' : 'Staff Sign In'}
             </Button>
+            
+            {error && errorType === 'auth' && activeTab === 1 && (
+              <Typography 
+                variant="body2" 
+                sx={{ color: 'error.main', textAlign: 'center', mt: 1, fontWeight: 500 }}
+              >
+                {error}
+              </Typography>
+            )}
           </Box>
         )}
       </Paper>

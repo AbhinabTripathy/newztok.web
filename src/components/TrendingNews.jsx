@@ -47,6 +47,9 @@ const TrendingNews = () => {
     { platform: 'whatsapp', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/767px-WhatsApp.svg.png', count: '43.8k', label: 'members' },
   ];
 
+  // Base URL for API
+  const baseUrl = 'https://api.newztok.in';
+
   useEffect(() => {
     fetchTrendingNews();
   }, [selectedState]); // Re-fetch when selected state changes
@@ -102,6 +105,57 @@ const TrendingNews = () => {
         }
       }
       
+      // Process each news item to handle videos
+      fetchedNews = fetchedNews.map(item => {
+        // Check all possible properties for video paths
+        const checkForVideoPath = (obj) => {
+          // Define properties to check for video paths
+          const propertiesToCheck = [
+            'video', 'videoPath', 'featuredImage', 'image', 'media', 'url', 'source'
+          ];
+          
+          let foundVideoPath = null;
+          
+          // Check each property for a video path
+          propertiesToCheck.forEach(prop => {
+            if (obj[prop] && typeof obj[prop] === 'string' && obj[prop].includes('/uploads/videos/video-')) {
+              foundVideoPath = obj[prop];
+              console.log(`Found video path in ${prop} property: ${foundVideoPath}`);
+            }
+          });
+          
+          // Also check if there's a directly assigned videoPath property
+          if (obj.videoPath && typeof obj.videoPath === 'string') {
+            foundVideoPath = obj.videoPath;
+            console.log(`Found direct videoPath property: ${foundVideoPath}`);
+          }
+          
+          return foundVideoPath;
+        };
+        
+        // Get video path from the item
+        const videoPath = checkForVideoPath(item);
+        
+        if (videoPath) {
+          console.log(`Found video for news item "${item.title}": ${videoPath}`);
+          
+          // Ensure video URL has the base URL if it's a relative path
+          const fullVideoUrl = videoPath.startsWith('http') 
+            ? videoPath 
+            : `https://api.newztok.in${videoPath}`;
+          
+          console.log(`Full video URL for "${item.title}": ${fullVideoUrl}`);
+          
+          return {
+            ...item,
+            video: fullVideoUrl,
+            hasVideo: true
+          };
+        }
+        
+        return item;
+      });
+      
       // Log each fetched news item to debug
       fetchedNews.forEach((item, index) => {
         console.log(`News item ${index + 1}:`, {
@@ -110,6 +164,9 @@ const TrendingNews = () => {
           featuredImage: item.featuredImage,
           image: item.image,
           images: item.images,
+          video: item.video,
+          videoPath: item.videoPath,
+          hasVideo: item.hasVideo,
           category: item.category,
           state: item.state,
           district: item.district
@@ -262,16 +319,72 @@ const TrendingNews = () => {
       return 'https://via.placeholder.com/400x300?text=No+Image';
     };
     
-    const imageUrl = getImageUrl();
+    // Check if item has video - either directly set hasVideo flag or check paths
+    const hasVideo = item.hasVideo || item.video || item.videoPath ||
+      (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) ||
+      (item.image && item.image.includes('/uploads/videos/video-'));
+    
+    // Get video URL if present
+    const getVideoUrl = () => {
+      // First, check if video property is already set (from our processing)
+      if (item.video) {
+        return item.video;
+      }
+      
+      // Next, check for videoPath property
+      if (item.videoPath) {
+        return item.videoPath.startsWith('http') 
+          ? item.videoPath 
+          : `https://api.newztok.in${item.videoPath}`;
+      }
+      
+      // Check other fields for video paths
+      if (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) {
+        return item.featuredImage.startsWith('http') 
+          ? item.featuredImage 
+          : `https://api.newztok.in${item.featuredImage}`;
+      }
+      
+      if (item.image && item.image.includes('/uploads/videos/video-')) {
+        return item.image.startsWith('http') 
+          ? item.image 
+          : `https://api.newztok.in${item.image}`;
+      }
+      
+      return null;
+    };
+    
+    const videoUrl = hasVideo ? getVideoUrl() : null;
+    const imageUrl = !hasVideo ? getImageUrl() : null;
     
     // Check if it's a YouTube video
     const isYouTubeVideo = !!item.youtubeUrl;
+
+    // Function to track view when card is clicked
+    const trackView = async (id) => {
+      try {
+        console.log(`Tracking view for news item with ID: ${id}`);
+        await axios.post(`https://api.newztok.in/api/interaction/${id}/view`);
+        console.log(`Successfully tracked view for news ID: ${id}`);
+      } catch (err) {
+        console.error(`Error tracking view for news ID: ${id}:`, err);
+      }
+    };
+
+    // Handle card click to track view
+    const handleCardClick = (e) => {
+      e.preventDefault();
+      trackView(item.id);
+      // After tracking the view, navigate to the news page
+      window.location.href = `/trending/${item.id}`;
+    };
     
     return (
       <Box sx={{ position: 'relative', height: '100%', mb: 2 }}>
         <Link 
           to={`/trending/${item.id}`}
           style={{ textDecoration: 'none', color: 'inherit' }}
+          onClick={handleCardClick}
         >
           <Card 
             sx={{ 
@@ -291,7 +404,41 @@ const TrendingNews = () => {
               }
             }}
           >
-            {!imageError ? (
+            {hasVideo ? (
+              <Box sx={{ position: 'relative', height: '100%' }}>
+                <Box
+                  component="video"
+                  src={videoUrl}
+                  controls
+                  sx={{
+                    width: '100%',
+                    height: '360px',
+                    objectFit: 'cover',
+                  }}
+                />
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: '60px',
+                    height: '60px',
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    zIndex: 2,
+                  }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </Box>
+              </Box>
+            ) : !imageError ? (
               <Box sx={{ position: 'relative' }}>
                 <CardMedia
                   component="img"
@@ -486,17 +633,73 @@ const TrendingNews = () => {
       // Fallback to placeholder
       return 'https://via.placeholder.com/400x300?text=No+Image';
     };
+
+    // Check if item has video - either directly set hasVideo flag or check paths
+    const hasVideo = item.hasVideo || item.video || item.videoPath ||
+      (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) ||
+      (item.image && item.image.includes('/uploads/videos/video-'));
     
-    const imageUrl = getImageUrl();
+    // Get video URL if present
+    const getVideoUrl = () => {
+      // First, check if video property is already set (from our processing)
+      if (item.video) {
+        return item.video;
+      }
+      
+      // Next, check for videoPath property
+      if (item.videoPath) {
+        return item.videoPath.startsWith('http') 
+          ? item.videoPath 
+          : `https://api.newztok.in${item.videoPath}`;
+      }
+      
+      // Check other fields for video paths
+      if (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) {
+        return item.featuredImage.startsWith('http') 
+          ? item.featuredImage 
+          : `https://api.newztok.in${item.featuredImage}`;
+      }
+      
+      if (item.image && item.image.includes('/uploads/videos/video-')) {
+        return item.image.startsWith('http') 
+          ? item.image 
+          : `https://api.newztok.in${item.image}`;
+      }
+      
+      return null;
+    };
+    
+    const videoUrl = hasVideo ? getVideoUrl() : null;
+    const imageUrl = !hasVideo ? getImageUrl() : null;
     
     // Check if it's a YouTube video
     const isYouTubeVideo = !!item.youtubeUrl;
+
+    // Function to track view when card is clicked
+    const trackView = async (id) => {
+      try {
+        console.log(`Tracking view for news item with ID: ${id}`);
+        await axios.post(`https://api.newztok.in/api/interaction/${id}/view`);
+        console.log(`Successfully tracked view for news ID: ${id}`);
+      } catch (err) {
+        console.error(`Error tracking view for news ID: ${id}:`, err);
+      }
+    };
+
+    // Handle card click to track view
+    const handleCardClick = (e) => {
+      e.preventDefault();
+      trackView(item.id);
+      // After tracking the view, navigate to the news page
+      window.location.href = `/trending/${item.id}`;
+    };
       
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', mb: 4, height: '100%' }}>
         <Link 
           to={`/trending/${item.id}`}
           style={{ textDecoration: 'none', color: 'inherit' }}
+          onClick={handleCardClick}
         >
           <Card 
             sx={{ 
@@ -513,7 +716,41 @@ const TrendingNews = () => {
               }
             }}
           >
-            {!imageError ? (
+            {hasVideo ? (
+              <Box sx={{ position: 'relative', height: '100%' }}>
+                <Box
+                  component="video"
+                  src={videoUrl}
+                  controls
+                  sx={{
+                    width: '100%',
+                    height: '280px',
+                    objectFit: 'cover',
+                  }}
+                />
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: '60px',
+                    height: '60px',
+                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    zIndex: 2,
+                  }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </Box>
+              </Box>
+            ) : !imageError ? (
               <Box sx={{ position: 'relative' }}>
                 <CardMedia
                   component="img"
@@ -745,6 +982,352 @@ const TrendingNews = () => {
     </Box>
   );
 
+  // Side Ad component
+  const SideAd = () => {
+    const [sideAd, setSideAd] = useState(null);
+    const [sideError, setSideError] = useState(null);
+    const [sideLoading, setSideLoading] = useState(true);
+
+    useEffect(() => {
+      const fetchSideAd = async () => {
+        try {
+          setSideLoading(true);
+          setSideError(null);
+          console.log('Fetching side ad from API...');
+          
+          const response = await axios.get(`${baseUrl}/api/ads/public/web/side`);
+          console.log('Side ad API response:', response.data);
+          
+          if (response.data && response.data.data && Array.isArray(response.data.data) && response.data.data.length > 0) {
+            // Take the first ad from the array
+            const ad = response.data.data[0];
+            // Log the redirect URL for debugging
+            console.log('Side ad redirect URL:', ad.redirectUrl);
+            setSideAd(ad);
+          } else if (response.data && !Array.isArray(response.data)) {
+            setSideAd(response.data);
+          } else {
+            setSideError('No ads available');
+          }
+        } catch (err) {
+          console.error('Error fetching side ad:', err);
+          setSideError(err.message || 'Failed to load advertisement');
+        } finally {
+          setSideLoading(false);
+        }
+      };
+
+      fetchSideAd();
+    }, []);
+    
+    // Handle ad click
+    const handleAdClick = (e) => {
+      e.preventDefault();
+      if (sideAd && sideAd.redirectUrl) {
+        console.log('Redirecting to side ad URL:', sideAd.redirectUrl);
+        window.open(sideAd.redirectUrl, '_blank', 'noopener,noreferrer');
+      }
+    };
+
+    if (sideLoading) {
+      return (
+        <Box 
+          sx={{ 
+            width: '100%', 
+            height: 350, 
+            bgcolor: '#f5f5f5', 
+            mb: 3, 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 0,
+          }}
+        >
+          <CircularProgress size={24} />
+        </Box>
+      );
+    }
+
+    if (sideError || !sideAd) {
+      return (
+        <Box 
+          sx={{ 
+            width: '100%', 
+            height: 350, 
+            bgcolor: '#E0E0E0', 
+            mb: 3, 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#999',
+            borderRadius: 0,
+            position: 'relative',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          }}
+        >
+          {sideError ? 'Failed to load ad' : '380 x 350'}
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              position: 'absolute', 
+              bottom: 5, 
+              right: 10, 
+              fontSize: '0.6rem',
+              color: '#AAA' 
+            }}
+          >
+            NewzTok Ad
+          </Typography>
+        </Box>
+      );
+    }
+
+    // If we have a valid side ad, display it
+    return (
+      <Box 
+        component="a"
+        href={sideAd.redirectUrl || sideAd.link || '#'}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={handleAdClick}
+        sx={{ 
+          width: '100%', 
+          height: 350, 
+          mb: 3, 
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 0,
+          overflow: 'hidden',
+          textDecoration: 'none',
+          position: 'relative',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          cursor: 'pointer',
+        }}
+      >
+        {sideAd.imageUrl ? (
+          <Box 
+            component="img"
+            src={sideAd.imageUrl.startsWith('http') ? sideAd.imageUrl : `${baseUrl}${sideAd.imageUrl.startsWith('/') ? '' : '/'}${sideAd.imageUrl}`}
+            alt={sideAd.title || "Advertisement"}
+            sx={{ 
+              width: '100%', 
+              height: '100%', 
+              objectFit: 'cover',
+            }}
+            onError={(e) => {
+              console.error('Side ad image failed to load');
+              e.target.onerror = null; 
+              e.target.src = "https://via.placeholder.com/380x350?text=Advertisement";
+            }}
+          />
+        ) : (
+          <Box 
+            sx={{ 
+              width: '100%', 
+              height: '100%', 
+              bgcolor: '#E0E0E0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#999',
+            }}
+          >
+            {sideAd.title || "Advertisement"}
+          </Box>
+        )}
+        
+        <Typography 
+          variant="caption" 
+          sx={{ 
+            position: 'absolute', 
+            bottom: 5, 
+            right: 10, 
+            fontSize: '0.6rem',
+            color: '#FFF',
+            bgcolor: 'rgba(0,0,0,0.5)',
+            px: 0.5,
+            borderRadius: 0.5
+          }}
+        >
+          Ad
+        </Typography>
+      </Box>
+    );
+  };
+
+  // Banner Ad component
+  const BannerAd = () => {
+    const [bannerAd, setBannerAd] = useState(null);
+    const [bannerError, setBannerError] = useState(null);
+    const [bannerLoading, setBannerLoading] = useState(true);
+
+    useEffect(() => {
+      const fetchBannerAd = async () => {
+        try {
+          setBannerLoading(true);
+          setBannerError(null);
+          console.log('Fetching banner ad from API...');
+          
+          const response = await axios.get(`${baseUrl}/api/ads/public/web/banner`);
+          console.log('Banner ad API response:', response.data);
+          
+          if (response.data && response.data.data && Array.isArray(response.data.data) && response.data.data.length > 0) {
+            // Take the first ad from the array
+            const ad = response.data.data[0];
+            // Log the redirect URL for debugging
+            console.log('Banner ad redirect URL:', ad.redirectUrl);
+            setBannerAd(ad);
+          } else if (response.data && !Array.isArray(response.data)) {
+            setBannerAd(response.data);
+          } else {
+            setBannerError('No ads available');
+          }
+        } catch (err) {
+          console.error('Error fetching banner ad:', err);
+          setBannerError(err.message || 'Failed to load advertisement');
+        } finally {
+          setBannerLoading(false);
+        }
+      };
+
+      fetchBannerAd();
+    }, []);
+    
+    // Handle ad click
+    const handleAdClick = (e) => {
+      e.preventDefault();
+      if (bannerAd && bannerAd.redirectUrl) {
+        console.log('Redirecting to banner ad URL:', bannerAd.redirectUrl);
+        window.open(bannerAd.redirectUrl, '_blank', 'noopener,noreferrer');
+      }
+    };
+
+    if (bannerLoading) {
+      return (
+        <Box 
+          sx={{ 
+            width: '100%', 
+            height: 100, 
+            bgcolor: '#f5f5f5', 
+            mb: 4, 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 0,
+          }}
+        >
+          <CircularProgress size={24} />
+        </Box>
+      );
+    }
+
+    if (bannerError || !bannerAd) {
+      return (
+        <Box 
+          sx={{ 
+            width: '100%', 
+            height: 100, 
+            bgcolor: '#E0E0E0', 
+            mb: 4, 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#999',
+            borderRadius: 0,
+            position: 'relative',
+          }}
+        >
+          {bannerError ? 'Failed to load ad' : '970 x 100'}
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              position: 'absolute', 
+              bottom: 5, 
+              right: 10, 
+              fontSize: '0.6rem',
+              color: '#AAA' 
+            }}
+          >
+            NewzTok Ad
+          </Typography>
+        </Box>
+      );
+    }
+
+    // If we have a valid banner ad, display it
+    return (
+      <Box 
+        component="a"
+        href={bannerAd.redirectUrl || bannerAd.link || '#'}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={handleAdClick}
+        sx={{ 
+          width: '100%', 
+          height: 100, 
+          mb: 4, 
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 0,
+          overflow: 'hidden',
+          textDecoration: 'none',
+          position: 'relative',
+          cursor: 'pointer',
+        }}
+      >
+        {bannerAd.imageUrl ? (
+          <Box 
+            component="img"
+            src={bannerAd.imageUrl.startsWith('http') ? bannerAd.imageUrl : `${baseUrl}${bannerAd.imageUrl.startsWith('/') ? '' : '/'}${bannerAd.imageUrl}`}
+            alt={bannerAd.title || "Advertisement"}
+            sx={{ 
+              width: '100%', 
+              height: '100%', 
+              objectFit: 'cover',
+            }}
+            onError={(e) => {
+              console.error('Banner image failed to load');
+              e.target.onerror = null; 
+              e.target.src = "https://via.placeholder.com/970x100?text=Advertisement";
+            }}
+          />
+        ) : (
+          <Box 
+            sx={{ 
+              width: '100%', 
+              height: '100%', 
+              bgcolor: '#E0E0E0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#999',
+            }}
+          >
+            {bannerAd.title || "Advertisement"}
+          </Box>
+        )}
+        
+        <Typography 
+          variant="caption" 
+          sx={{ 
+            position: 'absolute', 
+            bottom: 5, 
+            right: 10, 
+            fontSize: '0.6rem',
+            color: '#FFF',
+            bgcolor: 'rgba(0,0,0,0.5)',
+            px: 0.5,
+            borderRadius: 0.5
+          }}
+        >
+          Ad
+        </Typography>
+      </Box>
+    );
+  };
+
   return (
     <Box sx={{ width: '100%', backgroundColor: '#f5f5f5' }}>
       {/* Trending Header */}
@@ -913,34 +1496,7 @@ const TrendingNews = () => {
             {/* Right Side - Ad and Social Media */}
             <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
               {/* Advertisement */}
-              <Box 
-                sx={{ 
-                  width: '100%', 
-                  height: 350, 
-                  bgcolor: '#E0E0E0', 
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#999',
-                  borderRadius: 0,
-                  position: 'relative',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                }}
-              >
-                380 x 350
-                <Typography 
-                  variant="caption" 
-                  sx={{ 
-                    position: 'absolute', 
-                    bottom: 5, 
-                    right: 10, 
-                    fontSize: '0.6rem',
-                    color: '#AAA' 
-                  }}
-                >
-                  Powered by HTML.COM
-                </Typography>
-              </Box>
+              <SideAd />
               
               {/* Social Media Stats */}
               <Box 
@@ -978,6 +1534,17 @@ const TrendingNews = () => {
             </Box>
           </Box>
         )}
+      </Container>
+
+      {/* Banner Advertisement after content */}
+      <Container 
+        sx={{ 
+          maxWidth: { xs: '95%', sm: '90%', md: '1200px' }, 
+          mx: 'auto',
+          mb: 8
+        }}
+      >
+        <BannerAd />
       </Container>
 
       {/* Second Section - Scrollable News and Fixed Sidebar */}
@@ -1066,34 +1633,7 @@ const TrendingNews = () => {
               </Box>
               
               {/* Advertisement */}
-              <Box 
-                sx={{ 
-                  width: '100%', 
-                  height: 350, 
-                  bgcolor: '#E0E0E0', 
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#999',
-                  borderRadius: 0,
-                  position: 'relative',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                }}
-              >
-                380 x 350
-                <Typography 
-                  variant="caption" 
-                  sx={{ 
-                    position: 'absolute', 
-                    bottom: 5, 
-                    right: 10, 
-                    fontSize: '0.6rem',
-                    color: '#AAA' 
-                  }}
-                >
-                  Powered by HTML.COM
-                </Typography>
-              </Box>
+              <SideAd />
               
               {/* Recent Posts Heading */}
               <Box sx={{ mt: 4 }}>
@@ -1106,6 +1646,17 @@ const TrendingNews = () => {
           </Box>
         </Container>
       )}
+
+      {/* Banner Advertisement at the bottom */}
+      <Container 
+        sx={{ 
+          maxWidth: { xs: '95%', sm: '90%', md: '1200px' }, 
+          mx: 'auto',
+          mb: 8
+        }}
+      >
+        <BannerAd />
+      </Container>
     </Box>
   );
 };

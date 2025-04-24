@@ -8,6 +8,81 @@ const API_BASE_URL = 'https://api.newztok.in';
 
 axios.defaults.timeout = 120000;
 
+// Add this compression utility function
+const compressImage = (file, maxSizeMB = 5) => {
+  return new Promise((resolve, reject) => {
+    // If file is already smaller than target size, don't compress
+    if (file.size / 1024 / 1024 <= maxSizeMB) {
+      console.log('File already smaller than target size, skipping compression');
+      resolve(file);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        // Calculate dimensions to maintain aspect ratio
+        let { width, height } = img;
+        let maxWidth = 1920;
+        let maxHeight = 1080;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round(height * maxWidth / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round(width * maxHeight / height);
+            height = maxHeight;
+          }
+        }
+
+        // Create canvas for compression
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Start with higher quality
+        let quality = 0.9;
+        const tryCompress = () => {
+          console.log(`Trying compression with quality: ${quality}`);
+          canvas.toBlob((blob) => {
+            // Create a new file from the blob
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: new Date().getTime()
+            });
+
+            console.log(`Original size: ${(file.size / 1024 / 1024).toFixed(2)}MB, Compressed size: ${(compressedFile.size / 1024 / 1024).toFixed(2)}MB`);
+            
+            // If still too large and we can compress more, retry with lower quality
+            if (compressedFile.size / 1024 / 1024 > maxSizeMB && quality > 0.5) {
+              quality -= 0.1;
+              tryCompress();
+            } else {
+              resolve(compressedFile);
+            }
+          }, 'image/jpeg', quality);
+        };
+
+        tryCompress();
+      };
+      img.onerror = (error) => {
+        reject(error);
+      };
+    };
+    reader.onerror = (error) => {
+      reject(error);
+    };
+  });
+};
+
 const StandardPost = () => {
   const [title, setTitle] = useState('');
   const [file, setFile] = useState(null);
@@ -82,13 +157,43 @@ const StandardPost = () => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       
-      // Check file size (limit to 10MB)
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        setError('File size exceeds 10MB. Please select a smaller image.');
+      // Check if file is too large (over 50MB)
+      if (selectedFile.size > 50 * 1024 * 1024) {
+        setError('File size exceeds 50MB. Please select a smaller image.');
         return;
       }
       
-      setFile(selectedFile);
+      // Set loading state
+      setLoading(true);
+      
+      // Show compressing message
+      setError('Compressing image for better upload performance. Please wait...');
+      
+      // Compress the image before setting it (target 5MB)
+      compressImage(selectedFile, 5)
+        .then(compressedFile => {
+          setFile(compressedFile);
+          setError(''); // Clear the compression message
+          
+          // Provide feedback about compression
+          const originalSizeMB = (selectedFile.size / 1024 / 1024).toFixed(2);
+          const compressedSizeMB = (compressedFile.size / 1024 / 1024).toFixed(2);
+          
+          console.log(`Image compressed from ${originalSizeMB}MB to ${compressedSizeMB}MB`);
+          if (originalSizeMB > compressedSizeMB) {
+            const savingsPercentage = (100 - (compressedFile.size / selectedFile.size * 100)).toFixed(0);
+            alert(`Image optimized! Reduced by ${savingsPercentage}% (from ${originalSizeMB}MB to ${compressedSizeMB}MB)`);
+          }
+        })
+        .catch(err => {
+          console.error('Error compressing image:', err);
+          // Fallback to original file
+          setFile(selectedFile);
+          setError('');
+        })
+        .finally(() => {
+          setLoading(false);
+        });
     }
   };
 
@@ -144,6 +249,11 @@ const StandardPost = () => {
     try {
       setLoading(true);
       setError('');
+      
+      // Add retry functionality
+      const maxRetries = 3;
+      let retryCount = 0;
+      let success = false;
       
       // Create FormData to send the post with all data including the image
       const formData = new FormData();
@@ -537,7 +647,7 @@ const StandardPost = () => {
                   color: '#111827'
                 }}
               >
-                Featured Image <span style={{ color: '#6b7280', fontSize: '12px' }}>(Max 10MB)</span>
+                Featured Image <span style={{ color: '#6b7280', fontSize: '12px' }}>(Max 50MB)</span>
               </label>
               <div style={{ 
                 display: 'flex', 

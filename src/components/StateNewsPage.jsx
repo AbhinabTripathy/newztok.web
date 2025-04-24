@@ -25,6 +25,285 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 
+const baseUrl = 'https://api.newztok.in';
+
+// Side Ad Component
+const SideAd = () => {
+  const [sideAd, setSideAd] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchSideAd = async () => {
+      try {
+        const response = await axios.get(`${baseUrl}/api/ads/public/web/side`);
+        console.log('Side Ad API Response:', response.data);
+        
+        if (response.data && Array.isArray(response.data.data) && response.data.data.length > 0) {
+          const firstAd = response.data.data[0];
+          console.log('Selected Side Ad:', firstAd);
+          console.log('Side Ad Redirect URL:', firstAd.redirectUrl);
+          setSideAd(firstAd);
+        } else {
+          console.log('No side ads available');
+          setError('No ads available');
+        }
+      } catch (err) {
+        console.error('Error fetching side ad:', err);
+        setError('Failed to load ad');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSideAd();
+  }, []);
+
+  const handleAdClick = (e) => {
+    if (sideAd && sideAd.redirectUrl) {
+      e.preventDefault();
+      console.log('Redirecting to:', sideAd.redirectUrl);
+      window.open(sideAd.redirectUrl, '_blank');
+    }
+  };
+
+  const getFullImageUrl = (imageUrl) => {
+    if (!imageUrl) return null;
+    if (imageUrl.startsWith('http')) return imageUrl;
+    return `${baseUrl}${imageUrl}`;
+  };
+
+  if (loading) {
+    return (
+      <Box 
+        sx={{ 
+          width: '100%', 
+          height: 350, 
+          bgcolor: '#f5f5f5', 
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 0,
+        }}
+      >
+        <CircularProgress size={30} />
+      </Box>
+    );
+  }
+
+  if (error || !sideAd) {
+    return (
+      <Box 
+        sx={{ 
+          width: '100%', 
+          height: 350, 
+          bgcolor: '#E0E0E0', 
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#999',
+          borderRadius: 0,
+          position: 'relative',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        }}
+      >
+        380 x 350
+        <Typography 
+          variant="caption" 
+          sx={{ 
+            position: 'absolute', 
+            bottom: 5, 
+            right: 10, 
+            fontSize: '0.6rem',
+            color: '#AAA' 
+          }}
+        >
+          Ad Space Available
+        </Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Box 
+      component="a"
+      href={sideAd.redirectUrl || "#"}
+      onClick={handleAdClick}
+      sx={{ 
+        width: '100%', 
+        height: 350, 
+        display: 'block',
+        position: 'relative',
+        cursor: 'pointer',
+        borderRadius: 0,
+        overflow: 'hidden',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+      }}
+    >
+      <img 
+        src={getFullImageUrl(sideAd.imageUrl)} 
+        alt="Advertisement" 
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+      />
+      <Typography 
+        variant="caption" 
+        sx={{ 
+          position: 'absolute', 
+          bottom: 5, 
+          right: 10, 
+          fontSize: '0.6rem',
+          color: '#AAA',
+          bgcolor: 'rgba(255,255,255,0.7)',
+          px: 0.5,
+          borderRadius: 0.5
+        }}
+      >
+        Advertisement
+      </Typography>
+    </Box>
+  );
+};
+
+// Banner Ad Component
+const BannerAd = () => {
+  const [bannerAd, setBannerAd] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchBannerAd = async () => {
+      try {
+        const response = await axios.get(`${baseUrl}/api/ads/public/web/banner`);
+        console.log('Banner Ad API Response:', response.data);
+        
+        if (response.data && Array.isArray(response.data.data) && response.data.data.length > 0) {
+          const firstAd = response.data.data[0];
+          console.log('Selected Banner Ad:', firstAd);
+          console.log('Banner Ad Redirect URL:', firstAd.redirectUrl);
+          setBannerAd(firstAd);
+        } else {
+          console.log('No banner ads available');
+          setError('No ads available');
+        }
+      } catch (err) {
+        console.error('Error fetching banner ad:', err);
+        setError('Failed to load ad');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBannerAd();
+  }, []);
+
+  const handleAdClick = (e) => {
+    if (bannerAd && bannerAd.redirectUrl) {
+      e.preventDefault();
+      console.log('Redirecting to:', bannerAd.redirectUrl);
+      window.open(bannerAd.redirectUrl, '_blank');
+    }
+  };
+
+  const getFullImageUrl = (imageUrl) => {
+    if (!imageUrl) return null;
+    if (imageUrl.startsWith('http')) return imageUrl;
+    return `${baseUrl}${imageUrl}`;
+  };
+
+  if (loading) {
+    return (
+      <Box 
+        sx={{ 
+          width: '100%', 
+          height: 100, 
+          bgcolor: '#f5f5f5', 
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 0,
+          mb: 3
+        }}
+      >
+        <CircularProgress size={30} />
+      </Box>
+    );
+  }
+
+  if (error || !bannerAd) {
+    return (
+      <Box 
+        sx={{ 
+          width: '100%', 
+          height: 100, 
+          bgcolor: '#E0E0E0', 
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#999',
+          borderRadius: 0,
+          position: 'relative',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          mb: 3
+        }}
+      >
+        970 x 100
+        <Typography 
+          variant="caption" 
+          sx={{ 
+            position: 'absolute', 
+            bottom: 5, 
+            right: 10, 
+            fontSize: '0.6rem',
+            color: '#AAA' 
+          }}
+        >
+          Ad Space Available
+        </Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <Box 
+      component="a"
+      href={bannerAd.redirectUrl || "#"}
+      onClick={handleAdClick}
+      sx={{ 
+        width: '100%', 
+        height: 100, 
+        display: 'block',
+        position: 'relative',
+        cursor: 'pointer',
+        borderRadius: 0,
+        overflow: 'hidden',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+        mb: 3
+      }}
+    >
+      <img 
+        src={getFullImageUrl(bannerAd.imageUrl)} 
+        alt="Advertisement" 
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+      />
+      <Typography 
+        variant="caption" 
+        sx={{ 
+          position: 'absolute', 
+          bottom: 5, 
+          right: 10, 
+          fontSize: '0.6rem',
+          color: '#AAA',
+          bgcolor: 'rgba(255,255,255,0.7)',
+          px: 0.5,
+          borderRadius: 0.5
+        }}
+      >
+        Advertisement
+      </Typography>
+    </Box>
+  );
+};
+
 const StateNewsPage = () => {
   const { state } = useParams();
   const [news, setNews] = useState([]);
@@ -430,34 +709,7 @@ const StateNewsPage = () => {
             {/* Right Side - Ad and Social Media */}
             <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
               {/* Advertisement */}
-              <Box 
-                sx={{ 
-                  width: '100%', 
-                  height: 350, 
-                  bgcolor: '#E0E0E0', 
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#999',
-                  borderRadius: 0,
-                  position: 'relative',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                }}
-              >
-                380 x 350
-                <Typography 
-                  variant="caption" 
-                  sx={{ 
-                    position: 'absolute', 
-                    bottom: 5, 
-                    right: 10, 
-                    fontSize: '0.6rem',
-                    color: '#AAA' 
-                  }}
-                >
-                  Powered by HTML.COM
-                </Typography>
-              </Box>
+              <SideAd />
               
               {/* Social Media Stats */}
               <Box 
@@ -485,6 +737,17 @@ const StateNewsPage = () => {
             </Box>
           </Box>
         )}
+      </Container>
+
+      {/* Banner Ad after first section */}
+      <Container 
+        sx={{ 
+          maxWidth: { xs: '95%', sm: '90%', md: '1200px' }, 
+          mx: 'auto',
+          mb: 5
+        }}
+      >
+        <BannerAd />
       </Container>
 
       {/* Second Section - Scrollable News and Fixed Sidebar */}
@@ -543,34 +806,7 @@ const StateNewsPage = () => {
               }}
             >
               {/* Advertisement */}
-              <Box 
-                sx={{ 
-                  width: '100%', 
-                  height: 350, 
-                  bgcolor: '#E0E0E0', 
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#999',
-                  borderRadius: 0,
-                  position: 'relative',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                }}
-              >
-                380 x 350
-                <Typography 
-                  variant="caption" 
-                  sx={{ 
-                    position: 'absolute', 
-                    bottom: 5, 
-                    right: 10, 
-                    fontSize: '0.6rem',
-                    color: '#AAA' 
-                  }}
-                >
-                  Powered by HTML.COM
-                </Typography>
-              </Box>
+              <SideAd />
               
               {/* Recent Posts Heading */}
               <Box sx={{ mt: 4 }}>
@@ -612,6 +848,17 @@ const StateNewsPage = () => {
             </Box>
           </Box>
         )}
+      </Container>
+
+      {/* Banner Ad at bottom */}
+      <Container 
+        sx={{ 
+          maxWidth: { xs: '95%', sm: '90%', md: '1200px' }, 
+          mx: 'auto',
+          mb: 8
+        }}
+      >
+        <BannerAd />
       </Container>
     </Box>
   );

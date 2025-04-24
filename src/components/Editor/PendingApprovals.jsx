@@ -516,8 +516,44 @@ const PendingApprovals = () => {
         contentType: newsToEdit.contentType || 'standard',
         status: newsToEdit.status || 'pending',
         youtubeUrl: newsToEdit.youtubeUrl || '',
-        thumbnailUrl: newsToEdit.thumbnailUrl || ''
+        thumbnailUrl: newsToEdit.thumbnailUrl || '',
+        
+        // Enhanced video path handling with proper synchronization
+        videoPath: newsToEdit.videoPath || newsToEdit.video || '',
+        video: newsToEdit.video || newsToEdit.videoPath || '',
+        videoUrl: newsToEdit.videoUrl || '',
+        featuredVideo: newsToEdit.featuredVideo || '',
+        
+        // Store original data for reference
+        originalVideoData: {
+          videoPath: newsToEdit.videoPath || '',
+          video: newsToEdit.video || '',
+          videoUrl: newsToEdit.videoUrl || '',
+          featuredVideo: newsToEdit.featuredVideo || ''
+        }
       };
+      
+      // Log each video-related field for debugging
+      console.log("VIDEO FIELDS BEING PASSED:", {
+        videoPath: processedNewsData.videoPath,
+        video: processedNewsData.video,
+        videoUrl: processedNewsData.videoUrl,
+        featuredVideo: processedNewsData.featuredVideo,
+        originalVideoData: processedNewsData.originalVideoData
+      });
+      
+      // Set the appropriate content type if video-related fields are present
+      if (newsToEdit.contentType === 'video' || 
+          newsToEdit.youtubeUrl || 
+          newsToEdit.videoPath || 
+          newsToEdit.video || 
+          newsToEdit.videoUrl || 
+          newsToEdit.featuredVideo) {
+        processedNewsData.contentType = 'video';
+        console.log("Video content detected, setting contentType to 'video'");
+      }
+      
+      console.log("Processed news data:", processedNewsData);
       
       // Navigate to the edit screen with the news ID and pass the data in state
       navigate(`/editor/edit/${newsId}`, { state: { newsData: processedNewsData } });

@@ -91,17 +91,29 @@ const VideoPost = () => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
       
-      // Check file size (limit to 100MB for video)
-      if (selectedFile.size > 100 * 1024 * 1024) {
-        setError('File size exceeds 100MB. Please select a smaller video file or use YouTube URL instead.');
+      // Check file size (limit to 50MB for video)
+      if (selectedFile.size > 50 * 1024 * 1024) {
+        setError(`File size exceeds 50MB. Your file is ${(selectedFile.size/1024/1024).toFixed(2)} MB. Please select a smaller MP4 file.`);
         return;
       }
+      
+      // Check if file is an MP4
+      if (selectedFile.type !== 'video/mp4') {
+        setError(`Please select an MP4 video file. Current file type: ${selectedFile.type}`);
+        return;
+      }
+      
+      // Provide success feedback about file selection
+      setSuccess(`MP4 video "${selectedFile.name}" selected (${(selectedFile.size/1024/1024).toFixed(2)} MB). Click "Publish Video" to upload.`);
+      setTimeout(() => setSuccess(''), 5000); // Clear message after 5 seconds
       
       setVideoFile(selectedFile);
       // If user uploads a file, switch to file upload method
       setUploadMethod('file');
       // Clear YouTube URL if video file is selected
       setYoutubeUrl('');
+      // Clear any previous errors
+      setError('');
     }
   };
 
@@ -137,20 +149,13 @@ const VideoPost = () => {
     const actualContent = editorContent || content;
     const hasContent = actualContent && !/<p>\s*<\/p>$/.test(actualContent) && actualContent !== '<p></p>';
     
-    // Validate YouTube URL if that method is chosen
-    let isValidYouTubeUrl = false;
-    if (uploadMethod === 'youtube') {
-      const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
-      isValidYouTubeUrl = youtubeRegex.test(youtubeUrl);
-    }
-    
     // Validate form fields
     if (!title || title.trim() === '') {
       setError('Please enter a title for your video post');
       return;
     }
     
-    if (uploadMethod === 'youtube' && (!youtubeUrl || !isValidYouTubeUrl)) {
+    if (uploadMethod === 'youtube' && (!youtubeUrl || !youtubeUrl.includes('youtube'))) {
       setError('Please enter a valid YouTube URL');
       return;
     }
@@ -183,9 +188,10 @@ const VideoPost = () => {
 
     try {
       setLoading(true);
-      setError('');
+      setError('Uploading video... Please wait');
+      setUploadProgress(0);
       
-      // Create FormData to send the post with all data
+      // Create FormData with all necessary data
       const formData = new FormData();
       
       // Add required fields
@@ -194,175 +200,100 @@ const VideoPost = () => {
       formData.append('category', category);
       formData.append('contentType', 'video');
       
-      // Add state and district from journalist profile
-      // If journalist has assigned state/district, use those values
-      const stateToUse = journalistProfile?.assignState || state;
-      const districtToUse = journalistProfile?.assignDistrict || district;
-      
-      // Add state and district to formData
-      if (stateToUse && stateToUse.trim() !== '') formData.append('state', stateToUse);
-      if (districtToUse && districtToUse.trim() !== '') formData.append('district', districtToUse);
-      
-      // Add different data based on upload method
+      // Add video data based on upload method
       if (uploadMethod === 'youtube') {
         formData.append('youtubeUrl', youtubeUrl);
-        
-        // Show the submission data in the console
-        console.log('Submitting video post with the following data:', {
-          title: title.trim(),
-          content: `${actualContent.trim().substring(0, 50)}${actualContent.length > 50 ? '...' : ''}`,
-          category,
-          contentType: 'video',
-          state: stateToUse || '[not set]',
-          district: districtToUse || '[not set]',
-          youtubeUrl
-        });
+        console.log('Submitting YouTube video post');
       } else {
-        formData.append('videoFile', videoFile);
-        formData.append('videoFilePath', videoFile.name);
-        
-        // Show the submission data in the console
-        console.log('Submitting video post with the following data:', {
-          title: title.trim(),
-          content: `${actualContent.trim().substring(0, 50)}${actualContent.length > 50 ? '...' : ''}`,
-          category,
-          contentType: 'video',
-          state: stateToUse || '[not set]',
-          district: districtToUse || '[not set]',
-          videoFile: {
-            name: videoFile.name,
-            size: `${(videoFile.size / 1024 / 1024).toFixed(2)} MB`,
-            type: videoFile.type
-          }
-        });
+        // Try with field name 'featuredMedia' based on similar naming to 'featuredImage' in StandardPost
+        formData.append('featuredMedia', videoFile);
+        console.log('Submitting MP4 video with field name "featuredMedia"');
       }
       
-      // Try main endpoint
-      let response;
-      try {
-        console.log('Attempting main endpoint: /api/news/create');
-        // Make the API request
-        response = await axios({
-          method: 'post',
-          url: `${API_BASE_URL}/api/news/create`,
-          data: formData,
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
-          },
-          // Use a much longer timeout for video files
-          timeout: uploadMethod === 'file' ? VIDEO_UPLOAD_TIMEOUT : axios.defaults.timeout,
-          onUploadProgress: (progressEvent) => {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setUploadProgress(percentCompleted);
-            console.log(`Upload progress: ${percentCompleted}%`);
-          }
-        });
-      } catch (mainEndpointErr) {
-        console.error('Main endpoint failed:', mainEndpointErr);
+      // Add optional fields only if they exist
+      if (state && state.trim() !== '') formData.append('state', state);
+      if (district && district.trim() !== '') formData.append('district', district);
+      
+      // Log what we're sending for debugging
+      console.log('Form data keys:', [...formData.keys()]);
+      
+      // Define possible field names for video upload
+      const possibleFieldNames = ['featuredMedia', 'video', 'media', 'file'];
+      let response = null;
+      let succeeded = false;
+      
+      // Try each field name until one works
+      for (const fieldName of possibleFieldNames) {
+        if (response) break; // Stop if we already have a successful response
         
-        // Try to extract detailed error information
-        let errorDetail = '';
-        if (mainEndpointErr.response && mainEndpointErr.response.data) {
-          try {
-            errorDetail = typeof mainEndpointErr.response.data === 'object' 
-              ? JSON.stringify(mainEndpointErr.response.data) 
-              : mainEndpointErr.response.data;
-            console.log('Server error details:', errorDetail);
-          } catch (e) {
-            console.error('Could not parse error details');
-          }
-        }
-        
-        // Try alternative endpoint #1 - /api/posts
         try {
-          console.log('Trying alternative endpoint #1: /api/posts');
+          console.log(`Trying with field name "${fieldName}"`);
+          setError(`Trying upload with field name "${fieldName}"... Please wait.`);
+          
+          // Create a new FormData for each attempt
+          const attemptFormData = new FormData();
+          
+          // Add all the same fields
+          attemptFormData.append('title', title.trim());
+          attemptFormData.append('content', actualContent.trim());
+          attemptFormData.append('category', category);
+          attemptFormData.append('contentType', 'video');
+          
+          // Add video data with the current field name
+          if (uploadMethod === 'youtube') {
+            attemptFormData.append('youtubeUrl', youtubeUrl);
+          } else {
+            attemptFormData.append(fieldName, videoFile);
+          }
+          
+          // Add optional fields
+          if (state && state.trim() !== '') attemptFormData.append('state', state);
+          if (district && district.trim() !== '') attemptFormData.append('district', district);
+          
+          // Make API request
           response = await axios({
             method: 'post',
-            url: `${API_BASE_URL}/api/posts`,
-            data: formData,
+            url: `${API_BASE_URL}/api/news/create`,
+            data: attemptFormData,
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'multipart/form-data'
             },
-            timeout: uploadMethod === 'file' ? VIDEO_UPLOAD_TIMEOUT : axios.defaults.timeout
-          });
-        } catch (alt1Err) {
-          console.error('Alternative endpoint #1 failed:', alt1Err);
-          
-          // Try alternative endpoint #2 - /api/content
-          try {
-            console.log('Trying alternative endpoint #2: /api/content');
-            response = await axios({
-              method: 'post',
-              url: `${API_BASE_URL}/api/content`,
-              data: formData,
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'multipart/form-data'
-              },
-              timeout: uploadMethod === 'file' ? VIDEO_UPLOAD_TIMEOUT : axios.defaults.timeout
-            });
-          } catch (alt2Err) {
-            console.error('Alternative endpoint #2 failed:', alt2Err);
-            
-            // Last resort - Try alternative endpoint #3 with minimal JSON
-            try {
-              console.log('Last resort - using /api/v2/news with JSON only');
-              
-              // Create minimal JSON without problematic fields
-              const minimalData = {
-                title: title.trim(),
-                content: actualContent.trim(),
-                category,
-                contentType: 'video',
-                status: 'pending'
-              };
-              
-              // Add YouTube URL if that's the upload method
-              if (uploadMethod === 'youtube') {
-                minimalData.youtubeUrl = youtubeUrl;
-              }
-              
-              // Add state and district
-              if (stateToUse) minimalData.state = stateToUse;
-              if (districtToUse) minimalData.district = districtToUse;
-              
-              response = await axios.post(
-                `${API_BASE_URL}/api/v2/news`,
-                minimalData,
-                {
-                  headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                  }
-                }
-              );
-            } catch (lastResortErr) {
-              console.error('All endpoints failed:', lastResortErr);
-              // Let the main error handler deal with this
-              throw {
-                message: 'Server unavailable: All API endpoints failed',
-                originalErrors: {
-                  main: mainEndpointErr?.message,
-                  alt1: alt1Err?.message,
-                  alt2: alt2Err?.message,
-                  lastResort: lastResortErr?.message
-                },
-                serverDetail: errorDetail
-              };
+            timeout: uploadMethod === 'file' ? VIDEO_UPLOAD_TIMEOUT : axios.defaults.timeout,
+            onUploadProgress: (progressEvent) => {
+              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              setUploadProgress(percentCompleted);
+              console.log(`Upload progress (${fieldName}): ${percentCompleted}%`);
             }
+          });
+          
+          console.log(`Video post created successfully with field name "${fieldName}":`, response.data);
+          succeeded = true;
+          break;
+          
+        } catch (attemptErr) {
+          console.log(`Attempt with field name "${fieldName}" failed:`, attemptErr.message);
+          setError(`Attempt with field name "${fieldName}" failed. Trying another approach...`);
+          
+          // Log detailed error information
+          if (attemptErr.response) {
+            console.log('Status:', attemptErr.response.status);
+            console.log('Data:', attemptErr.response.data);
           }
+          
+          // Continue to the next field name
         }
       }
       
-      console.log('Video post created successfully:', response.data);
+      // If all attempts failed, throw an error
+      if (!succeeded) {
+        throw new Error('All field name attempts failed');
+      }
       
       // Handle success
       setLoading(false);
       setError('');
       
-      // Show success message as a div like in StandardPost
       // Show success message
       setSuccess(
         <div>
@@ -374,8 +305,8 @@ const VideoPost = () => {
           </div>
           <div style={{marginBottom: '4px'}}>
             Category: <strong>{category}</strong>
-            {stateToUse ? <span>, State: <strong>{stateToUse}</strong></span> : ''}
-            {districtToUse ? <span>, District: <strong>{districtToUse}</strong></span> : ''}
+            {state ? <span>, State: <strong>{state}</strong></span> : ''}
+            {district ? <span>, District: <strong>{district}</strong></span> : ''}
           </div>
           <div style={{marginBottom: '4px'}}>
             Source: <strong>{uploadMethod === 'youtube' ? 'YouTube' : 'Uploaded Video'}</strong>
@@ -383,16 +314,15 @@ const VideoPost = () => {
         </div>
       );
       
-      // Clear form
+      // Reset form fields
       setTitle('');
       setYoutubeUrl('');
       setVideoFile(null);
       setContent('');
       setCategory('');
-      setState('');
-      setDistrict('');
+      setState(journalistProfile?.assignState || '');
+      setDistrict(journalistProfile?.assignDistrict || '');
       setUploadProgress(0);
-      setUploadMethod('youtube');
       
       // Navigate after a short delay
       setTimeout(() => {
@@ -401,17 +331,9 @@ const VideoPost = () => {
       
     } catch (err) {
       console.error('API request failed:', err);
+      setLoading(false);
       
-      // Enhanced error reporting with more details
-      if (err.originalErrors) {
-        const errorDetails = Object.entries(err.originalErrors)
-          .map(([key, value]) => `${key}: ${value}`)
-          .join('; ');
-        
-        setError(`All API endpoints failed. Please contact the admin with this error: ${err.message}. 
-          Try again later or use another browser. 
-          Server details: ${err.serverDetail || 'Unknown'}`);
-      } else if (err.code === 'ECONNABORTED') {
+      if (err.code === 'ECONNABORTED') {
         setError(
           <div>
             <div style={{fontWeight: 'bold', marginBottom: '8px'}}>Upload timed out</div>
@@ -419,8 +341,14 @@ const VideoPost = () => {
           </div>
         );
       } else if (err.response && err.response.data) {
-        // Try to extract message from various response formats
+        // Try to extract message from response
         let message = err.message;
+        
+        // Log the complete error response for debugging
+        console.log('Error response data:', JSON.stringify(err.response.data));
+        console.log('Error response status:', err.response.status);
+        console.log('Error response headers:', err.response.headers);
+        
         try {
           if (typeof err.response.data === 'object' && err.response.data.message) {
             message = err.response.data.message;
@@ -439,24 +367,20 @@ const VideoPost = () => {
         setError(
           <div>
             <div style={{fontWeight: 'bold', marginBottom: '8px'}}>Unable to create video post</div>
-            <div>The server is currently experiencing issues. This appears to be a server-side database problem.</div>
-            <div style={{marginTop: '8px'}}>
-              <strong>Please try:</strong>
-              <ul style={{marginLeft: '20px', marginTop: '4px'}}>
-                <li>Using the "Save Draft" option instead</li>
-                <li>Contact your technical support team</li>
-                <li>Try again in a few hours after the database issues are resolved</li>
-              </ul>
-            </div>
+            <div>The server is currently experiencing issues. Please try again later.</div>
             <div style={{marginTop: '8px', fontSize: '13px', color: '#666'}}>
               Technical details: {err.message || 'Unknown error'}
             </div>
           </div>
         );
       }
-    } finally {
-      setLoading(false);
     }
+  };
+  
+  // Helper function for YouTube URL validation
+  const isValidYouTubeUrl = (url) => {
+    const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.?be)\/.+$/;
+    return youtubeRegex.test(url);
   };
 
   const handleEditorChange = (content, editor) => {
@@ -680,7 +604,7 @@ const VideoPost = () => {
                     color: '#111827'
                   }}
                 >
-                  Video File <span style={{ color: '#6b7280', fontSize: '12px' }}>(Max 100MB)</span>
+                  Video File <span style={{ color: '#6b7280', fontSize: '12px' }}>(Max 50MB)</span>
                 </label>
                 <div style={{ 
                   display: 'flex', 

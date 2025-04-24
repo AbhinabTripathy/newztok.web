@@ -35,6 +35,7 @@ const TrendingNewsDetails = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [viewCount, setViewCount] = useState(0);
+  const [shareCount, setShareCount] = useState(0);
   const [loadingComments, setLoadingComments] = useState(false);
   const [commentSuccess, setCommentSuccess] = useState(false);
   
@@ -60,6 +61,7 @@ const TrendingNewsDetails = () => {
     
     fetchTrendingNewsDetail();
     fetchComments();
+    fetchInteractionStats();
     
     // Check if user has already liked the article when component mounts
     if (isLoggedIn) {
@@ -89,6 +91,49 @@ const TrendingNewsDetails = () => {
       setIsLiked(false);
     }
   }, [isLoggedIn]);
+
+  // Fetch interaction stats (likes, views, comments, shares)
+  const fetchInteractionStats = async () => {
+    try {
+      debug('Fetching interaction stats for news ID', id);
+      
+      const statsUrl = `${baseURL}/api/interaction/news/${id}/stats`;
+      debug('Stats API URL', statsUrl);
+      
+      const response = await axios.get(statsUrl);
+      debug('Stats API response', response.data);
+      
+      if (response.data) {
+        // Extract stats from response
+        const { likes, views, comments: commentCount, shares } = response.data;
+        
+        // Update state with the fetched counts
+        if (typeof likes === 'number') {
+          debug('Setting like count from stats API', likes);
+          setLikeCount(likes);
+        }
+        
+        if (typeof views === 'number') {
+          debug('Setting view count from stats API', views);
+          setViewCount(views);
+        }
+        
+        if (typeof commentCount === 'number') {
+          debug('Setting comment count from stats API', commentCount);
+          // We don't need to update comment count as we're fetching the actual comments
+        }
+        
+        if (typeof shares === 'number') {
+          debug('Setting share count from stats API', shares);
+          // Add a state for share count
+          setShareCount(shares);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching interaction stats:", err);
+      // Don't set error state, just log it to avoid disrupting the UI
+    }
+  };
 
   // Add function to fetch comments
   const fetchComments = async () => {
@@ -334,27 +379,49 @@ const TrendingNewsDetails = () => {
     if (!endpoint) return;
     
     try {
-      const myHeaders = new Headers();
+      debug('Incrementing view count for news ID', id);
       
-      const requestOptions = {
-        method: "POST",
-        headers: myHeaders,
-        redirect: "follow"
-      };
+      // Try multiple endpoints formats to handle potential API differences
+      const possibleEndpoints = [
+        `${baseURL}/api/interaction/news/${id}/view`,
+        `${baseURL}/api/news/${id}/view`,
+        `${baseURL}/api/interactions/${id}/view`
+      ];
       
-      // Use direct URL format
-      fetch(`http://13.234.42.114:3333/api/interaction/news/${id}/view`, requestOptions)
-        .then((response) => response.text())
-        .then((result) => {
-          console.log(result);
+      let success = false;
+      
+      // Try each endpoint until one succeeds
+      for (const url of possibleEndpoints) {
+        try {
+          debug('Trying view increment endpoint:', url);
+          
+          const response = await axios.post(url);
+          debug('View increment response:', response.data);
+          
+          // If we got here, the request was successful
+          success = true;
+          debug('Successfully incremented view count at endpoint:', url);
+          
           // Increment view count locally
           setViewCount(prev => prev + 1);
-        })
-        .catch((error) => console.error(error));
+          
+          // Break the loop since we succeeded
+          break;
+        } catch (endpointErr) {
+          debug(`Endpoint ${url} failed:`, endpointErr.message);
+          // Continue to next endpoint
+        }
+      }
       
+      // If all endpoints failed, try once more with the stats endpoint
+      if (!success) {
+        debug('All view increment endpoints failed, fetching updated stats instead');
+        // Fetch the stats to at least get the current view count
+        fetchInteractionStats();
+      }
     } catch (err) {
       console.error("Error incrementing view count:", err);
-      // Still increment the view count locally as fallback
+      // Still increment the view count locally as fallback for UX
       setViewCount(prev => prev + 1);
     }
   };
@@ -385,49 +452,66 @@ const TrendingNewsDetails = () => {
       setLikeCount(prevCount => newLikedState ? prevCount + 1 : Math.max(0, prevCount - 1));
       debug(`Optimistically updated like state to ${newLikedState ? 'liked' : 'unliked'}`);
 
-      // Create headers with auth token
-      const myHeaders = new Headers();
-      myHeaders.append("Authorization", `Bearer ${token}`);
+      // Configure headers with the token
+      const config = {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      };
       
       // Determine which endpoint to use based on the action (like or unlike)
-      const likeEndpoint = isLiked 
-        ? `http://api.newztok.in/api/interaction/news/${id}/unlike`
-        : `http://api.newztok.in/api/interaction/news/${id}/like`;
+      const action = isLiked ? 'unlike' : 'like';
       
-      const requestOptions = {
-        method: "POST",
-        headers: myHeaders,
-        redirect: "follow"
-      };
-
-      // Make the API call
-      debug(`Sending ${isLiked ? 'unlike' : 'like'} request to API`);
-      const response = await fetch(likeEndpoint, requestOptions);
-
-      if (!response.ok) {
-        throw new Error(`${isLiked ? 'Unlike' : 'Like'} request failed with status: ${response.status}`);
-      }
+      // Try multiple endpoints to handle different API paths
+      const possibleEndpoints = [
+        `${baseURL}/api/interaction/news/${id}/${action}`,
+        `${baseURL}/api/news/${id}/${action}`,
+        `${baseURL}/api/interactions/${id}/${action}`
+      ];
       
-      const resultText = await response.text();
-      debug('Received like/unlike response', resultText);
+      let success = false;
       
-      try {
-        if (resultText && resultText.trim()) {
-          const result = JSON.parse(resultText);
-          debug('Parsed like/unlike response', result);
+      // Try each endpoint until one succeeds
+      for (const url of possibleEndpoints) {
+        try {
+          debug(`Trying ${action} endpoint:`, url);
+          
+          const response = await axios.post(url, {}, config);
+          debug(`${action} response:`, response.data);
+          
+          // If we got here, the request was successful
+          success = true;
+          debug(`Successfully ${action}d at endpoint:`, url);
           
           // Update like count from server response if available
-          if (result && typeof result.likesCount !== 'undefined') {
-            debug('Setting like count from API response', result.likesCount);
-            setLikeCount(result.likesCount);
-          } else if (result && typeof result.likeCount !== 'undefined') {
-            debug('Setting like count from API response', result.likeCount);
-            setLikeCount(result.likeCount);
+          if (response.data) {
+            if (typeof response.data.likesCount === 'number') {
+              debug('Setting like count from API response', response.data.likesCount);
+              setLikeCount(response.data.likesCount);
+            } else if (typeof response.data.likeCount === 'number') {
+              debug('Setting like count from API response', response.data.likeCount);
+              setLikeCount(response.data.likeCount);
+            }
           }
+          
+          // Break the loop since we succeeded
+          break;
+        } catch (endpointErr) {
+          debug(`Endpoint ${url} failed:`, endpointErr.message);
+          // Continue to next endpoint
         }
-      } catch (parseError) {
-        debug('Response is not valid JSON, keeping optimistic update', parseError.message);
       }
+      
+      // If all endpoints failed, revert to previous state
+      if (!success) {
+        debug('All like endpoints failed, reverting to previous state');
+        setIsLiked(prevLikeState);
+        setLikeCount(prevLikeCount);
+        throw new Error(`Failed to ${action} the article`);
+      }
+      
+      // Update stats after successful like/unlike
+      fetchInteractionStats();
       
     } catch (error) {
       console.error(`Error ${isLiked ? 'unliking' : 'liking'} article:`, error);
@@ -445,12 +529,43 @@ const TrendingNewsDetails = () => {
       navigator.share({
         title: newsData?.title || 'Trending NewzTok Article',
         url: window.location.href,
-      }).catch(err => console.error("Error sharing:", err));
+      })
+      .then(() => {
+        // Increment share count optimistically
+        setShareCount(prev => prev + 1);
+        
+        // Record share in the backend
+        recordShare();
+      })
+      .catch(err => console.error("Error sharing:", err));
     } else {
       // Fallback: copy to clipboard
       navigator.clipboard.writeText(window.location.href)
-        .then(() => alert('Link copied to clipboard!'))
+        .then(() => {
+          alert('Link copied to clipboard!');
+          // Increment share count optimistically
+          setShareCount(prev => prev + 1);
+          
+          // Record share in the backend
+          recordShare();
+        })
         .catch(err => console.error("Error copying to clipboard:", err));
+    }
+  };
+
+  // Record share interaction
+  const recordShare = async () => {
+    try {
+      const token = getUserToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      await axios.post(`${baseURL}/api/interaction/news/${id}/share`, {}, { headers });
+      debug('Successfully recorded share interaction');
+      
+      // Refresh stats
+      fetchInteractionStats();
+    } catch (err) {
+      console.error('Error recording share:', err);
     }
   };
 
@@ -479,17 +594,45 @@ const TrendingNewsDetails = () => {
       
       debug('Submitting comment', comment);
       
-      // Send the comment to the API
-      const response = await axios.post(
-        `${baseURL}/api/interaction/news/${id}/comment`, 
-        { content: comment },
-        config
-      );
+      // Try multiple endpoints to handle different API paths
+      const possibleEndpoints = [
+        `${baseURL}/api/interaction/news/${id}/comment`,
+        `${baseURL}/api/news/${id}/comment`,
+        `${baseURL}/api/interactions/${id}/comment`
+      ];
       
-      debug('Comment submission response', response.data);
+      let success = false;
+      
+      // Try each endpoint until one succeeds
+      for (const url of possibleEndpoints) {
+        try {
+          debug('Trying comment endpoint:', url);
+          
+          const response = await axios.post(url, { content: comment }, config);
+          debug('Comment submission response:', response.data);
+          
+          // If we got here, the request was successful
+          success = true;
+          debug('Successfully submitted comment at endpoint:', url);
+          
+          // Break the loop since we succeeded
+          break;
+        } catch (endpointErr) {
+          debug(`Endpoint ${url} failed:`, endpointErr.message);
+          // Continue to next endpoint
+        }
+      }
+      
+      if (!success) {
+        debug('All comment endpoints failed');
+        throw new Error('Failed to submit comment');
+      }
       
       // After successful submission, refresh the comments list
       fetchComments();
+      
+      // Also refresh stats to update comment count
+      fetchInteractionStats();
       
       // Clear the comment input
       setComment('');
@@ -498,6 +641,7 @@ const TrendingNewsDetails = () => {
       setCommentSuccess(true);
     } catch (err) {
       console.error("Error submitting comment:", err);
+      alert("Failed to submit comment. Please try again.");
     }
   };
 
@@ -824,7 +968,7 @@ const TrendingNewsDetails = () => {
               <ShareIcon />
             </IconButton>
             <Typography variant="body2" sx={{ ml: 0.5 }}>
-              Share
+              {shareCount} {shareCount === 1 ? 'Share' : 'Shares'}
             </Typography>
           </Box>
         </Box>
@@ -841,7 +985,7 @@ const TrendingNewsDetails = () => {
         <Box sx={{ py: 3, bgcolor: '#f9f9f9', borderRadius: 2, mt: 4 }}>
           <Box sx={{ px: 3 }}>
             <Typography variant="h6" sx={{ mb: 3, fontWeight: 'bold' }}>
-              Comments
+              Comments ({comments.length})
             </Typography>
             
             {/* Comment Input - Show only if logged in */}

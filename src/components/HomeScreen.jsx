@@ -289,47 +289,103 @@ const HomeScreen = () => {
 
   // Get image URL with proper handling
   const getImageUrl = (item) => {
+    // Debug logging to understand the item structure
+    console.log(`Getting image URL for item with title "${item.title || 'Unknown'}":`, {
+      id: item._id || item.id,
+      featuredImage: item.featuredImage,
+      image: item.image,
+      images: item.images,
+      youtubeUrl: item.youtubeUrl
+    });
+
+    // Check specifically for the upload path pattern first
+    if (item.featuredImage && typeof item.featuredImage === 'string') {
+      // Check if it contains the uploads path pattern
+      if (item.featuredImage.includes('/uploads/images/featuredImage-')) {
+        console.log(`Found exact upload path pattern in featuredImage: ${item.featuredImage}`);
+        // If it's a full URL, use it directly
+        if (item.featuredImage.startsWith('http')) {
+          return item.featuredImage;
+        } else {
+          // Ensure proper path concatenation
+          return `${baseUrl}${item.featuredImage.startsWith('/') ? '' : '/'}${item.featuredImage}`;
+        }
+      }
+    }
+    
     // If item has youtubeUrl, extract and return YouTube thumbnail
     if (item.youtubeUrl) {
+      console.log(`Found YouTube URL for item:`, item.youtubeUrl);
       // Extract YouTube video ID from various YouTube URL formats
       const youtubeRegex = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
       const match = item.youtubeUrl.match(youtubeRegex);
       
       if (match && match[1]) {
         const videoId = match[1];
+        console.log(`Extracted YouTube video ID:`, videoId);
         // Use high quality thumbnail (hqdefault.jpg)
         return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
       }
     }
     
-    // If item has images array with content
-    if (item.images && item.images.length > 0) {
-      return item.images[0];
-    }
+    // Handle multiple possible image property names and formats
+    const possibleImageProps = ['featuredImage', 'featured_image', 'image', 'images', 'thumbnail', 'thumbnailUrl', 'imageUrl'];
     
-    // If item has featuredImage
-    if (item.featuredImage) {
-      // Check if it's a full URL or just a path
-      if (item.featuredImage.startsWith('http')) {
-        return item.featuredImage;
-      } else {
-        // Add base URL for relative paths
-        return `${baseUrl}${item.featuredImage}`;
-      }
-    }
-    
-    // If item has image property
-    if (item.image) {
-      // Check if it's a full URL or just a path
-      if (item.image.startsWith('http')) {
-        return item.image;
-      } else {
-        // Add base URL for relative paths
-        return `${baseUrl}${item.image}`;
+    for (const prop of possibleImageProps) {
+      if (item[prop]) {
+        console.log(`Found ${prop} property:`, item[prop]);
+        
+        // Handle array of images
+        if (Array.isArray(item[prop]) && item[prop].length > 0) {
+          const imgSrc = item[prop][0];
+          console.log(`Using first image from ${prop} array:`, imgSrc);
+          
+          if (typeof imgSrc === 'string') {
+            // If string starts with http or https, it's a full URL
+            if (imgSrc.startsWith('http')) {
+              return imgSrc;
+            } else {
+              // Otherwise it's a relative path
+              return `${baseUrl}${imgSrc.startsWith('/') ? '' : '/'}${imgSrc}`;
+            }
+          } else if (typeof imgSrc === 'object') {
+            // Handle if image is an object with url or src property
+            const url = imgSrc.url || imgSrc.src;
+            if (url) {
+              return url.startsWith('http') ? url : `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+            }
+          }
+        }
+        
+        // Handle string format (direct URL or path)
+        if (typeof item[prop] === 'string') {
+          const imgSrc = item[prop];
+          console.log(`Using string ${prop}:`, imgSrc);
+          
+          // If it's a full URL
+          if (imgSrc.startsWith('http')) {
+            return imgSrc;
+          } else {
+            // Ensure proper path concatenation
+            return `${baseUrl}${imgSrc.startsWith('/') ? '' : '/'}${imgSrc}`;
+          }
+        }
+        
+        // Handle object format
+        if (typeof item[prop] === 'object' && !Array.isArray(item[prop])) {
+          const imgObj = item[prop];
+          const imgSrc = imgObj.url || imgObj.src || imgObj.path;
+          
+          if (imgSrc) {
+            console.log(`Using object ${prop} with url/src/path:`, imgSrc);
+            return imgSrc.startsWith('http') ? imgSrc : `${baseUrl}${imgSrc.startsWith('/') ? '' : '/'}${imgSrc}`;
+          }
+        }
       }
     }
     
     // Fallback to placeholder
+    console.log(`No image found for item, using placeholder`);
     return 'https://via.placeholder.com/400x300?text=No+Image';
   };
 
@@ -568,69 +624,350 @@ const HomeScreen = () => {
   );
 
   // 970 x 100 Advertisement component
-  const LargeAd = () => (
-    <Box 
-      sx={{ 
-        width: '100%', 
-        height: 100, 
-        bgcolor: '#E0E0E0', 
-        mb: 2, 
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#999',
-        borderRadius: 1,
-        position: 'relative',
-      }}
-    >
-      970 x 100
-      <Typography 
-        variant="caption" 
+  const LargeAd = () => {
+    const [bannerAd, setBannerAd] = useState(null);
+    const [bannerError, setBannerError] = useState(null);
+    const [bannerLoading, setBannerLoading] = useState(true);
+
+    useEffect(() => {
+      const fetchBannerAd = async () => {
+        try {
+          setBannerLoading(true);
+          setBannerError(null);
+          console.log('Fetching banner ad from API...');
+          
+          const response = await axios.get(`${baseUrl}/api/ads/public/web/banner`);
+          console.log('Banner ad API response:', response.data);
+          
+          if (response.data && response.data.data && Array.isArray(response.data.data) && response.data.data.length > 0) {
+            // Take the first ad from the array
+            const ad = response.data.data[0];
+            // Log the redirect URL for debugging
+            console.log('Banner ad redirect URL:', ad.redirectUrl);
+            setBannerAd(ad);
+          } else if (response.data && !Array.isArray(response.data)) {
+            setBannerAd(response.data);
+          } else {
+            setBannerError('No ads available');
+          }
+        } catch (err) {
+          console.error('Error fetching banner ad:', err);
+          setBannerError(err.message || 'Failed to load advertisement');
+        } finally {
+          setBannerLoading(false);
+        }
+      };
+
+      fetchBannerAd();
+    }, []);
+
+    // Handle ad click
+    const handleAdClick = (e) => {
+      e.preventDefault();
+      if (bannerAd && bannerAd.redirectUrl) {
+        console.log('Redirecting to banner ad URL:', bannerAd.redirectUrl);
+        window.open(bannerAd.redirectUrl, '_blank', 'noopener,noreferrer');
+      }
+    };
+
+    if (bannerLoading) {
+      return (
+        <Box 
+          sx={{ 
+            width: '100%', 
+            height: 100, 
+            bgcolor: '#f5f5f5', 
+            mb: 2, 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 1,
+          }}
+        >
+          <CircularProgress size={24} />
+        </Box>
+      );
+    }
+
+    if (bannerError || !bannerAd) {
+      return (
+        <Box 
+          sx={{ 
+            width: '100%', 
+            height: 100, 
+            bgcolor: '#E0E0E0', 
+            mb: 2, 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#999',
+            borderRadius: 1,
+            position: 'relative',
+          }}
+        >
+          {bannerError ? 'Failed to load ad' : '970 x 100'}
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              position: 'absolute', 
+              bottom: 5, 
+              right: 10, 
+              fontSize: '0.6rem',
+              color: '#AAA' 
+            }}
+          >
+            NewzTok Ad
+          </Typography>
+        </Box>
+      );
+    }
+
+    // If we have a valid banner ad, display it
+    return (
+      <Box 
+        component="a"
+        href={bannerAd.redirectUrl || bannerAd.link || '#'}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={handleAdClick}
         sx={{ 
-          position: 'absolute', 
-          bottom: 5, 
-          right: 10, 
-          fontSize: '0.6rem',
-          color: '#AAA' 
+          width: '100%', 
+          height: 100, 
+          mb: 2, 
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 1,
+          overflow: 'hidden',
+          textDecoration: 'none',
+          position: 'relative',
+          cursor: 'pointer',
         }}
       >
-        Powered by HTML.COM
-      </Typography>
-    </Box>
-  );
+        {bannerAd.imageUrl ? (
+          <Box 
+            component="img"
+            src={bannerAd.imageUrl.startsWith('http') ? bannerAd.imageUrl : `${baseUrl}${bannerAd.imageUrl.startsWith('/') ? '' : '/'}${bannerAd.imageUrl}`}
+            alt={bannerAd.title || "Advertisement"}
+            sx={{ 
+              width: '100%', 
+              height: '100%', 
+              objectFit: 'cover',
+            }}
+            onError={(e) => {
+              console.error('Banner image failed to load');
+              e.target.onerror = null; 
+              e.target.src = "https://via.placeholder.com/970x100?text=Advertisement";
+            }}
+          />
+        ) : (
+          <Box 
+            sx={{ 
+              width: '100%', 
+              height: '100%', 
+              bgcolor: '#E0E0E0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#999',
+            }}
+          >
+            {bannerAd.title || "Advertisement"}
+          </Box>
+        )}
+        
+        <Typography 
+          variant="caption" 
+          sx={{ 
+            position: 'absolute', 
+            bottom: 5, 
+            right: 10, 
+            fontSize: '0.6rem',
+            color: '#FFF',
+            bgcolor: 'rgba(0,0,0,0.5)',
+            px: 0.5,
+            borderRadius: 0.5
+          }}
+        >
+          Ad
+        </Typography>
+      </Box>
+    );
+  };
 
   // 380 x 350 Advertisement component
-  const SideAd = () => (
-    <Box 
-      sx={{ 
-        width: '100%', 
-        height: 350, 
-        bgcolor: '#E0E0E0', 
-        mb: 3, 
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#999',
-        borderRadius: 1,
-        position: 'relative',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-      }}
-    >
-      380 x 350
-      <Typography 
-        variant="caption" 
+  const SideAd = () => {
+    const [sideAd, setSideAd] = useState(null);
+    const [sideError, setSideError] = useState(null);
+    const [sideLoading, setSideLoading] = useState(true);
+
+    useEffect(() => {
+      const fetchSideAd = async () => {
+        try {
+          setSideLoading(true);
+          setSideError(null);
+          console.log('Fetching side ad from API...');
+          
+          const response = await axios.get(`${baseUrl}/api/ads/public/web/side`);
+          console.log('Side ad API response:', response.data);
+          
+          if (response.data && response.data.data && Array.isArray(response.data.data) && response.data.data.length > 0) {
+            // Take the first ad from the array
+            const ad = response.data.data[0];
+            // Log the redirect URL for debugging
+            console.log('Side ad redirect URL:', ad.redirectUrl);
+            setSideAd(ad);
+          } else if (response.data && !Array.isArray(response.data)) {
+            setSideAd(response.data);
+          } else {
+            setSideError('No ads available');
+          }
+        } catch (err) {
+          console.error('Error fetching side ad:', err);
+          setSideError(err.message || 'Failed to load advertisement');
+        } finally {
+          setSideLoading(false);
+        }
+      };
+
+      fetchSideAd();
+    }, []);
+
+    // Handle ad click
+    const handleAdClick = (e) => {
+      e.preventDefault();
+      if (sideAd && sideAd.redirectUrl) {
+        console.log('Redirecting to side ad URL:', sideAd.redirectUrl);
+        window.open(sideAd.redirectUrl, '_blank', 'noopener,noreferrer');
+      }
+    };
+
+    if (sideLoading) {
+      return (
+        <Box 
+          sx={{ 
+            width: '100%', 
+            height: 350, 
+            bgcolor: '#f5f5f5', 
+            mb: 3, 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 1,
+          }}
+        >
+          <CircularProgress size={24} />
+        </Box>
+      );
+    }
+
+    if (sideError || !sideAd) {
+      return (
+        <Box 
+          sx={{ 
+            width: '100%', 
+            height: 350, 
+            bgcolor: '#E0E0E0', 
+            mb: 3, 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#999',
+            borderRadius: 1,
+            position: 'relative',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          }}
+        >
+          {sideError ? 'Failed to load ad' : '380 x 350'}
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              position: 'absolute', 
+              bottom: 5, 
+              right: 10, 
+              fontSize: '0.6rem',
+              color: '#AAA' 
+            }}
+          >
+            NewzTok Ad
+          </Typography>
+        </Box>
+      );
+    }
+
+    // If we have a valid side ad, display it
+    return (
+      <Box 
+        component="a"
+        href={sideAd.redirectUrl || sideAd.link || '#'}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={handleAdClick}
         sx={{ 
-          position: 'absolute', 
-          bottom: 5, 
-          right: 10, 
-          fontSize: '0.6rem',
-          color: '#AAA' 
+          width: '100%', 
+          height: 350, 
+          mb: 3, 
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 1,
+          overflow: 'hidden',
+          textDecoration: 'none',
+          position: 'relative',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+          cursor: 'pointer',
         }}
       >
-        Powered by HTML.COM
-      </Typography>
-    </Box>
-  );
+        {sideAd.imageUrl ? (
+          <Box 
+            component="img"
+            src={sideAd.imageUrl.startsWith('http') ? sideAd.imageUrl : `${baseUrl}${sideAd.imageUrl.startsWith('/') ? '' : '/'}${sideAd.imageUrl}`}
+            alt={sideAd.title || "Advertisement"}
+            sx={{ 
+              width: '100%', 
+              height: '100%', 
+              objectFit: 'cover',
+            }}
+            onError={(e) => {
+              console.error('Side ad image failed to load');
+              e.target.onerror = null; 
+              e.target.src = "https://via.placeholder.com/380x350?text=Advertisement";
+            }}
+          />
+        ) : (
+          <Box 
+            sx={{ 
+              width: '100%', 
+              height: '100%', 
+              bgcolor: '#E0E0E0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#999',
+            }}
+          >
+            {sideAd.title || "Advertisement"}
+          </Box>
+        )}
+        
+        <Typography 
+          variant="caption" 
+          sx={{ 
+            position: 'absolute', 
+            bottom: 5, 
+            right: 10, 
+            fontSize: '0.6rem',
+            color: '#FFF',
+            bgcolor: 'rgba(0,0,0,0.5)',
+            px: 0.5,
+            borderRadius: 0.5
+          }}
+        >
+          Ad
+        </Typography>
+      </Box>
+    );
+  };
 
   return (
     <Box sx={{ width: '100%', backgroundColor: '#f5f5f5' }}>

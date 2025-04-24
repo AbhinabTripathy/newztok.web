@@ -21,6 +21,13 @@ const EditPost = () => {
   const [featuredImage, setFeaturedImage] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
+  const [videoPath, setVideoPath] = useState('');
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [uploadMethod, setUploadMethod] = useState('file');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState('');
   
   // UI states
   const [loading, setLoading] = useState(true);
@@ -259,6 +266,14 @@ const EditPost = () => {
     setDistrict(data.district !== undefined ? data.district : '');
     setFeaturedImage(data.featuredImage !== undefined ? data.featuredImage : '');
     setYoutubeUrl(data.youtubeUrl || '');
+    setVideoPath(data.videoPath !== undefined ? data.videoPath : '');
+    
+    // Set upload method based on data
+    if (data.youtubeUrl) {
+      setUploadMethod('youtube');
+    } else if (data.videoPath) {
+      setUploadMethod('file');
+    }
     
     console.log('Setting initial data with fields:');
     console.log('- Title:', data.title);
@@ -266,12 +281,65 @@ const EditPost = () => {
     console.log('- District:', data.district);
     console.log('- FeaturedImage:', data.featuredImage);
     console.log('- YouTube URL:', data.youtubeUrl);
+    console.log('- Video Path:', data.videoPath);
+  };
+
+  // Enhanced function to safely handle video file changes
+  const handleVideoFileChange = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const selectedFile = e.target.files[0];
+      
+      // Check file size (limit to 50MB for video)
+      if (selectedFile.size > 50 * 1024 * 1024) {
+        setErrorMessage(`File size exceeds 50MB. Your file is ${(selectedFile.size/1024/1024).toFixed(2)} MB. Please select a smaller MP4 file.`);
+        setTimeout(() => setErrorMessage(''), 5000);
+        return;
+      }
+      
+      // Check if file is an MP4
+      if (selectedFile.type !== 'video/mp4') {
+        setErrorMessage(`Please select an MP4 video file. Current file type: ${selectedFile.type}`);
+        setTimeout(() => setErrorMessage(''), 5000);
+        return;
+      }
+      
+      // Success feedback
+      setSuccessMessage(`MP4 video "${selectedFile.name}" selected (${(selectedFile.size/1024/1024).toFixed(2)} MB). Click "Save Changes" to upload.`);
+      setTimeout(() => setSuccessMessage(''), 5000);
+      
+      setSelectedVideo(selectedFile);
+      setUploadMethod('file');
+      // Clear YouTube URL if video file is selected
+      setYoutubeUrl('');
+      
+      // Create a preview URL for the selected video
+      try {
+        const previewUrl = URL.createObjectURL(selectedFile);
+        setVideoPreviewUrl(previewUrl);
+        setVideoPath(previewUrl);
+      } catch (err) {
+        console.error('Error creating video preview URL:', err);
+      }
+    }
+  };
+
+  // Function to handle YouTube URL changes
+  const handleYoutubeUrlChange = (e) => {
+    const url = e.target.value;
+    setYoutubeUrl(url);
+    
+    if (url) {
+      setUploadMethod('youtube');
+      setSelectedVideo(null);
+      setVideoPath('');
+    }
   };
 
   const handleSaveChanges = async () => {
     try {
       setIsSaving(true);
       setError(null);
+      setUploadProgress(0);
       
       // Get auth token
       const token = getAuthToken();
@@ -280,10 +348,10 @@ const EditPost = () => {
       }
 
       // Configure headers for multipart form data if we have a new file
-      const hasNewFile = selectedFile !== null;
+      const hasNewFile = selectedFile !== null || selectedVideo !== null;
       const contentType = hasNewFile ? 'multipart/form-data' : 'application/json';
       
-      console.log('Update type:', hasNewFile ? 'With new image file' : 'JSON only update');
+      console.log('Update type:', hasNewFile ? 'With new file uploads' : 'JSON only update');
 
       // Prepare the update data - use FormData if we have a file, otherwise use JSON
       let updateData;
@@ -297,18 +365,38 @@ const EditPost = () => {
         updateData.append('category', category || '');
         updateData.append('state', state || '');
         updateData.append('district', district || '');
-        updateData.append('featuredImage', selectedFile);
-        updateData.append('youtubeUrl', youtubeUrl || '');
+        updateData.append('contentType', selectedVideo ? 'video' : 'article');
+        
+        if (selectedFile) {
+          updateData.append('featuredImage', selectedFile);
+        }
+        
+        if (uploadMethod === 'youtube') {
+          updateData.append('youtubeUrl', youtubeUrl || '');
+        } else if (selectedVideo) {
+          updateData.append('video', selectedVideo);
+          console.log('Appending video file:', selectedVideo.name);
+        } else if (videoPath && !videoPath.startsWith('blob:')) {
+          updateData.append('videoPath', videoPath);
+        }
         
         // Set headers for multipart form data
         config = {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'multipart/form-data'
+          },
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percentCompleted);
+            console.log(`Upload progress: ${percentCompleted}%`);
           }
         };
         
-        console.log('Sending update with new file:', selectedFile.name);
+        console.log('Sending update with files:', 
+          selectedFile ? `Image: ${selectedFile.name}` : '',
+          selectedVideo ? `Video: ${selectedVideo.name}` : ''
+        );
       } else {
         // Use regular JSON if no file
         updateData = {
@@ -318,7 +406,9 @@ const EditPost = () => {
           state: state || '',
           district: district || '',
           featuredImage: featuredImage || '',
-          youtubeUrl: youtubeUrl || ''
+          videoPath: videoPath || '',
+          youtubeUrl: youtubeUrl || '',
+          contentType: videoPath || youtubeUrl ? 'video' : 'article'
         };
         
         config = {
@@ -329,7 +419,7 @@ const EditPost = () => {
         };
       }
 
-      console.log('Sending update request with data:', hasNewFile ? 'FormData with file' : updateData);
+      console.log('Sending update request with data:', hasNewFile ? 'FormData with files' : updateData);
 
       // Send PUT request to update the news
       const response = await axios.put(
@@ -350,6 +440,8 @@ const EditPost = () => {
         district: district || '',
         // If we got a response with a new featuredImage path, use that, otherwise keep existing
         featuredImage: response.data?.featuredImage || response.data?.data?.featuredImage || featuredImage || '',
+        videoPath: response.data?.videoPath || response.data?.data?.videoPath || videoPath || '',
+        youtubeUrl: youtubeUrl || '',
         updatedAt: new Date().toISOString(),
         _updatedLocally: true // Flag to highlight updated items in PendingApprovals
       };
@@ -599,158 +691,506 @@ const EditPost = () => {
                   padding: '10px',
                   backgroundColor: '#f9fafb'
                 }}>
-                  {/* Video URL Section */}
-                  <div style={{ marginBottom: '16px' }}>
-                    <label 
-                      htmlFor="youtubeUrl"
-                      style={{ 
-                        display: 'block', 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: '#4B5563',
+                  {/* Video Upload Controls */}
+                  <div style={{
+                    borderTop: '1px solid #E5E7EB',
+                    paddingTop: '16px',
+                    marginTop: '16px',
+                    marginBottom: '16px'
+                  }}>
+                    {/* Video Title Section */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <label 
+                        htmlFor="videoTitle"
+                        style={{ 
+                          display: 'block', 
+                          fontWeight: '600', 
+                          marginBottom: '8px', 
+                          fontSize: '18px',
+                          color: '#111827'
+                        }}
+                      >
+                        Video Title
+                      </label>
+                      <input
+                        id="videoTitle"
+                        type="text"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '6px',
+                          fontSize: '16px'
+                        }}
+                      />
+                    </div>
+
+                    {/* Video Source Selector */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '18px',
+                        fontWeight: '600',
+                        color: '#111827',
                         marginBottom: '8px'
-                      }}
-                    >
-                      Video URL (YouTube, Vimeo, etc.)
-                    </label>
-                    <input
-                      type="text"
-                      id="youtubeUrl"
-                      value={youtubeUrl}
-                      onChange={(e) => setYoutubeUrl(e.target.value)}
-                      placeholder="Enter video URL here..."
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #D1D5DB',
-                        borderRadius: '6px',
-                        fontSize: '14px'
-                      }}
-                    />
-                    {youtubeUrl && (
-                      <div style={{ marginTop: '12px' }}>
-                        <p style={{ fontSize: '14px', color: '#10B981', marginBottom: '8px', fontWeight: '500' }}>
-                          ✓ Video URL added
-                        </p>
-                        <div style={{ 
-                          position: 'relative', 
-                          paddingBottom: '56.25%', 
-                          height: 0, 
-                          overflow: 'hidden',
-                          borderRadius: '4px',
-                          border: '2px solid #10B981',
-                          padding: '2px'
+                      }}>
+                        Video Source
+                      </label>
+                      <div style={{ display: 'flex', gap: '12px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setUploadMethod('youtube')}
+                          style={{
+                            padding: '10px 16px',
+                            backgroundColor: uploadMethod === 'youtube' ? '#4F46E5' : '#F9FAFB',
+                            color: uploadMethod === 'youtube' ? '#FFFFFF' : '#374151',
+                            border: `1px solid ${uploadMethod === 'youtube' ? '#4F46E5' : '#D1D5DB'}`,
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          YouTube URL
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setUploadMethod('file')}
+                          style={{
+                            padding: '10px 16px',
+                            backgroundColor: uploadMethod === 'file' ? '#4F46E5' : '#F9FAFB',
+                            color: uploadMethod === 'file' ? '#FFFFFF' : '#374151',
+                            border: `1px solid ${uploadMethod === 'file' ? '#4F46E5' : '#D1D5DB'}`,
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Current: MP4 File
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* YouTube URL Input */}
+                    {uploadMethod === 'youtube' && (
+                      <div style={{ marginBottom: '24px' }}>
+                        <label 
+                          htmlFor="youtubeUrl"
+                          style={{ 
+                            display: 'block', 
+                            fontWeight: '500', 
+                            marginBottom: '8px', 
+                            fontSize: '16px',
+                            color: '#111827'
+                          }}
+                        >
+                          YouTube URL
+                        </label>
+                        <input
+                          id="youtubeUrl"
+                          type="text"
+                          placeholder="https://www.youtube.com/watch?v=..."
+                          value={youtubeUrl}
+                          onChange={handleYoutubeUrlChange}
+                          style={{
+                            width: '100%',
+                            padding: '10px 14px',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '6px',
+                            fontSize: '14px'
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Video File Upload - show only if File method is selected */}
+                    {uploadMethod === 'file' && (
+                      <div style={{ marginBottom: '24px' }}>
+                        <label 
+                          htmlFor="videoFile"
+                          style={{ 
+                            display: 'block', 
+                            fontWeight: '600', 
+                            marginBottom: '8px', 
+                            fontSize: '18px',
+                            color: '#111827'
+                          }}
+                        >
+                          Video File <span style={{ color: '#6b7280', fontSize: '14px' }}>(Max 50MB, MP4 only)</span>
+                        </label>
+                        
+                        {/* Current Video Path display */}
+                        {videoPath && !videoPath.startsWith('blob:') && (
+                          <div style={{ marginBottom: '16px' }}>
+                            <label style={{
+                              display: 'block',
+                              fontSize: '14px',
+                              fontWeight: '500',
+                              color: '#4B5563',
+                              marginBottom: '8px'
+                            }}>
+                              Current Video Path:
+                            </label>
+                            <input
+                              type="text"
+                              value={videoPath}
+                              readOnly
+                              style={{
+                                width: '100%',
+                                padding: '10px 12px',
+                                border: '1px solid #D1D5DB',
+                                borderRadius: '6px',
+                                fontSize: '14px',
+                                backgroundColor: '#f9fafb'
+                              }}
+                            />
+                            <div style={{ 
+                              fontSize: '13px', 
+                              color: '#10B981',
+                              paddingLeft: '4px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              marginTop: '4px'
+                            }}>
+                              <span style={{ fontWeight: 'bold' }}>✓</span> MP4 video file stored (will be preserved when saving)
+                            </div>
+                            <div style={{
+                              fontSize: '12px',
+                              color: '#6B7280',
+                              marginTop: '4px'
+                            }}>
+                              Format: <code style={{ backgroundColor: '#f3f4f6', padding: '2px 4px', borderRadius: '2px' }}>/uploads/videos/video-[timestamp]-[id].mp4</code>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Upload New Video section */}
+                        <div style={{
+                          borderTop: videoPath && !videoPath.startsWith('blob:') ? '1px solid #E5E7EB' : 'none',
+                          paddingTop: videoPath && !videoPath.startsWith('blob:') ? '16px' : '0',
+                          marginTop: videoPath && !videoPath.startsWith('blob:') ? '16px' : '0'
                         }}>
-                          <iframe
-                            src={`https://www.youtube.com/embed/${getYouTubeId(youtubeUrl)}`}
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              width: '100%',
-                              height: '100%',
-                              border: 0
-                            }}
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowFullScreen
-                          />
+                          <label style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            color: '#4B5563',
+                            marginBottom: '8px'
+                          }}>
+                            Upload New Video:
+                          </label>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            marginBottom: '16px'
+                          }}>
+                            <label 
+                              htmlFor="videoFileInput"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '8px 16px',
+                                backgroundColor: '#FFFFFF',
+                                border: '1px solid #D1D5DB',
+                                borderRadius: '6px',
+                                fontSize: '14px',
+                                color: '#374151',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="17 8 12 3 7 8"></polyline>
+                                <line x1="12" y1="3" x2="12" y2="15"></line>
+                              </svg>
+                              Choose File
+                            </label>
+                            <span style={{ marginLeft: '12px', color: '#6B7280', fontSize: '14px' }}>
+                              {selectedVideo ? selectedVideo.name : 'No file selected'}
+                            </span>
+                            <input
+                              id="videoFileInput"
+                              type="file"
+                              accept="video/mp4"
+                              onChange={handleVideoFileChange}
+                              style={{ display: 'none' }}
+                            />
+                          </div>
                         </div>
+                        
+                        {/* Video Preview Section */}
+                        <div style={{ 
+                          borderTop: '1px solid #E5E7EB',
+                          paddingTop: '16px',
+                          marginTop: '16px'
+                        }}>
+                          <label style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            color: '#4B5563',
+                            marginBottom: '8px'
+                          }}>
+                            Current video:
+                          </label>
+                          
+                          {/* Preview based on whether a new file is selected */}
+                          {selectedVideo ? (
+                            /* Preview of newly selected video */
+                            <div>
+                              <p style={{ fontSize: '14px', color: '#10B981', marginBottom: '8px', fontWeight: '500' }}>
+                                ✓ New video selected (will be uploaded when you save)
+                              </p>
+                              <div style={{ 
+                                position: 'relative', 
+                                height: '350px',
+                                borderRadius: '4px',
+                                overflow: 'hidden',
+                                backgroundColor: '#f3f4f6',
+                                border: '2px solid #10B981',
+                                padding: '2px'
+                              }}>
+                                <video 
+                                  src={videoPreviewUrl || URL.createObjectURL(selectedVideo)}
+                                  controls
+                                  style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'contain'
+                                  }}
+                                  onError={(e) => {
+                                    console.error("Preview video failed to load:", e);
+                                    e.target.parentNode.innerHTML = `
+                                      <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #f3f4f6; color: #6b7280;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                          <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                                          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                                        </svg>
+                                        <p style="margin-top: 8px; font-size: 14px;">Video preview cannot be displayed</p>
+                                      </div>
+                                    `;
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ) : videoPath ? (
+                            /* Existing video display */
+                            <div>
+                              <div style={{ 
+                                position: 'relative', 
+                                height: '350px',
+                                borderRadius: '4px',
+                                overflow: 'hidden',
+                                backgroundColor: '#f3f4f6',
+                                border: '2px solid #e5e7eb',
+                                padding: '2px'
+                              }}>
+                                <video 
+                                  src={videoPath.startsWith('blob:') || videoPath.startsWith('http') 
+                                    ? videoPath 
+                                    : `${API_BASE_URL}${videoPath.startsWith('/') ? videoPath : '/' + videoPath}`
+                                  }
+                                  controls
+                                  style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'contain'
+                                  }}
+                                  onError={(e) => {
+                                    console.error("Video failed to load:", e);
+                                    e.target.parentNode.innerHTML = `
+                                      <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #f3f4f6; color: #6b7280;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                          <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                                          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                                        </svg>
+                                        <p style="margin-top: 8px; font-size: 14px;">Unable to load video</p>
+                                      </div>
+                                    `;
+                                  }}
+                                />
+                              </div>
+                              <p style={{ fontSize: '14px', color: '#4B5563', marginTop: '8px' }}>
+                                {videoPath.split('/').pop()}
+                              </p>
+                            </div>
+                          ) : (
+                            /* No video case */
+                            <div style={{
+                              padding: '20px',
+                              backgroundColor: '#f9fafb',
+                              border: '1px dashed #d1d5db',
+                              borderRadius: '4px',
+                              textAlign: 'center'
+                            }}>
+                              <p style={{ color: '#6b7280', fontSize: '14px' }}>No video file currently associated with this post</p>
+                              <p style={{ color: '#4b5563', fontSize: '13px', marginTop: '8px' }}>
+                                Select "Choose File" above to upload a new MP4 video
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Video Description Section (Added as shown in image) */}
+                        <div style={{ 
+                          borderTop: '1px solid #E5E7EB',
+                          paddingTop: '16px',
+                          marginTop: '24px' 
+                        }}>
+                          <label 
+                            htmlFor="videoDescription"
+                            style={{ 
+                              display: 'block', 
+                              fontWeight: '600', 
+                              marginBottom: '8px', 
+                              fontSize: '18px',
+                              color: '#111827'
+                            }}
+                          >
+                            Video Description
+                          </label>
+                          {/* Content editor is used for description */}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Status Messages */}
+                    {errorMessage && (
+                      <div style={{ 
+                        backgroundColor: '#fee2e2', 
+                        color: '#b91c1c', 
+                        padding: '12px', 
+                        borderRadius: '6px',
+                        marginBottom: '20px'
+                      }}>
+                        {errorMessage}
+                      </div>
+                    )}
+
+                    {successMessage && (
+                      <div style={{ 
+                        backgroundColor: '#ecfdf5', 
+                        color: '#065f46', 
+                        padding: '12px', 
+                        borderRadius: '6px',
+                        marginBottom: '20px'
+                      }}>
+                        {successMessage}
+                      </div>
+                    )}
+
+                    {uploadProgress > 0 && uploadProgress < 100 && (
+                      <div style={{ 
+                        backgroundColor: '#f0fdf4', 
+                        color: '#15803d', 
+                        padding: '12px', 
+                        borderRadius: '6px',
+                        marginBottom: '20px'
+                      }}>
+                        Uploading: {uploadProgress}% complete
                       </div>
                     )}
                   </div>
 
-                  <div style={{
-                    borderTop: '1px solid #E5E7EB',
-                    paddingTop: '12px',
-                    marginTop: '12px'
-                  }}>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: '500', color: '#4B5563' }}>Featured Image:</span>
-                    </div>
+                  {/* Featured Image Section - Only show if no video is selected */}
+                  {!videoPath && !youtubeUrl && (
+                    <div style={{
+                      borderTop: '1px solid #E5E7EB',
+                      paddingTop: '12px',
+                      marginTop: '12px'
+                    }}>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '14px', fontWeight: '500', color: '#4B5563' }}>Featured Image:</span>
+                      </div>
+                      
+                      <input
+                        type="file"
+                        id="featuredImageUpload"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files[0];
+                          if (file) {
+                            setSelectedFile(file);
+                            console.log('Selected file:', file.name);
+                            // Create a preview URL for the image
+                            const previewUrl = URL.createObjectURL(file);
+                            setFeaturedImage(previewUrl);
+                          }
+                        }}
+                        style={{ display: 'none' }}
+                      />
+                      <label 
+                        htmlFor="featuredImageUpload"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '8px 12px',
+                          backgroundColor: '#FFFFFF',
+                          border: '1px solid #D1D5DB',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          color: '#374151',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                          <polyline points="17 8 12 3 7 8"></polyline>
+                          <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        Choose File
+                      </label>
+                      <span style={{ marginLeft: '12px', color: '#6B7280', fontSize: '14px' }}>
+                        {selectedFile ? selectedFile.name : 'No file selected'}
+                      </span>
                     
-                    <input
-                      type="file"
-                      id="featuredImageUpload"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                          setSelectedFile(file);
-                          console.log('Selected file:', file.name);
-                          // Create a preview URL for the image
-                          const previewUrl = URL.createObjectURL(file);
-                          setFeaturedImage(previewUrl);
-                        }
-                      }}
-                      style={{ display: 'none' }}
-                    />
-                    <label 
-                      htmlFor="featuredImageUpload"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 12px',
-                        backgroundColor: '#FFFFFF',
-                        border: '1px solid #D1D5DB',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        color: '#374151',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="17 8 12 3 7 8"></polyline>
-                        <line x1="12" y1="3" x2="12" y2="15"></line>
-                      </svg>
-                      Choose File
-                    </label>
-                    <span style={{ marginLeft: '12px', color: '#6B7280', fontSize: '14px' }}>
-                      {selectedFile ? selectedFile.name : 'No file selected'}
-                    </span>
-                  </div>
-                  
-                  {/* Image Preview */}
-                  {selectedFile ? (
-                    <div style={{ marginTop: '12px' }}>
-                      <p style={{ fontSize: '14px', color: '#10B981', marginBottom: '8px', fontWeight: '500' }}>
-                        ✓ New image selected (will be uploaded when you save)
-                      </p>
-                      <img 
-                        src={URL.createObjectURL(selectedFile)}
-                        alt="New Featured" 
-                        style={{ 
-                          maxWidth: '100%', 
-                          maxHeight: '200px', 
-                          borderRadius: '4px',
-                          border: '2px solid #10B981',
-                          padding: '2px'
-                        }}
-                      />
-                    </div>
-                  ) : featuredImage && !youtubeUrl && (
-                    <div style={{ marginTop: '10px' }}>
-                      <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '8px' }}>Current image:</p>
-                      <img 
-                        src={featuredImage.startsWith('http') || featuredImage.startsWith('blob:') 
-                          ? featuredImage 
-                          : `https://api.newztok.in${featuredImage.startsWith('/') ? featuredImage : '/' + featuredImage}`
-                        }
-                        alt="Featured" 
-                        style={{ 
-                          maxWidth: '100%', 
-                          maxHeight: '200px', 
-                          borderRadius: '4px',
-                          border: '2px solid #e5e7eb',
-                          padding: '2px'
-                        }} 
-                        onError={(e) => {
-                          console.error("Image failed to load");
-                          e.target.src = "https://via.placeholder.com/400x200?text=Image+Not+Found";
-                          e.target.style.opacity = "0.5";
-                        }}
-                      />
+                      {/* Image Preview */}
+                      {selectedFile ? (
+                        <div style={{ marginTop: '12px' }}>
+                          <p style={{ fontSize: '14px', color: '#10B981', marginBottom: '8px', fontWeight: '500' }}>
+                            ✓ New image selected (will be uploaded when you save)
+                          </p>
+                          <img 
+                            src={URL.createObjectURL(selectedFile)}
+                            alt="New Featured" 
+                            style={{ 
+                              maxWidth: '100%', 
+                              maxHeight: '200px', 
+                              borderRadius: '4px',
+                              border: '2px solid #10B981',
+                              padding: '2px'
+                            }}
+                          />
+                        </div>
+                      ) : featuredImage ? (
+                        <div style={{ marginTop: '10px' }}>
+                          <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '8px' }}>Current image:</p>
+                          <img 
+                            src={featuredImage.startsWith('http') || featuredImage.startsWith('blob:') 
+                              ? featuredImage 
+                              : `${API_BASE_URL}${featuredImage.startsWith('/') ? featuredImage : '/' + featuredImage}`
+                            }
+                            alt="Featured" 
+                            style={{ 
+                              maxWidth: '100%', 
+                              maxHeight: '200px', 
+                              borderRadius: '4px',
+                              border: '2px solid #e5e7eb',
+                              padding: '2px'
+                            }} 
+                            onError={(e) => {
+                              console.error("Image failed to load");
+                              e.target.src = "https://via.placeholder.com/400x200?text=Image+Not+Found";
+                              e.target.style.opacity = "0.5";
+                            }}
+                          />
+                        </div>
+                      ) : null}
                     </div>
                   )}
                 </div>
