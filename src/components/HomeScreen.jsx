@@ -18,6 +18,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import axios from 'axios';
 import { useStateContext } from './Header'; // Import state context
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 
 const HomeScreen = () => {
   // State variables for each news section
@@ -28,6 +29,9 @@ const HomeScreen = () => {
   const [entertainmentNews, setEntertainmentNews] = useState([]);
   const [stateNews, setStateNews] = useState([]);
   const { selectedState } = useStateContext(); // Get selected state from context
+  
+  // Fallback image for errors
+  const fallbackImage = "https://via.placeholder.com/400x300?text=Image+Not+Available";
   
   // Loading and error states for each section
   const [loading, setLoading] = useState({
@@ -95,8 +99,8 @@ const HomeScreen = () => {
       .join(' ');
   };
 
-  // Helper function to process API response and filter by selected state
-  const processApiResponse = (response, category) => {
+  // Function to process API response and identify videos
+  const processApiResponseWithVideos = (response, category) => {
     let news = [];
     
     if (response.data && Array.isArray(response.data)) {
@@ -106,6 +110,23 @@ const HomeScreen = () => {
     } else if (response.data && response.data.posts && Array.isArray(response.data.posts)) {
       news = response.data.posts;
     }
+    
+    // Enhance each news item with a hasVideo flag for consistent processing
+    news = news.map(item => {
+      const hasVideo = 
+        item.hasVideo || 
+        item.video || 
+        item.videoPath || 
+        (item.featuredImage && typeof item.featuredImage === 'string' && item.featuredImage.includes('/uploads/videos/video-')) ||
+        (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-'));
+        
+      console.log(`[${category}] Item "${item.title || 'Unknown'}" has video: ${hasVideo}`);
+      
+      return {
+        ...item,
+        hasVideo
+      };
+    });
     
     // Filter news by selected state if one is selected
     if (selectedState) {
@@ -145,7 +166,7 @@ const HomeScreen = () => {
     try {
       console.log('Fetching trending news...');
       const response = await axios.get(`${baseUrl}/api/news/trending`);
-      const news = processApiResponse(response, 'trending');
+      const news = processApiResponseWithVideos(response, 'trending');
       console.log('Trending news:', news);
       setTrendingNews(news);
     } catch (err) {
@@ -167,7 +188,7 @@ const HomeScreen = () => {
     try {
       console.log('Fetching national news...');
       const response = await axios.get(`${baseUrl}/api/news/category/national`);
-      const news = processApiResponse(response, 'national');
+      const news = processApiResponseWithVideos(response, 'national');
       console.log('National news:', news);
       setNationalNews(news);
     } catch (err) {
@@ -189,7 +210,7 @@ const HomeScreen = () => {
     try {
       console.log('Fetching international news...');
       const response = await axios.get(`${baseUrl}/api/news/category/international`);
-      const news = processApiResponse(response, 'international');
+      const news = processApiResponseWithVideos(response, 'international');
       console.log('International news:', news);
       setInternationalNews(news);
     } catch (err) {
@@ -211,7 +232,7 @@ const HomeScreen = () => {
     try {
       console.log('Fetching sports news...');
       const response = await axios.get(`${baseUrl}/api/news/category/sports`);
-      const news = processApiResponse(response, 'sports');
+      const news = processApiResponseWithVideos(response, 'sports');
       console.log('Sports news:', news);
       setSportsNews(news);
     } catch (err) {
@@ -233,7 +254,7 @@ const HomeScreen = () => {
     try {
       console.log('Fetching entertainment news...');
       const response = await axios.get(`${baseUrl}/api/news/category/entertainment`);
-      const news = processApiResponse(response, 'entertainment');
+      const news = processApiResponseWithVideos(response, 'entertainment');
       console.log('Entertainment news:', news);
       setEntertainmentNews(news);
     } catch (err) {
@@ -267,8 +288,25 @@ const HomeScreen = () => {
         ...(upNews.data.data || [])
       ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
+      // Process each news item to check for videos
+      const processedStateNews = allStateNews.map(item => {
+        const hasVideo = 
+          item.hasVideo || 
+          item.video || 
+          item.videoPath || 
+          (item.featuredImage && typeof item.featuredImage === 'string' && item.featuredImage.includes('/uploads/videos/video-')) ||
+          (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-'));
+
+        console.log(`[state] Item "${item.title || 'Unknown'}" has video: ${hasVideo}`);
+        
+        return {
+          ...item,
+          hasVideo
+        };
+      });
+
       // Take the most recent 2 news items
-      setStateNews(allStateNews.slice(0, 2));
+      setStateNews(processedStateNews.slice(0, 2));
     } catch (err) {
       console.error('Error fetching state news:', err);
       setError(prev => ({ ...prev, state: 'Failed to load state news' }));
@@ -295,25 +333,12 @@ const HomeScreen = () => {
       featuredImage: item.featuredImage,
       image: item.image,
       images: item.images,
-      youtubeUrl: item.youtubeUrl
+      youtubeUrl: item.youtubeUrl,
+      videoPath: item.videoPath,
+      hasVideo: item.hasVideo
     });
 
-    // Check specifically for the upload path pattern first
-    if (item.featuredImage && typeof item.featuredImage === 'string') {
-      // Check if it contains the uploads path pattern
-      if (item.featuredImage.includes('/uploads/images/featuredImage-')) {
-        console.log(`Found exact upload path pattern in featuredImage: ${item.featuredImage}`);
-        // If it's a full URL, use it directly
-        if (item.featuredImage.startsWith('http')) {
-          return item.featuredImage;
-        } else {
-          // Ensure proper path concatenation
-          return `${baseUrl}${item.featuredImage.startsWith('/') ? '' : '/'}${item.featuredImage}`;
-        }
-      }
-    }
-    
-    // If item has youtubeUrl, extract and return YouTube thumbnail
+    // First, check if the item has video content but ignore for image preview purposes
     if (item.youtubeUrl) {
       console.log(`Found YouTube URL for item:`, item.youtubeUrl);
       // Extract YouTube video ID from various YouTube URL formats
@@ -327,9 +352,32 @@ const HomeScreen = () => {
         return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
       }
     }
+      
+    // Check if there's a dedicated thumbnail for the video
+    if (item.videoThumbnail) {
+      console.log(`Using video thumbnail: ${item.videoThumbnail}`);
+      return item.videoThumbnail.startsWith('http') 
+        ? item.videoThumbnail 
+        : `${baseUrl}${item.videoThumbnail.startsWith('/') ? '' : '/'}${item.videoThumbnail}`;
+    }
+    
+    // Check specifically for the upload path pattern first
+    if (item.featuredImage && typeof item.featuredImage === 'string') {
+      // Skip video files when looking for images
+      if (!item.featuredImage.includes('/uploads/videos/video-')) {
+        console.log(`Found featuredImage: ${item.featuredImage}`);
+        // If it's a full URL, use it directly
+        if (item.featuredImage.startsWith('http')) {
+          return item.featuredImage;
+        } else {
+          // Ensure proper path concatenation
+          return `${baseUrl}${item.featuredImage.startsWith('/') ? '' : '/'}${item.featuredImage}`;
+        }
+      }
+    }
     
     // Handle multiple possible image property names and formats
-    const possibleImageProps = ['featuredImage', 'featured_image', 'image', 'images', 'thumbnail', 'thumbnailUrl', 'imageUrl'];
+    const possibleImageProps = ['images', 'image', 'featured_image', 'thumbnail', 'thumbnailUrl', 'imageUrl'];
     
     for (const prop of possibleImageProps) {
       if (item[prop]) {
@@ -341,6 +389,9 @@ const HomeScreen = () => {
           console.log(`Using first image from ${prop} array:`, imgSrc);
           
           if (typeof imgSrc === 'string') {
+            // Skip video files
+            if (imgSrc.includes('/uploads/videos/video-')) continue;
+            
             // If string starts with http or https, it's a full URL
             if (imgSrc.startsWith('http')) {
               return imgSrc;
@@ -351,14 +402,14 @@ const HomeScreen = () => {
           } else if (typeof imgSrc === 'object') {
             // Handle if image is an object with url or src property
             const url = imgSrc.url || imgSrc.src;
-            if (url) {
+            if (url && !url.includes('/uploads/videos/video-')) {
               return url.startsWith('http') ? url : `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
             }
           }
         }
         
         // Handle string format (direct URL or path)
-        if (typeof item[prop] === 'string') {
+        if (typeof item[prop] === 'string' && !item[prop].includes('/uploads/videos/video-')) {
           const imgSrc = item[prop];
           console.log(`Using string ${prop}:`, imgSrc);
           
@@ -376,7 +427,7 @@ const HomeScreen = () => {
           const imgObj = item[prop];
           const imgSrc = imgObj.url || imgObj.src || imgObj.path;
           
-          if (imgSrc) {
+          if (imgSrc && !imgSrc.includes('/uploads/videos/video-')) {
             console.log(`Using object ${prop} with url/src/path:`, imgSrc);
             return imgSrc.startsWith('http') ? imgSrc : `${baseUrl}${imgSrc.startsWith('/') ? '' : '/'}${imgSrc}`;
           }
@@ -389,9 +440,89 @@ const HomeScreen = () => {
     return 'https://via.placeholder.com/400x300?text=No+Image';
   };
 
+  // Improve the getVideoUrl function to match the approach in TrendingNews.jsx
+  const getVideoUrl = (item) => {
+    console.log("Checking for video in item:", {
+      id: item._id || item.id,
+      title: item.title,
+      hasVideo: item.hasVideo,
+      videoPath: item.videoPath,
+      featuredImage: item.featuredImage,
+      image: item.image
+    });
+    
+    const videoPattern = '/uploads/videos/video-';
+    
+    const constructFullUrl = (path) => {
+      if (!path) return null;
+      
+      // If the path is already an absolute URL, return it as is
+      if (path.startsWith('http://') || path.startsWith('https://')) {
+        console.log("Video URL is already absolute:", path);
+        return path;
+      }
+      
+      // Make sure the path has a leading slash
+      const formattedPath = path.startsWith('/') ? path : `/${path}`;
+      const fullUrl = `${baseUrl}${formattedPath}`;
+      console.log("Constructed full video URL:", fullUrl);
+      return fullUrl;
+    };
+    
+    // First check if there's a dedicated videoPath property
+    if (item.videoPath) {
+      console.log("Found videoPath property:", item.videoPath);
+      return constructFullUrl(item.videoPath);
+    }
+    
+    // Check for video in featuredImage
+    if (item.featuredImage && typeof item.featuredImage === 'string') {
+      if (item.featuredImage.includes(videoPattern) || item.featuredImage.endsWith('.mp4')) {
+        console.log("Found video in featuredImage:", item.featuredImage);
+        return constructFullUrl(item.featuredImage);
+      }
+    }
+    
+    // Check for video in image
+    if (item.image && typeof item.image === 'string') {
+      if (item.image.includes(videoPattern) || item.image.endsWith('.mp4')) {
+        console.log("Found video in image:", item.image);
+        return constructFullUrl(item.image);
+      }
+    }
+    
+    // Check if video property exists
+    if (item.video) {
+      if (typeof item.video === 'string') {
+        console.log("Found string video property:", item.video);
+        return constructFullUrl(item.video);
+      } else if (typeof item.video === 'object' && (item.video.url || item.video.src)) {
+        const videoSrc = item.video.url || item.video.src;
+        console.log("Found video object with url/src:", videoSrc);
+        return constructFullUrl(videoSrc);
+      }
+    }
+    
+    // If we have YouTube URL, return it for iframe embedding
+    if (item.youtubeUrl) {
+      console.log("Found YouTube URL:", item.youtubeUrl);
+      // Convert YouTube URL to embed format if it's not already
+      if (item.youtubeUrl.includes('watch?v=')) {
+        const videoId = item.youtubeUrl.split('v=')[1].split('&')[0];
+        return `https://www.youtube.com/embed/${videoId}`;
+      }
+      return item.youtubeUrl;
+    }
+    
+    console.log("No video URL found in item");
+    return null;
+  };
+
   // News card component (single card with specific styling)
   const NewsCard = ({ item, categoryLabel, categoryColor = '#FF5722', isLarge = false }) => {
     const [imageError, setImageError] = useState(false);
+    const [videoError, setVideoError] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
     
     if (!item) return null;
     
@@ -399,15 +530,40 @@ const HomeScreen = () => {
       setImageError(true);
     };
     
+    const handleVideoError = () => {
+      console.error("Video failed to load:", item);
+      setVideoError(true);
+    };
+    
+    // Get actual category
+    const category = categoryLabel || capitalizeFirstLetter(item.category) || "NEWS";
+    
+    // Detect video content with multiple checks
+    const hasVideo = 
+      item.hasVideo || 
+      item.video || 
+      item.videoPath || 
+      (item.featuredImage && typeof item.featuredImage === 'string' && 
+        (item.featuredImage.includes('/uploads/videos/video-') || 
+         item.featuredImage.endsWith('.mp4'))) ||
+      (item.image && typeof item.image === 'string' && 
+        (item.image.includes('/uploads/videos/video-') || 
+         item.image.endsWith('.mp4')));
+    
+    // Get video URL with improved detection
+    const videoUrl = hasVideo ? getVideoUrl(item) : null;
     const imageUrl = getImageUrl(item);
+    const isYouTubeVideo = !!item.youtubeUrl;
+    
+    console.log(`Rendering NewsCard for "${item.title || 'Unknown'}" - hasVideo: ${hasVideo}, videoUrl: ${videoUrl}`);
+    
     const title = item.title || "No Title";
-    const category = categoryLabel || item.category || "NEWS";
     const time = formatDate(item.createdAt || item.publishedAt || item.updatedAt);
     
     return (
       <Box
         component={Link}
-        to={`/news/${item.id}`}
+        to={`/news/${item.id || item._id}`}
         sx={{
           display: 'block',
           height: isLarge ? { xs: 350, md: 400 } : { xs: 200, md: 240 },
@@ -422,9 +578,57 @@ const HomeScreen = () => {
             }
           }
         }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Background image */}
-        {!imageError ? (
+        {/* Background image or video */}
+        {videoUrl && !videoError ? (
+          isYouTubeVideo ? (
+            <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
+              <iframe
+                src={videoUrl}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={title}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  zIndex: 0,
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            </Box>
+          ) : (
+            <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
+              <Box
+                component="video"
+                src={videoUrl}
+                controls
+                preload="metadata"
+                controlsList="nodownload"
+                poster={imageUrl}
+                onClick={(e) => e.stopPropagation()}
+                onError={handleVideoError}
+                playsInline
+                muted
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  zIndex: 0,
+                  backgroundColor: '#000',
+                }}
+              />
+            </Box>
+          )
+        ) : !imageError ? (
           <Box
             className="news-bg"
             sx={{
@@ -457,7 +661,7 @@ const HomeScreen = () => {
               transition: 'transform 0.3s ease',
             }}
           >
-            Image not available
+            {videoUrl ? 'Video not available' : 'Image not available'}
           </Box>
         )}
         
@@ -485,7 +689,7 @@ const HomeScreen = () => {
         >
           <Box
             sx={{
-              backgroundColor: categoryColor,
+              backgroundColor: item.hasVideo ? '#FF0000' : categoryColor,
               color: 'white',
               fontWeight: 'bold',
               fontSize: '0.7rem',
@@ -493,9 +697,18 @@ const HomeScreen = () => {
               borderRadius: '4px',
               letterSpacing: '0.5px',
               textTransform: 'uppercase',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
             }}
           >
+            {item.hasVideo && (
+              <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 24 24" fill="white" style={{ marginRight: '4px' }}>
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+            )}
             {category}
+            {item.hasVideo && " VIDEO"}
           </Box>
         </Box>
         
@@ -568,6 +781,168 @@ const HomeScreen = () => {
           </Box>
         </Box>
       </Box>
+    );
+  };
+
+  // Secondary news card component (for the second section)
+  const SecondSectionNewsCard = ({ item, categoryLabel, categoryColor = '#FF5722' }) => {
+    const [imageError, setImageError] = useState(false);
+    const [videoError, setVideoError] = useState(false);
+    const [isHovered, setIsHovered] = useState(false);
+
+    if (!item) return null;
+
+    const handleImageError = () => {
+      setImageError(true);
+    };
+    
+    const handleVideoError = () => {
+      console.error("Video failed to load:", item);
+      setVideoError(true);
+    };
+
+    // Get actual category
+    const category = categoryLabel || capitalizeFirstLetter(item.category) || "NEWS";
+    
+    // Detect video content with multiple checks
+    const hasVideo = 
+      item.hasVideo || 
+      item.video || 
+      item.videoPath || 
+      (item.featuredImage && typeof item.featuredImage === 'string' && 
+        (item.featuredImage.includes('/uploads/videos/video-') || 
+         item.featuredImage.endsWith('.mp4'))) ||
+      (item.image && typeof item.image === 'string' && 
+        (item.image.includes('/uploads/videos/video-') || 
+         item.image.endsWith('.mp4')));
+    
+    // Get video URL with improved detection
+    const videoUrl = hasVideo ? getVideoUrl(item) : null;
+    const imageUrl = getImageUrl(item);
+    const isYouTubeVideo = !!item.youtubeUrl;
+    
+    console.log(`Rendering SecondSectionNewsCard for "${item.title || 'Unknown'}" - hasVideo: ${hasVideo}, videoUrl: ${videoUrl}`);
+
+    return (
+      <Card 
+        component={Link} 
+        to={`/news/${item.id || item._id}`}
+        sx={{
+          cursor: 'pointer',
+          width: '100%',
+          position: 'relative',
+          boxShadow: 'none',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          transition: 'transform 0.3s ease',
+          textDecoration: 'none',
+          '&:hover': {
+            transform: 'translateY(-3px)',
+            '& .news-card-img': {
+              transform: 'scale(1.05)',
+            }
+          },
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100%',
+        }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        <Box sx={{ 
+          position: 'relative', 
+          overflow: 'hidden', 
+          paddingTop: '56.25%', // 16:9 aspect ratio
+          backgroundColor: '#f0f0f0'
+        }}>
+          {/* Display video if available, otherwise fallback to image */}
+          {videoUrl && !videoError ? (
+            isYouTubeVideo ? (
+              <iframe
+                src={videoUrl}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={item.title || "Video"}
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  zIndex: 1,
+                }}
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <Box
+                component="video"
+                src={videoUrl}
+                controls
+                preload="metadata"
+                controlsList="nodownload"
+                poster={imageUrl}
+                onClick={(e) => e.stopPropagation()}
+                onError={handleVideoError}
+                playsInline
+                muted
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  zIndex: 1,
+                }}
+              />
+            )
+          ) : (
+            <CardMedia
+              className="news-card-img"
+              component="img"
+              image={imageError ? fallbackImage : imageUrl}
+              alt={item.title || "News image"}
+              onError={handleImageError}
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                transition: 'transform 0.4s ease',
+              }}
+            />
+          )}
+          
+          {/* Category badge */}
+          <Box 
+            sx={{ 
+              position: 'absolute',
+              top: 10,
+              left: 10,
+              bgcolor: hasVideo ? 'red' : categoryColor,
+              color: 'white',
+              py: 0.5,
+              px: 1.5,
+              borderRadius: '4px',
+              fontSize: '0.75rem',
+              fontWeight: 'bold',
+              zIndex: 2,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            {hasVideo && (
+              <PlayArrowIcon fontSize="small" />
+            )}
+            {category}
+            {hasVideo && " VIDEO"}
+          </Box>
+        </Box>
+      </Card>
     );
   };
 

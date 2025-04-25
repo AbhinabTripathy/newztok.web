@@ -391,11 +391,65 @@ const StateNewsPage = () => {
   const NewsCard = ({ item, isLoading }) => {
     if (isLoading) return <LoadingSkeleton />;
 
+    // Check if item has video content - same approach as in State.jsx
+    const hasVideo = item.hasVideo || 
+      item.video || 
+      item.videoPath || 
+      (item.featuredImage && typeof item.featuredImage === 'string' && item.featuredImage.includes('/uploads/videos/video-')) ||
+      (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-'));
+    
+    // Check if item has youtubeUrl for video content
+    const isYouTubeVideo = !!item.youtubeUrl;
+
     const getFullImageUrl = (imagePath) => {
       if (!imagePath) return 'https://via.placeholder.com/380x350?text=No+Image';
       if (imagePath.startsWith('http')) return imagePath;
-      return `https://api.newztok.in${imagePath}`;
+      return `${baseUrl}${imagePath}`;
     };
+
+    // Function to get video URL if present
+    const getVideoUrl = () => {
+      // First, check if video property is already set
+      if (item.video) {
+        return item.video;
+      }
+      
+      // Next, check for videoPath property
+      if (item.videoPath) {
+        return item.videoPath.startsWith('http') 
+          ? item.videoPath 
+          : `${baseUrl}${item.videoPath}`;
+      }
+      
+      // Check other fields for video paths
+      if (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) {
+        return item.featuredImage.startsWith('http') 
+          ? item.featuredImage 
+          : `${baseUrl}${item.featuredImage}`;
+      }
+      
+      if (item.image && item.image.includes('/uploads/videos/video-')) {
+        return item.image.startsWith('http') 
+          ? item.image 
+          : `${baseUrl}${item.image}`;
+      }
+      
+      return null;
+    };
+    
+    const videoUrl = hasVideo ? getVideoUrl() : null;
+    
+    // Extract YouTube video ID if available
+    const getYoutubeEmbedUrl = (url) => {
+      if (!url) return null;
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+      const match = url.match(regExp);
+      return (match && match[2].length === 11)
+        ? `https://www.youtube.com/embed/${match[2]}`
+        : null;
+    };
+    
+    const youtubeEmbedUrl = getYoutubeEmbedUrl(item.youtubeUrl);
 
     // Generate appropriate location display
     const getLocationDisplay = () => {
@@ -435,19 +489,54 @@ const StateNewsPage = () => {
               boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
             }
           }}>
-            <CardMedia
-              component="img"
-              height="360"
-              image={getFullImageUrl(item.image || item.featuredImage)}
-              alt={item.title || ''}
-              sx={{ objectFit: 'cover' }}
-            />
+            {isYouTubeVideo && youtubeEmbedUrl ? (
+              <iframe
+                width="100%"
+                height="360"
+                src={youtubeEmbedUrl}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={item.title}
+              />
+            ) : hasVideo && videoUrl ? (
+              <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
+                <Box
+                  component="video"
+                  src={videoUrl}
+                  controls
+                  preload="metadata"
+                  controlsList="nodownload" 
+                  onClick={(e) => e.stopPropagation()}
+                  playsInline
+                  muted
+                  sx={{
+                    width: '100%',
+                    height: '360px',
+                    objectFit: 'cover',
+                  }}
+                  onError={(e) => {
+                    console.error('Video failed to load:', videoUrl);
+                    e.target.onerror = null;
+                    e.target.style.display = 'none';
+                  }}
+                />
+              </Box>
+            ) : (
+              <CardMedia
+                component="img"
+                height="360"
+                image={getFullImageUrl(item.image || item.featuredImage)}
+                alt={item.title || ''}
+                sx={{ objectFit: 'cover' }}
+              />
+            )}
             <Box
               sx={{
                 position: 'absolute',
                 top: 16,
                 left: 16,
-                bgcolor: stateConfig[state]?.bannerColor || '#1B5E20',
+                bgcolor: hasVideo ? '#E53E3E' : stateConfig[state]?.bannerColor || '#1B5E20',
                 color: 'white',
                 px: 2,
                 py: 0.5,
@@ -455,10 +544,19 @@ const StateNewsPage = () => {
                 fontSize: '0.75rem',
                 fontWeight: 600,
                 textTransform: 'uppercase',
-                letterSpacing: '0.5px'
+                letterSpacing: '0.5px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
               }}
             >
+              {hasVideo && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
               {item.category || 'STATE'}
+              {hasVideo && ' VIDEO'}
             </Box>
           </Card>
           

@@ -159,17 +159,52 @@ const InternationalNews = () => {
 
   // News card component
   const NewsCard = ({ item }) => {
+    // Check if item has video content - use the same pattern as in TrendingNews.jsx
+    const hasVideo = item.hasVideo || 
+      item.video || 
+      item.videoPath || 
+      (item.featuredImage && typeof item.featuredImage === 'string' && item.featuredImage.includes('/uploads/videos/video-')) ||
+      (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-'));
+    
     // Check if item has youtubeUrl for video content
-    const isVideo = item.youtubeUrl || item.contentType === 'video';
+    const isYouTubeVideo = !!item.youtubeUrl;
     
     // Add base URL to image path if it's a relative path
     const getFullImageUrl = (imagePath) => {
       if (!imagePath) return 'https://via.placeholder.com/400x300?text=No+Image';
       if (imagePath.startsWith('http')) return imagePath;
-      return `https://api.newztok.in${imagePath}`;
+      return `${baseUrl}${imagePath}`;
     };
     
-    const mediaUrl = getFullImageUrl(item.featuredImage || item.image);
+    // Function to get video URL if present - similar to TrendingNews.jsx
+    const getVideoUrl = () => {
+      // First, check if video property is already set
+      if (item.video) {
+        return item.video;
+      }
+      
+      // Next, check for videoPath property
+      if (item.videoPath) {
+        return item.videoPath.startsWith('http') 
+          ? item.videoPath 
+          : `${baseUrl}${item.videoPath}`;
+      }
+      
+      // Check other fields for video paths
+      if (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) {
+        return item.featuredImage.startsWith('http') 
+          ? item.featuredImage 
+          : `${baseUrl}${item.featuredImage}`;
+      }
+      
+      if (item.image && item.image.includes('/uploads/videos/video-')) {
+        return item.image.startsWith('http') 
+          ? item.image 
+          : `${baseUrl}${item.image}`;
+      }
+      
+      return null;
+    };
     
     // Extract YouTube video ID if available
     const getYoutubeEmbedUrl = (url) => {
@@ -224,7 +259,7 @@ const InternationalNews = () => {
               }
             }}
           >
-            {isVideo && youtubeEmbedUrl ? (
+            {isYouTubeVideo && youtubeEmbedUrl ? (
               <iframe
                 width="100%"
                 height="360"
@@ -234,11 +269,34 @@ const InternationalNews = () => {
                 allowFullScreen
                 title={item.title}
               />
+            ) : hasVideo && getVideoUrl() ? (
+              <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
+                <Box
+                  component="video"
+                  src={getVideoUrl()}
+                  controls
+                  preload="metadata"
+                  controlsList="nodownload"
+                  onClick={(e) => e.stopPropagation()}
+                  playsInline
+                  muted
+                  sx={{
+                    width: '100%',
+                    height: '360px',
+                    objectFit: 'cover',
+                  }}
+                  onError={(e) => {
+                    console.error('Video failed to load:', getVideoUrl());
+                    e.target.onerror = null;
+                    e.target.style.display = 'none';
+                  }}
+                />
+              </Box>
             ) : (
               <CardMedia
                 component="img"
                 height="360"
-                image={mediaUrl}
+                image={getFullImageUrl(item.featuredImage || item.image)}
                 alt={item.title}
                 sx={{
                   objectFit: 'cover',
@@ -254,7 +312,7 @@ const InternationalNews = () => {
                 top: 16,
                 left: 16,
                 zIndex: 2,
-                backgroundColor: '#1565C0',
+                backgroundColor: hasVideo ? '#E53E3E' : '#1565C0',
                 color: 'white',
                 fontWeight: 'bold',
                 fontSize: '0.75rem',
@@ -262,9 +320,18 @@ const InternationalNews = () => {
                 borderRadius: '4px',
                 letterSpacing: '0.5px',
                 textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
               }}
             >
-              {item.category || 'INTERNATIONAL'}
+              {hasVideo && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+              {capitalizeFirstLetter(item.category || 'INTERNATIONAL')}
+              {hasVideo && ' VIDEO'}
             </Box>
           </Card>
         </Link>
@@ -351,17 +418,52 @@ const InternationalNews = () => {
   
   // Second section news card component with different style
   const SecondSectionNewsCard = ({ item }) => {
+    // Check if item has video content - use the same pattern as in TrendingNews.jsx
+    const hasVideo = item.hasVideo || 
+      item.video || 
+      item.videoPath || 
+      (item.featuredImage && typeof item.featuredImage === 'string' && item.featuredImage.includes('/uploads/videos/video-')) ||
+      (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-'));
+    
     // Check if item has youtubeUrl for video content
-    const isVideo = item.youtubeUrl || item.contentType === 'video';
+    const isYouTubeVideo = !!item.youtubeUrl;
     
     // Add base URL to image path if it's a relative path
     const getFullImageUrl = (imagePath) => {
       if (!imagePath) return 'https://via.placeholder.com/400x300?text=No+Image';
       if (imagePath.startsWith('http')) return imagePath;
-      return `https://api.newztok.in${imagePath}`;
+      return `${baseUrl}${imagePath}`;
     };
     
-    const mediaUrl = getFullImageUrl(item.featuredImage || item.image);
+    // Function to get video URL if present
+    const getVideoUrl = () => {
+      // First, check if video property is already set
+      if (item.video) {
+        return item.video;
+      }
+      
+      // Next, check for videoPath property
+      if (item.videoPath) {
+        return item.videoPath.startsWith('http') 
+          ? item.videoPath 
+          : `${baseUrl}${item.videoPath}`;
+      }
+      
+      // Check other fields for video paths
+      if (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) {
+        return item.featuredImage.startsWith('http') 
+          ? item.featuredImage 
+          : `${baseUrl}${item.featuredImage}`;
+      }
+      
+      if (item.image && item.image.includes('/uploads/videos/video-')) {
+        return item.image.startsWith('http') 
+          ? item.image 
+          : `${baseUrl}${item.image}`;
+      }
+      
+      return null;
+    };
     
     // Extract YouTube video ID if available
     const getYoutubeEmbedUrl = (url) => {
@@ -413,7 +515,7 @@ const InternationalNews = () => {
               }
             }}
           >
-            {isVideo && youtubeEmbedUrl ? (
+            {isYouTubeVideo && youtubeEmbedUrl ? (
               <iframe
                 width="100%"
                 height="280"
@@ -423,11 +525,34 @@ const InternationalNews = () => {
                 allowFullScreen
                 title={item.title}
               />
+            ) : hasVideo && getVideoUrl() ? (
+              <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
+                <Box
+                  component="video"
+                  src={getVideoUrl()}
+                  controls
+                  preload="metadata"
+                  controlsList="nodownload"
+                  onClick={(e) => e.stopPropagation()}
+                  playsInline
+                  muted
+                  sx={{
+                    width: '100%',
+                    height: '280px',
+                    objectFit: 'cover',
+                  }}
+                  onError={(e) => {
+                    console.error('Video failed to load:', getVideoUrl());
+                    e.target.onerror = null;
+                    e.target.style.display = 'none';
+                  }}
+                />
+              </Box>
             ) : (
               <CardMedia
                 component="img"
                 height="280"
-                image={mediaUrl}
+                image={getFullImageUrl(item.featuredImage || item.image)}
                 alt={item.title}
                 sx={{
                   objectFit: 'cover',
@@ -443,7 +568,7 @@ const InternationalNews = () => {
                 top: 16,
                 left: 16,
                 zIndex: 2,
-                backgroundColor: '#1565C0',
+                backgroundColor: hasVideo ? '#E53E3E' : '#1565C0',
                 color: 'white',
                 fontWeight: 'bold',
                 fontSize: '0.75rem',
@@ -451,9 +576,18 @@ const InternationalNews = () => {
                 borderRadius: '4px',
                 letterSpacing: '0.5px',
                 textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
               }}
             >
-              {item.category || 'INTERNATIONAL'}
+              {hasVideo && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+              {capitalizeFirstLetter(item.category || 'INTERNATIONAL')}
+              {hasVideo && ' VIDEO'}
             </Box>
           </Card>
         </Link>

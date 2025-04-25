@@ -405,38 +405,27 @@ const TrendingNews = () => {
             }}
           >
             {hasVideo ? (
-              <Box sx={{ position: 'relative', height: '100%' }}>
+              <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
                 <Box
                   component="video"
                   src={videoUrl}
                   controls
+                  preload="metadata"
+                  controlsList="nodownload"
+                  onClick={(e) => e.stopPropagation()}
+                  playsInline
+                  muted
                   sx={{
                     width: '100%',
                     height: '360px',
                     objectFit: 'cover',
                   }}
-                />
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '60px',
-                    height: '60px',
-                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    zIndex: 2,
+                  onError={(e) => {
+                    console.error('Video failed to load:', videoUrl);
+                    e.target.onerror = null;
+                    e.target.style.display = 'none';
                   }}
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </Box>
+                />
               </Box>
             ) : !imageError ? (
               <Box sx={{ position: 'relative' }}>
@@ -494,7 +483,7 @@ const TrendingNews = () => {
                 top: 16,
                 left: 16,
                 zIndex: 2,
-                backgroundColor: '#0039CB',
+                backgroundColor: hasVideo ? '#E53E3E' : '#0039CB',
                 color: 'white',
                 fontWeight: 'bold',
                 fontSize: '0.75rem',
@@ -502,9 +491,18 @@ const TrendingNews = () => {
                 borderRadius: '4px',
                 letterSpacing: '0.5px',
                 textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
               }}
             >
-              {item.category || 'TRENDING'}
+              {hasVideo && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+              {capitalize(item.category || 'TRENDING')}
+              {hasVideo && ' VIDEO'}
             </Box>
           </Card>
         
@@ -717,38 +715,27 @@ const TrendingNews = () => {
             }}
           >
             {hasVideo ? (
-              <Box sx={{ position: 'relative', height: '100%' }}>
+              <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
                 <Box
                   component="video"
                   src={videoUrl}
                   controls
+                  preload="metadata"
+                  controlsList="nodownload"
+                  onClick={(e) => e.stopPropagation()}
+                  playsInline
+                  muted
                   sx={{
                     width: '100%',
                     height: '280px',
                     objectFit: 'cover',
                   }}
-                />
-                <Box
-                  sx={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    width: '60px',
-                    height: '60px',
-                    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    zIndex: 2,
+                  onError={(e) => {
+                    console.error('Video failed to load:', videoUrl);
+                    e.target.onerror = null;
+                    e.target.style.display = 'none';
                   }}
-                >
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </Box>
+                />
               </Box>
             ) : !imageError ? (
               <Box sx={{ position: 'relative' }}>
@@ -806,7 +793,7 @@ const TrendingNews = () => {
                 top: 16,
                 left: 16,
                 zIndex: 2,
-                backgroundColor: '#0039CB',
+                backgroundColor: hasVideo ? '#E53E3E' : '#0039CB',
                 color: 'white',
                 fontWeight: 'bold',
                 fontSize: '0.75rem',
@@ -814,9 +801,18 @@ const TrendingNews = () => {
                 borderRadius: '4px',
                 letterSpacing: '0.5px',
                 textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
               }}
             >
-              {item.category || 'TRENDING'}
+              {hasVideo && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+              {capitalize(item.category || 'TRENDING')}
+              {hasVideo && ' VIDEO'}
             </Box>
           </Card>
         

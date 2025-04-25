@@ -120,16 +120,54 @@ const NationalNews = () => {
 
   // News card component updated to handle API data
   const NewsCard = ({ item }) => {
+    // Check if item has video content - same approach as in Sports.jsx
+    const hasVideo = item.hasVideo || 
+      item.video || 
+      item.videoPath || 
+      (item.featuredImage && typeof item.featuredImage === 'string' && item.featuredImage.includes('/uploads/videos/video-')) ||
+      (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-'));
+    
     // Check if item has youtubeUrl for video content
-    const isVideo = item.youtubeUrl || item.contentType === 'video';
+    const isYouTubeVideo = !!item.youtubeUrl;
     
     // Add base URL to image path if it's a relative path
     const getFullImageUrl = (imagePath) => {
       if (!imagePath) return 'https://via.placeholder.com/400x300?text=No+Image';
       if (imagePath.startsWith('http')) return imagePath;
-      return `https://api.newztok.in${imagePath}`;
+      return `${baseUrl}${imagePath}`;
     };
     
+    // Function to get video URL if present
+    const getVideoUrl = () => {
+      // First, check if video property is already set
+      if (item.video) {
+        return item.video;
+      }
+      
+      // Next, check for videoPath property
+      if (item.videoPath) {
+        return item.videoPath.startsWith('http') 
+          ? item.videoPath 
+          : `${baseUrl}${item.videoPath}`;
+      }
+      
+      // Check other fields for video paths
+      if (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) {
+        return item.featuredImage.startsWith('http') 
+          ? item.featuredImage 
+          : `${baseUrl}${item.featuredImage}`;
+      }
+      
+      if (item.image && item.image.includes('/uploads/videos/video-')) {
+        return item.image.startsWith('http') 
+          ? item.image 
+          : `${baseUrl}${item.image}`;
+      }
+      
+      return null;
+    };
+    
+    const videoUrl = hasVideo ? getVideoUrl() : null;
     const mediaUrl = getFullImageUrl(item.featuredImage || item.image);
     
     // State for image loading and errors
@@ -168,7 +206,10 @@ const NationalNews = () => {
     // Log the image URL for debugging
     useEffect(() => {
       console.log(`Loading image for "${item.title}": ${mediaUrl}`);
-    }, [mediaUrl, item.title]);
+      if (hasVideo) {
+        console.log(`Video detected for "${item.title}": ${videoUrl}`);
+      }
+    }, [mediaUrl, item.title, hasVideo, videoUrl]);
 
     return (
       <Box sx={{ position: 'relative', height: '100%', mb: 2 }}>
@@ -194,7 +235,7 @@ const NationalNews = () => {
               }
             }}
           >
-            {isVideo && youtubeEmbedUrl ? (
+            {isYouTubeVideo && youtubeEmbedUrl ? (
               <iframe
                 width="100%"
                 height="360"
@@ -204,6 +245,30 @@ const NationalNews = () => {
                 allowFullScreen
                 title={item.title}
               />
+            ) : hasVideo && videoUrl ? (
+              <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
+                <Box
+                  component="video"
+                  src={videoUrl}
+                  controls
+                  preload="metadata"
+                  controlsList="nodownload"
+                  onClick={(e) => e.stopPropagation()}
+                  playsInline
+                  muted
+                  sx={{
+                    width: '100%',
+                    height: '360px',
+                    objectFit: 'cover',
+                  }}
+                  onError={(e) => {
+                    console.error('Video failed to load:', videoUrl);
+                    e.target.onerror = null;
+                    e.target.style.display = 'none';
+                    setImageError(true);
+                  }}
+                />
+              </Box>
             ) : (
               <>
                 {!imageLoaded && !imageError && (
@@ -265,7 +330,7 @@ const NationalNews = () => {
                 top: 16,
                 left: 16,
                 zIndex: 2,
-                backgroundColor: '#FF6F00',
+                backgroundColor: hasVideo ? '#E53E3E' : '#FF6F00',
                 color: 'white',
                 fontWeight: 'bold',
                 fontSize: '0.75rem',
@@ -273,9 +338,18 @@ const NationalNews = () => {
                 borderRadius: '4px',
                 letterSpacing: '0.5px',
                 textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
               }}
             >
+              {hasVideo && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
               {item.category || 'National'}
+              {hasVideo && ' VIDEO'}
             </Box>
           </Card>
         </Link>
@@ -364,16 +438,54 @@ const NationalNews = () => {
   
   // Second section news card component with different style
   const SecondSectionNewsCard = ({ item }) => {
+    // Check if item has video content - same approach as in Sports.jsx
+    const hasVideo = item.hasVideo || 
+      item.video || 
+      item.videoPath || 
+      (item.featuredImage && typeof item.featuredImage === 'string' && item.featuredImage.includes('/uploads/videos/video-')) ||
+      (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-'));
+    
     // Check if item has youtubeUrl for video content
-    const isVideo = item.youtubeUrl || item.contentType === 'video';
+    const isYouTubeVideo = !!item.youtubeUrl;
     
     // Add base URL to image path if it's a relative path
     const getFullImageUrl = (imagePath) => {
       if (!imagePath) return 'https://via.placeholder.com/400x300?text=No+Image';
       if (imagePath.startsWith('http')) return imagePath;
-      return `https://api.newztok.in${imagePath}`;
+      return `${baseUrl}${imagePath}`;
     };
     
+    // Function to get video URL if present
+    const getVideoUrl = () => {
+      // First, check if video property is already set
+      if (item.video) {
+        return item.video;
+      }
+      
+      // Next, check for videoPath property
+      if (item.videoPath) {
+        return item.videoPath.startsWith('http') 
+          ? item.videoPath 
+          : `${baseUrl}${item.videoPath}`;
+      }
+      
+      // Check other fields for video paths
+      if (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) {
+        return item.featuredImage.startsWith('http') 
+          ? item.featuredImage 
+          : `${baseUrl}${item.featuredImage}`;
+      }
+      
+      if (item.image && item.image.includes('/uploads/videos/video-')) {
+        return item.image.startsWith('http') 
+          ? item.image 
+          : `${baseUrl}${item.image}`;
+      }
+      
+      return null;
+    };
+    
+    const videoUrl = hasVideo ? getVideoUrl() : null;
     const mediaUrl = getFullImageUrl(item.featuredImage || item.image);
     
     // State for image loading and errors
@@ -412,7 +524,10 @@ const NationalNews = () => {
     // Log the image URL for debugging
     useEffect(() => {
       console.log(`Loading image for "${item.title}": ${mediaUrl}`);
-    }, [mediaUrl, item.title]);
+      if (hasVideo) {
+        console.log(`Video detected for "${item.title}": ${videoUrl}`);
+      }
+    }, [mediaUrl, item.title, hasVideo, videoUrl]);
 
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', mb: 4, height: '100%' }}>
@@ -435,7 +550,7 @@ const NationalNews = () => {
               }
             }}
           >
-            {isVideo && youtubeEmbedUrl ? (
+            {isYouTubeVideo && youtubeEmbedUrl ? (
               <iframe
                 width="100%"
                 height="280"
@@ -445,6 +560,30 @@ const NationalNews = () => {
                 allowFullScreen
                 title={item.title}
               />
+            ) : hasVideo && videoUrl ? (
+              <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
+                <Box
+                  component="video"
+                  src={videoUrl}
+                  controls
+                  preload="metadata"
+                  controlsList="nodownload"
+                  onClick={(e) => e.stopPropagation()}
+                  playsInline
+                  muted
+                  sx={{
+                    width: '100%',
+                    height: '280px',
+                    objectFit: 'cover',
+                  }}
+                  onError={(e) => {
+                    console.error('Video failed to load:', videoUrl);
+                    e.target.onerror = null;
+                    e.target.style.display = 'none';
+                    setImageError(true);
+                  }}
+                />
+              </Box>
             ) : (
               <>
                 {!imageLoaded && !imageError && (
@@ -506,7 +645,7 @@ const NationalNews = () => {
                 top: 16,
                 left: 16,
                 zIndex: 2,
-                backgroundColor: '#FF6F00',
+                backgroundColor: hasVideo ? '#E53E3E' : '#FF6F00',
                 color: 'white',
                 fontWeight: 'bold',
                 fontSize: '0.75rem',
@@ -514,9 +653,18 @@ const NationalNews = () => {
                 borderRadius: '4px',
                 letterSpacing: '0.5px',
                 textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
               }}
             >
+              {hasVideo && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
               {item.category || 'National'}
+              {hasVideo && ' VIDEO'}
             </Box>
           </Card>
         </Link>

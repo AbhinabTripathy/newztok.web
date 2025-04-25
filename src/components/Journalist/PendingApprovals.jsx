@@ -682,29 +682,6 @@ const PendingApprovals = () => {
             Pending Approval
           </Typography>
         </Box>
-        
-        <Button 
-          variant="outlined"
-          onClick={() => fetchPendingNews()}
-          startIcon={
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 2v6h-6"></path>
-              <path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path>
-              <path d="M3 12a9 9 0 0 0 6.7 15L13 21"></path>
-              <path d="M14 21.5A9 9 0 0 0 21 15l-3-2"></path>
-            </svg>
-          }
-          sx={{ 
-            borderColor: '#4f46e5',
-            color: '#4f46e5',
-            '&:hover': {
-              borderColor: '#4338ca',
-              backgroundColor: 'rgba(79, 70, 229, 0.04)'
-            }
-          }}
-        >
-          Refresh
-        </Button>
       </Box>
 
       {error && (
@@ -737,17 +714,6 @@ const PendingApprovals = () => {
           <FaCheck color="#065f46" />
           {successMessage}
         </div>
-      )}
-
-      {lastFetchTime && (
-        <Typography variant="body2" sx={{ 
-          fontSize: '12px', 
-          color: '#6b7280', 
-          marginBottom: '12px',
-          fontStyle: 'italic'
-        }}>
-          Last updated: {formatDate(lastFetchTime)}
-        </Typography>
       )}
 
       {loading ? (

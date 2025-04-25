@@ -19,7 +19,7 @@ import {
   Favorite as FavoriteIcon,
   FavoriteBorder as FavoriteBorderIcon,
   Visibility as VisibilityIcon,
-  Share as ShareIcon,
+  WhatsApp as WhatsAppIcon,
   Send as SendIcon,
   ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
@@ -348,17 +348,39 @@ const StateNewsDetails = () => {
   };
 
   const handleShareClick = () => {
-    // For simplicity, use browser's share API if available
-    if (navigator.share) {
-      navigator.share({
-        title: newsData?.title || 'State NewzTok Article',
-        url: window.location.href,
-      }).catch(err => console.error("Error sharing:", err));
-    } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(window.location.href)
-        .then(() => alert('Link copied to clipboard!'))
-        .catch(err => console.error("Error copying to clipboard:", err));
+    try {
+      // Get the title
+      const title = newsData?.title || 'State NewzTok Article';
+      
+      // Use NewzTok logo instead of article media
+      const newztokLogo = 'https://api.newztok.in/uploads/newztok-logo.png';
+      
+      // Get a brief excerpt from the content (first 100 characters)
+      // Strip HTML tags for clean text
+      const contentText = newsData?.content 
+        ? newsData.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...' 
+        : 'Check out this state article from NewzTok!';
+      
+      // Create the share text with Read More link and NewzTok logo
+      const shareText = encodeURIComponent(
+        `*${title}*\n\n${contentText}\n\n*Read More:* https://www.newztok.in\n\n${newztokLogo}`
+      );
+      
+      // Create WhatsApp share URL
+      const whatsappUrl = `https://api.whatsapp.com/send?text=${shareText}`;
+      
+      // Open WhatsApp in a new tab
+      window.open(whatsappUrl, '_blank');
+      
+      console.log('Shared via WhatsApp:', {
+        title,
+        content: contentText,
+        logo: newztokLogo,
+        shareUrl: 'https://www.newztok.in'
+      });
+    } catch (err) {
+      console.error("Error sharing to WhatsApp:", err);
+      alert('Failed to share to WhatsApp. Please try again.');
     }
   };
 
@@ -439,16 +461,54 @@ const StateNewsDetails = () => {
     
     console.log("Getting media URL for item:", item);
     
-    // Handle YouTube URLs - Get thumbnail instead of embed
+    // Check for video content first
+    if (item.videoPath) {
+      console.log("Found videoPath:", item.videoPath);
+      return {
+        type: 'video',
+        url: item.videoPath.startsWith('http') 
+          ? item.videoPath 
+          : `${baseURL}${item.videoPath.startsWith('/') ? '' : '/'}${item.videoPath}`
+      };
+    }
+    
+    // Check for video in other fields like image or featuredImage
+    const videoPattern = '/uploads/videos/video-';
+    
+    if (item.featuredImage && typeof item.featuredImage === 'string' && item.featuredImage.includes(videoPattern)) {
+      console.log("Found video in featuredImage:", item.featuredImage);
+      return {
+        type: 'video',
+        url: item.featuredImage.startsWith('http') 
+          ? item.featuredImage 
+          : `${baseURL}${item.featuredImage.startsWith('/') ? '' : '/'}${item.featuredImage}`
+      };
+    }
+    
+    if (item.image && typeof item.image === 'string' && item.image.includes(videoPattern)) {
+      console.log("Found video in image:", item.image);
+      return {
+        type: 'video',
+        url: item.image.startsWith('http') 
+          ? item.image 
+          : `${baseURL}${item.image.startsWith('/') ? '' : '/'}${item.image}`
+      };
+    }
+    
+    // Handle YouTube URLs
     if (item.youtubeUrl) {
       console.log("Found YouTube URL:", item.youtubeUrl);
-      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-      const match = item.youtubeUrl.match(regExp);
-      
-      // Return YouTube thumbnail instead of embed URL
-      return (match && match[2].length === 11)
-        ? `https://img.youtube.com/vi/${match[2]}/maxresdefault.jpg`
-        : null;
+      return {
+        type: 'youtube',
+        url: item.youtubeUrl,
+        thumbnail: (() => {
+          const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+          const match = item.youtubeUrl.match(regExp);
+          return (match && match[2].length === 11)
+            ? `https://img.youtube.com/vi/${match[2]}/maxresdefault.jpg`
+            : null;
+        })()
+      };
     }
     
     // Handle images with various property names
@@ -460,27 +520,56 @@ const StateNewsDetails = () => {
         if (Array.isArray(item[prop]) && item[prop].length > 0) {
           const imgSrc = item[prop][0];
           console.log(`Found image in ${prop} array:`, imgSrc);
-          return typeof imgSrc === 'string' 
-            ? (imgSrc.startsWith('http') ? imgSrc : `${baseURL}${imgSrc}`)
-            : (imgSrc.url || imgSrc.src || null);
+          
+          if (typeof imgSrc === 'string') {
+            // Skip if this is a video path, we've already handled videos
+            if (imgSrc.includes(videoPattern)) continue;
+            
+            return {
+              type: 'image',
+              url: imgSrc.startsWith('http') ? imgSrc : `${baseURL}${imgSrc}`
+            };
+          } else if (imgSrc.url || imgSrc.src) {
+            const url = imgSrc.url || imgSrc.src;
+            if (url.includes(videoPattern)) continue;
+            
+            return {
+              type: 'image',
+              url: url.startsWith('http') ? url : `${baseURL}${url}`
+            };
+          }
         }
         
         // Handle direct string or object
         if (typeof item[prop] === 'string') {
+          // Skip if this is a video path, we've already handled videos
+          if (item[prop].includes(videoPattern)) continue;
+          
           console.log(`Found image in ${prop}:`, item[prop]);
-          return item[prop].startsWith('http') 
-            ? item[prop] 
-            : `${baseURL}${item[prop]}`;
+          return {
+            type: 'image',
+            url: item[prop].startsWith('http') 
+              ? item[prop] 
+              : `${baseURL}${item[prop]}`
+          };
         } else if (typeof item[prop] === 'object' && (item[prop].url || item[prop].src)) {
           const imgSrc = item[prop].url || item[prop].src;
+          if (imgSrc.includes(videoPattern)) continue;
+          
           console.log(`Found image in ${prop} object:`, imgSrc);
-          return imgSrc.startsWith('http') ? imgSrc : `${baseURL}${imgSrc}`;
+          return {
+            type: 'image',
+            url: imgSrc.startsWith('http') ? imgSrc : `${baseURL}${imgSrc}`
+          };
         }
       }
     }
     
     console.log("No media URL found in the item");
-    return 'https://via.placeholder.com/800x400?text=State+News+Image';
+    return {
+      type: 'image',
+      url: 'https://via.placeholder.com/800x400?text=State+News+Image'
+    };
   };
 
   // Capitalize text - Enhanced to handle multiple word capitalization
@@ -644,9 +733,9 @@ const StateNewsDetails = () => {
     );
   }
 
-  // Determine media type and URL
+  // Update the isYoutubeVideo variable
   const mediaUrl = getMediaUrl(newsData);
-  const isYoutubeVideo = mediaUrl && newsData.youtubeUrl;
+  const isYoutubeVideo = mediaUrl && mediaUrl.type === 'youtube';
   const isContentVideo = newsData.contentType === 'video';
   const createdDate = formatDate(newsData.createdAt || newsData.publishedAt || newsData.updatedAt);
   
@@ -753,48 +842,88 @@ const StateNewsDetails = () => {
         {/* Media (Image or Video) */}
         {mediaUrl && (
           <Box sx={{ width: '100%', mb: 3, borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
-            <Box 
-              component="img"
-              src={mediaUrl}
-              alt={newsData.title}
-              sx={{
-                width: '100%',
-                maxHeight: '500px',
-                objectFit: 'cover',
-                borderRadius: '8px',
-              }}
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = 'https://via.placeholder.com/800x400?text=State+News+Image';
-              }}
-            />
-            {isYoutubeVideo && (
+            {mediaUrl.type === 'video' ? (
               <Box
+                component="video"
+                src={mediaUrl.url}
+                controls
+                preload="metadata"
+                controlsList="nodownload"
                 sx={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  width: '68px',
-                  height: '48px',
-                  backgroundColor: 'rgba(0,0,0,0.7)',
-                  borderRadius: '10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
+                  width: '100%',
+                  maxHeight: '500px',
+                  borderRadius: '8px',
+                  backgroundColor: '#000',
                 }}
-                onClick={() => {
-                  if (newsData.youtubeUrl) {
-                    window.open(newsData.youtubeUrl, '_blank');
-                  }
+                onError={(e) => {
+                  console.error("Video load error:", e);
+                  e.target.onerror = null;
+                  // Replace with placeholder if video fails to load
+                  e.target.style.display = 'none';
+                  // Create and append placeholder image
+                  const img = document.createElement('img');
+                  img.src = 'https://via.placeholder.com/800x400?text=Video+Not+Available';
+                  img.style.width = '100%';
+                  img.style.maxHeight = '500px';
+                  img.style.objectFit = 'cover';
+                  img.style.borderRadius = '8px';
+                  e.target.parentNode.appendChild(img);
                 }}
-              >
-                <svg height="24" width="34" viewBox="0 0 68 48">
-                  <path d="M66.52,7.74c-0.78-2.93-2.49-5.41-5.42-6.19C55.79,.13,34,0,34,0S12.21,.13,6.9,1.55 C3.97,2.33,2.27,4.81,1.48,7.74C0.06,13.05,0,24,0,24s0.06,10.95,1.48,16.26c0.78,2.93,2.49,5.41,5.42,6.19 C12.21,47.87,34,48,34,48s21.79-0.13,27.1-1.55c2.93-0.78,4.64-3.26,5.42-6.19C67.94,34.95,68,24,68,24S67.94,13.05,66.52,7.74z" fill="#f00"></path>
-                  <path d="M 45,24 27,14 27,34" fill="#fff"></path>
-                </svg>
-              </Box>
+              />
+            ) : mediaUrl.type === 'youtube' ? (
+              <>
+                <Box 
+                  component="img"
+                  src={mediaUrl.thumbnail || 'https://via.placeholder.com/800x400?text=YouTube+Video'}
+                  alt={newsData.title}
+                  sx={{
+                    width: '100%',
+                    maxHeight: '500px',
+                    objectFit: 'cover',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => window.open(mediaUrl.url, '_blank')}
+                />
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: '68px',
+                    height: '48px',
+                    backgroundColor: 'rgba(0,0,0,0.7)',
+                    borderRadius: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => window.open(mediaUrl.url, '_blank')}
+                >
+                  <svg height="24" width="34" viewBox="0 0 68 48">
+                    <path d="M66.52,7.74c-0.78-2.93-2.49-5.41-5.42-6.19C55.79,.13,34,0,34,0S12.21,.13,6.9,1.55 C3.97,2.33,2.27,4.81,1.48,7.74C0.06,13.05,0,24,0,24s0.06,10.95,1.48,16.26c0.78,2.93,2.49,5.41,5.42,6.19 C12.21,47.87,34,48,34,48s21.79-0.13,27.1-1.55c2.93-0.78,4.64-3.26,5.42-6.19C67.94,34.95,68,24,68,24S67.94,13.05,66.52,7.74z" fill="#f00"></path>
+                    <path d="M 45,24 27,14 27,34" fill="#fff"></path>
+                  </svg>
+                </Box>
+              </>
+            ) : (
+              <Box 
+                component="img"
+                src={mediaUrl.url}
+                alt={newsData.title}
+                sx={{
+                  width: '100%',
+                  maxHeight: '500px',
+                  objectFit: 'cover',
+                  borderRadius: '8px',
+                }}
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = 'https://via.placeholder.com/800x400?text=State+News+Image';
+                }}
+              />
             )}
           </Box>
         )}
@@ -846,12 +975,31 @@ const StateNewsDetails = () => {
             </Typography>
           </Box>
           
-          <Box sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }} onClick={handleShareClick}>
-            <IconButton color="default" size="small">
-              <ShareIcon />
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              cursor: 'pointer',
+              color: '#25D366', // WhatsApp green color
+              '&:hover': {
+                opacity: 0.9
+              }
+            }} 
+            onClick={handleShareClick}
+          >
+            <IconButton 
+              size="small" 
+              sx={{ 
+                color: '#25D366',
+                '&:hover': {
+                  transform: 'scale(1.1)',
+                }
+              }}
+            >
+              <WhatsAppIcon />
             </IconButton>
             <Typography variant="body2" sx={{ ml: 0.5 }}>
-              Share
+              Share on WhatsApp
             </Typography>
           </Box>
         </Box>

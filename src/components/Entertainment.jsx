@@ -23,6 +23,8 @@ const Entertainment = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+  
+  const baseUrl = 'https://api.newztok.in';
 
   // Category tabs data
   const categoryTabs = [
@@ -76,7 +78,10 @@ const Entertainment = () => {
           featuredImage: item.featuredImage,
           image: item.image,
           images: item.images,
-          category: item.category
+          category: item.category,
+          hasVideo: item.hasVideo,
+          video: item.video,
+          videoPath: item.videoPath
         });
       });
       
@@ -157,17 +162,72 @@ const Entertainment = () => {
     }
   };
 
+  // Function to capitalize first letter
+  const capitalizeFirstLetter = (string) => {
+    if (!string) return '';
+    return string.charAt(0).toUpperCase() + string.slice(1).toLowerCase();
+  };
+
   // News card component
   const NewsCard = ({ item }) => {
     const [imageError, setImageError] = useState(false);
+    const [videoError, setVideoError] = useState(false);
     
     const handleImageError = () => {
       console.error(`Error loading image for "${item.title}"`);
       setImageError(true);
     };
     
+    const handleVideoError = () => {
+      console.error(`Error loading video for "${item.title}"`);
+      setVideoError(true);
+      setImageError(true); // Fall back to same error state
+    };
+    
     const handleCardClick = () => {
       navigate(`/entertainment/${item.id}`);
+    };
+    
+    // Check if item has video
+    const hasVideo = item.hasVideo || 
+                    item.video || 
+                    item.videoPath || 
+                    (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) ||
+                    (item.image && item.image.includes('/uploads/videos/video-'));
+    
+    console.log(`Item "${item.title}" has video:`, hasVideo);
+    
+    // Get video URL with proper handling
+    const getVideoUrl = () => {
+      if (item.video && item.video.includes('youtube.com')) {
+        return getYoutubeEmbedUrl(item.video);
+      }
+      
+      if (item.videoPath) {
+        if (item.videoPath.startsWith('http')) {
+          return item.videoPath;
+        } else {
+          return `${baseUrl}${item.videoPath}`;
+        }
+      }
+      
+      if (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) {
+        if (item.featuredImage.startsWith('http')) {
+          return item.featuredImage;
+        } else {
+          return `${baseUrl}${item.featuredImage}`;
+        }
+      }
+      
+      if (item.image && item.image.includes('/uploads/videos/video-')) {
+        if (item.image.startsWith('http')) {
+          return item.image;
+        } else {
+          return `${baseUrl}${item.image}`;
+        }
+      }
+      
+      return '';
     };
     
     // Get image URL with proper handling
@@ -177,7 +237,8 @@ const Entertainment = () => {
         featuredImage: item.featuredImage,
         image: item.image,
         images: item.images,
-        youtubeUrl: item.youtubeUrl
+        youtubeUrl: item.youtubeUrl,
+        hasVideo: hasVideo
       });
       
       // If item has youtubeUrl, extract and return YouTube thumbnail
@@ -202,28 +263,28 @@ const Entertainment = () => {
       }
       
       // If item has featuredImage
-      if (item.featuredImage) {
+      if (item.featuredImage && !item.featuredImage.includes('/uploads/videos/video-')) {
         // Check if it's a full URL or just a path
         if (item.featuredImage.startsWith('http')) {
           console.log(`Using full featuredImage URL for "${item.title}": ${item.featuredImage}`);
           return item.featuredImage;
         } else {
           // Add base URL for relative paths
-          const fullUrl = `https://api.newztok.in${item.featuredImage}`;
+          const fullUrl = `${baseUrl}${item.featuredImage}`;
           console.log(`Using relative featuredImage with base URL for "${item.title}": ${fullUrl}`);
           return fullUrl;
         }
       }
       
       // If item has image property
-      if (item.image) {
+      if (item.image && !item.image.includes('/uploads/videos/video-')) {
         // Check if it's a full URL or just a path
         if (item.image.startsWith('http')) {
           console.log(`Using full image URL for "${item.title}": ${item.image}`);
           return item.image;
         } else {
           // Add base URL for relative paths
-          const fullUrl = `https://api.newztok.in${item.image}`;
+          const fullUrl = `${baseUrl}${item.image}`;
           console.log(`Using relative image with base URL for "${item.title}": ${fullUrl}`);
           return fullUrl;
         }
@@ -234,12 +295,30 @@ const Entertainment = () => {
       return 'https://placehold.co/800x400/000000/FFFFFF/png?text=Entertainment+News';
     };
     
+    // Function to get YouTube embed URL
+    const getYoutubeEmbedUrl = (url) => {
+      if (!url) return '';
+      
+      const regex = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+      const match = url.match(regex);
+      
+      if (match && match[1]) {
+        return `https://www.youtube.com/embed/${match[1]}`;
+      }
+      
+      return '';
+    };
+    
     const imageUrl = getImageUrl();
+    const videoUrl = getVideoUrl();
     
     // Debug image URL
     useEffect(() => {
       console.log(`Image URL for "${item.title}":`, imageUrl);
-    }, [imageUrl, item.title]);
+      if (hasVideo) {
+        console.log(`Video URL for "${item.title}":`, videoUrl);
+      }
+    }, [imageUrl, videoUrl, item.title]);
     
     return (
       <Box sx={{ position: 'relative', height: '100%', mb: 2 }} onClick={handleCardClick}>
@@ -261,7 +340,35 @@ const Entertainment = () => {
             }
           }}
         >
-          {!imageError ? (
+          {hasVideo && videoUrl && !videoError ? (
+            item.video && item.video.includes('youtube.com') ? (
+              <iframe
+                width="100%"
+                height="360"
+                src={videoUrl}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={item.title}
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <video
+                width="100%"
+                height="360"
+                controls
+                preload="metadata"
+                controlsList="nodownload"
+                onClick={(e) => e.stopPropagation()}
+                onError={handleVideoError}
+                playsInline
+                muted
+              >
+                <source src={videoUrl} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            )
+          ) : !imageError ? (
             <CardMedia
               component="img"
               height="360"
@@ -283,7 +390,7 @@ const Entertainment = () => {
                 color: '#999'
               }}
             >
-              Image not available
+              {hasVideo ? 'Video not available' : 'Image not available'}
             </Box>
           )}
           <Box
@@ -292,7 +399,7 @@ const Entertainment = () => {
               top: 16,
               left: 16,
               zIndex: 2,
-              backgroundColor: '#8E24AA',
+              backgroundColor: hasVideo ? '#FF0000' : '#8E24AA',
               color: 'white',
               fontWeight: 'bold',
               fontSize: '0.75rem',
@@ -300,9 +407,17 @@ const Entertainment = () => {
               borderRadius: '4px',
               letterSpacing: '0.5px',
               textTransform: 'uppercase',
+              display: 'flex',
+              alignItems: 'center',
             }}
           >
-            {item.category || 'ENTERTAINMENT'}
+            {hasVideo && (
+              <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 24 24" fill="white" style={{ marginRight: '4px' }}>
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+            )}
+            {capitalizeFirstLetter(item.category || 'ENTERTAINMENT')}
+            {hasVideo && " VIDEO"}
           </Box>
         </Card>
         
@@ -358,6 +473,7 @@ const Entertainment = () => {
   // Second section news card component with different style
   const SecondSectionNewsCard = ({ item }) => {
     const [imageError, setImageError] = useState(false);
+    const [videoError, setVideoError] = useState(false);
     const navigate = useNavigate();
     
     const handleImageError = () => {
@@ -365,8 +481,56 @@ const Entertainment = () => {
       setImageError(true);
     };
     
+    const handleVideoError = () => {
+      console.error(`Error loading video for "${item.title}"`);
+      setVideoError(true);
+      setImageError(true); // Fall back to same error state
+    };
+    
     const handleCardClick = () => {
       navigate(`/entertainment/${item.id}`);
+    };
+    
+    // Check if item has video
+    const hasVideo = item.hasVideo || 
+                    item.video || 
+                    item.videoPath || 
+                    (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) ||
+                    (item.image && item.image.includes('/uploads/videos/video-'));
+    
+    console.log(`Item "${item.title}" has video:`, hasVideo);
+    
+    // Get video URL with proper handling
+    const getVideoUrl = () => {
+      if (item.video && item.video.includes('youtube.com')) {
+        return getYoutubeEmbedUrl(item.video);
+      }
+      
+      if (item.videoPath) {
+        if (item.videoPath.startsWith('http')) {
+          return item.videoPath;
+        } else {
+          return `${baseUrl}${item.videoPath}`;
+        }
+      }
+      
+      if (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) {
+        if (item.featuredImage.startsWith('http')) {
+          return item.featuredImage;
+        } else {
+          return `${baseUrl}${item.featuredImage}`;
+        }
+      }
+      
+      if (item.image && item.image.includes('/uploads/videos/video-')) {
+        if (item.image.startsWith('http')) {
+          return item.image;
+        } else {
+          return `${baseUrl}${item.image}`;
+        }
+      }
+      
+      return '';
     };
     
     // Get image URL with proper handling
@@ -395,28 +559,28 @@ const Entertainment = () => {
       }
       
       // If item has featuredImage
-      if (item.featuredImage) {
+      if (item.featuredImage && !item.featuredImage.includes('/uploads/videos/video-')) {
         // Check if it's a full URL or just a path
         if (item.featuredImage.startsWith('http')) {
           console.log(`Using full featuredImage URL: ${item.featuredImage}`);
           return item.featuredImage;
         } else {
           // Add base URL for relative paths
-          const fullUrl = `https://api.newztok.in${item.featuredImage}`;
+          const fullUrl = `${baseUrl}${item.featuredImage}`;
           console.log(`Using relative featuredImage with base URL: ${fullUrl}`);
           return fullUrl;
         }
       }
       
       // If item has image property
-      if (item.image) {
+      if (item.image && !item.image.includes('/uploads/videos/video-')) {
         // Check if it's a full URL or just a path
         if (item.image.startsWith('http')) {
           console.log(`Using full image URL: ${item.image}`);
           return item.image;
         } else {
           // Add base URL for relative paths
-          const fullUrl = `https://api.newztok.in${item.image}`;
+          const fullUrl = `${baseUrl}${item.image}`;
           console.log(`Using relative image with base URL: ${fullUrl}`);
           return fullUrl;
         }
@@ -427,7 +591,22 @@ const Entertainment = () => {
       return 'https://placehold.co/800x400/000000/FFFFFF/png?text=Entertainment+News';
     };
     
+    // Function to get YouTube embed URL
+    const getYoutubeEmbedUrl = (url) => {
+      if (!url) return '';
+      
+      const regex = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+      const match = url.match(regex);
+      
+      if (match && match[1]) {
+        return `https://www.youtube.com/embed/${match[1]}`;
+      }
+      
+      return '';
+    };
+    
     const imageUrl = getImageUrl();
+    const videoUrl = getVideoUrl();
     
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', mb: 4, height: '100%' }} onClick={handleCardClick}>
@@ -441,7 +620,35 @@ const Entertainment = () => {
             backgroundColor: 'white',
           }}
         >
-          {!imageError ? (
+          {hasVideo && videoUrl && !videoError ? (
+            item.video && item.video.includes('youtube.com') ? (
+              <iframe
+                width="100%"
+                height="360"
+                src={videoUrl}
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={item.title}
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <video
+                width="100%"
+                height="360"
+                controls
+                preload="metadata"
+                controlsList="nodownload"
+                onClick={(e) => e.stopPropagation()}
+                onError={handleVideoError}
+                playsInline
+                muted
+              >
+                <source src={videoUrl} type="video/mp4" />
+                Your browser does not support the video tag.
+              </video>
+            )
+          ) : !imageError ? (
             <CardMedia
               component="img"
               height="360"
@@ -463,7 +670,7 @@ const Entertainment = () => {
                 color: '#999'
               }}
             >
-              Image not available
+              {hasVideo ? 'Video not available' : 'Image not available'}
             </Box>
           )}
           <Box
@@ -472,7 +679,7 @@ const Entertainment = () => {
               top: 16,
               left: 16,
               zIndex: 2,
-              backgroundColor: '#8E24AA',
+              backgroundColor: hasVideo ? '#FF0000' : '#8E24AA',
               color: 'white',
               fontWeight: 'bold',
               fontSize: '0.75rem',
@@ -480,9 +687,17 @@ const Entertainment = () => {
               borderRadius: '4px',
               letterSpacing: '0.5px',
               textTransform: 'uppercase',
+              display: 'flex',
+              alignItems: 'center',
             }}
           >
-            {item.category || 'ENTERTAINMENT'}
+            {hasVideo && (
+              <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 24 24" fill="white" style={{ marginRight: '4px' }}>
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+            )}
+            {capitalizeFirstLetter(item.category || 'ENTERTAINMENT')}
+            {hasVideo && " VIDEO"}
           </Box>
         </Card>
         
