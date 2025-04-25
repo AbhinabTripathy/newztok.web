@@ -1499,80 +1499,13 @@ const EditPost = () => {
     );
   };
 
-  // Return the overall layout with Journalist Header, Sidebar, and Footer
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      <JournalistHeader />
-      
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        <div style={{ width: '250px', backgroundColor: '#1e2029' }}>
-          <JournalistSidebar 
-            activeSection="editPost"
-            onSectionChange={(section) => {
-              console.log('Sidebar section clicked:', section);
-              
-              // Check if there are unsaved changes
-              const hasUnsavedChanges = isSaving;
-              
-              if (hasUnsavedChanges) {
-                // Prevent navigation if currently saving
-                alert('Please wait until the current save operation is complete');
-                return;
-              }
-              
-              // Clear localStorage data to prevent stale data when navigating away
-              if (section !== 'editPost') {
-                localStorage.removeItem('editNewsItem');
-              }
-              
-              // Handle navigation based on the section with clear destinations
-              switch(section) {
-                case 'overview':
-                  console.log('Navigating to Overview/Home');
-                  navigate('/journalist/home');
-                  break;
-                case 'standardPost':
-                  console.log('Navigating to Standard Post');
-                  navigate('/journalist/standardPost');
-                  break;
-                case 'videoPost':
-                  console.log('Navigating to Video Post');
-                  navigate('/journalist/videoPost');
-                  break;
-                case 'posts':
-                  console.log('Navigating to Posts');
-                  navigate('/journalist/posts');
-                  break;
-                case 'pendingApprovals':
-                  console.log('Navigating to Pending Approvals');
-                  navigate('/journalist/pendingApprovals');
-                  break;
-                case 'rejected':
-                  console.log('Navigating to Rejected');
-                  navigate('/journalist/rejected');
-                  break;
-                default:
-                  console.log(`Navigating to ${section}`);
-                  navigate(`/journalist/${section}`);
-              }
-            }}
-          />
-        </div>
-        
-        <main style={{ flex: 1, overflow: 'auto', backgroundColor: '#f8fafc' }}>
-          {renderEditContent()}
-        </main>
-      </div>
-      
-      <JournalistFooter />
-    </div>
-  );
-};
+  const getYouTubeId = (url) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
 
-const getYouTubeId = (url) => {
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-  const match = url.match(regExp);
-  return (match && match[2].length === 11) ? match[2] : null;
+  return renderEditContent();
 };
 
 export default EditPost; 

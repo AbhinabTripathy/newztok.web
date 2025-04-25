@@ -698,6 +698,7 @@ const Header = () => {
               <IconButton size="small" sx={{ color: '#25D366' }} component="a" href="https://whatsapp.com/channel/0029VbA2TzqG8l5AxszzsJ0E" target="_blank">
                 <WhatsAppIcon fontSize="small" />
               </IconButton>
+              {/* Search icon commented out
               <IconButton 
                 size="small" 
                 sx={{ color: '#333' }}
@@ -705,6 +706,7 @@ const Header = () => {
               >
                 <SearchIcon fontSize="small" />
               </IconButton>
+              */}
               <IconButton 
                 size="small" 
                 edge="end" 
@@ -720,7 +722,7 @@ const Header = () => {
         </Container>
       </AppBar>
 
-      {/* Search Dialog */}
+      {/* Search Dialog - Commented out
       <Dialog 
         open={searchOpen} 
         onClose={handleSearchClose} 
@@ -791,7 +793,6 @@ const Header = () => {
                 Search...
               </Typography>
               
-              {/* Hidden input that gets focused */}
               <input
                 type="text"
                 value={searchQuery}
@@ -816,7 +817,6 @@ const Header = () => {
               />
             </Box>
 
-            {/* Recent searches or trending topics */}
             <Box sx={{ mb: 6 }}>
               <Typography 
                 variant="subtitle1" 
@@ -861,7 +861,6 @@ const Header = () => {
               </Stack>
             </Box>
 
-            {/* Search Results */}
             <Grid container spacing={4}>
               {searchResults.map((result) => (
                 <SearchResultItem key={result.id} item={result} />
@@ -870,6 +869,7 @@ const Header = () => {
           </Box>
         </DialogContent>
       </Dialog>
+      */}
 
       {/* Sidebar Drawer */}
       <Drawer
