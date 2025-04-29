@@ -123,11 +123,9 @@ const ReEditPost = () => {
   const [activeSection, setActiveSection] = useState('posts');
   const [isVideoContent, setIsVideoContent] = useState(false);
   const [selectedVideoFile, setSelectedVideoFile] = useState(null);
-  const [selectedImageFile, setSelectedImageFile] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [videoUploadMethod, setVideoUploadMethod] = useState('file'); // 'file' or 'youtube'
   const [videoPreviewUrl, setVideoPreviewUrl] = useState('');
-  const [imagePreviewUrl, setImagePreviewUrl] = useState('');
   const [editorKey, setEditorKey] = useState(Date.now());
 
   // Load data from location state or fetch from API
@@ -256,10 +254,15 @@ const ReEditPost = () => {
         formData.append('category', newsData.category || '');
         formData.append('state', newsData.state || '');
         formData.append('district', newsData.district || '');
-        formData.append('featuredImage', newsData.featuredImage || '');
+        formData.append('featuredImage', newsData.featuredImage || ''); // Pass existing featuredImage
         formData.append('contentType', isVideoContent ? 'video' : 'standard');
         formData.append('status', 'approved');
         formData.append('isFeatured', newsData.isFeatured || false);
+        
+        // Add YouTube URL if present (keep existing one)
+        if (newsData.youtubeUrl) {
+          formData.append('youtubeUrl', newsData.youtubeUrl);
+        }
         
         // Add video file
         formData.append('video', selectedVideoFile);
@@ -303,15 +306,16 @@ const ReEditPost = () => {
           category: newsData.category || '',
           state: newsData.state || '',
           district: newsData.district || '',
-          featuredImage: newsData.featuredImage || '',
+          featuredImage: newsData.featuredImage || '', // Pass existing featuredImage
           contentType: isVideoContent ? 'video' : 'standard',
           status: 'approved'
         };
         
         // Handle video content exactly like EditorEditScreen
         if (isVideoContent) {
-          if (videoUploadMethod === 'youtube') {
-            updatedData.youtubeUrl = newsData.youtubeUrl || '';
+          // Always include existing YouTube URL if present
+          if (newsData.youtubeUrl) {
+            updatedData.youtubeUrl = newsData.youtubeUrl;
           } else {
             updatedData.videoPath = newsData.videoPath || '';
             updatedData.video = newsData.video || '';
@@ -361,11 +365,29 @@ const ReEditPost = () => {
     navigate(`/editor/${section}`);
   };
 
-  // Get video URL for display
+  // Function to get video URL for display
   const getVideoUrl = (path) => {
     if (!path) return '';
     
     // If path already has the API base URL, return as is
+    if (path.startsWith('http')) {
+      return path;
+    }
+    
+    // If path starts with a slash, append to API base URL
+    if (path.startsWith('/')) {
+      return `${API_BASE_URL}${path}`;
+    }
+    
+    // Otherwise, append with a slash
+    return `${API_BASE_URL}/${path}`;
+  };
+  
+  // Get image URL for display
+  const getImageUrl = (path) => {
+    if (!path) return '';
+    
+    // If path already has the API base URL or is a full URL, return as is
     if (path.startsWith('http')) {
       return path;
     }
@@ -410,37 +432,6 @@ const ReEditPost = () => {
     const url = e.target.value;
     handleInputChange('youtubeUrl', url);
     setVideoUploadMethod('youtube');
-  };
-
-  // Function to handle image file selection
-  const handleImageFileChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    console.log('Selected image file:', file);
-    setSelectedImageFile(file);
-    
-    // Create a preview URL for the image
-    const imageObjectUrl = URL.createObjectURL(file);
-    setImagePreviewUrl(imageObjectUrl);
-  };
-
-  // Get image URL for display
-  const getImageUrl = (path) => {
-    if (!path) return '';
-    
-    // If path already has the API base URL or is a full URL, return as is
-    if (path.startsWith('http')) {
-      return path;
-    }
-    
-    // If path starts with a slash, append to API base URL
-    if (path.startsWith('/')) {
-      return `${API_BASE_URL}${path}`;
-    }
-    
-    // Otherwise, append with a slash
-    return `${API_BASE_URL}/${path}`;
   };
 
   return (
@@ -711,305 +702,6 @@ const ReEditPost = () => {
                       />
                     </div>
                     
-                    {/* Featured Image Upload */}
-                    <div style={{ marginBottom: '24px' }}>
-                      <label 
-                        htmlFor="featuredImage"
-                        style={{
-                          display: 'block',
-                          marginBottom: '8px',
-                          fontSize: '16px',
-                          fontWeight: '500',
-                          color: '#111827'
-                        }}
-                      >
-                        Featured Image
-                      </label>
-                      <div style={{ 
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        padding: '12px',
-                        backgroundColor: '#f9fafb'
-                      }}>
-                        <input
-                          id="featuredImage"
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageFileChange}
-                          style={{ display: 'none' }}
-                        />
-                        <div style={{ 
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between'
-                        }}>
-                          <div>
-                            <label
-                              htmlFor="featuredImage"
-                              style={{
-                                display: 'inline-block',
-                                padding: '8px 16px',
-                                backgroundColor: '#3b82f6',
-                                color: 'white',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                marginRight: '12px'
-                              }}
-                            >
-                              Choose Image
-                            </label>
-                            <span style={{ color: '#6b7280', fontSize: '14px' }}>
-                              {selectedImageFile ? selectedImageFile.name : 
-                              newsData.featuredImage ? 
-                              (newsData.featuredImage.split('/').pop() || 'Current image') : 
-                              'No image selected'}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {/* Image preview */}
-                        {(imagePreviewUrl || newsData.featuredImage) && (
-                          <div style={{ marginTop: '16px' }}>
-                            <img
-                              src={imagePreviewUrl || getImageUrl(newsData.featuredImage)}
-                              alt="Featured"
-                              style={{ 
-                                maxWidth: '100%', 
-                                maxHeight: '200px', 
-                                borderRadius: '4px',
-                                objectFit: 'contain'
-                              }}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {/* Video upload section - only shown for video content */}
-                    {isVideoContent && (
-                      <div style={{ marginBottom: '24px' }}>
-                        <div style={{ 
-                          marginBottom: '16px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '16px'
-                        }}>
-                          <div 
-                            onClick={() => setVideoUploadMethod('file')}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              padding: '8px 12px',
-                              borderRadius: '6px',
-                              backgroundColor: videoUploadMethod === 'file' ? '#eff6ff' : 'transparent',
-                              border: `1px solid ${videoUploadMethod === 'file' ? '#3b82f6' : '#d1d5db'}`,
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <div style={{
-                              width: '16px',
-                              height: '16px',
-                              borderRadius: '50%',
-                              border: `2px solid ${videoUploadMethod === 'file' ? '#3b82f6' : '#d1d5db'}`,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}>
-                              {videoUploadMethod === 'file' && (
-                                <div style={{
-                                  width: '8px',
-                                  height: '8px',
-                                  borderRadius: '50%',
-                                  backgroundColor: '#3b82f6'
-                                }}></div>
-                              )}
-                            </div>
-                            <span style={{ color: videoUploadMethod === 'file' ? '#3b82f6' : '#374151' }}>Upload Video</span>
-                          </div>
-                          
-                          <div 
-                            onClick={() => setVideoUploadMethod('youtube')}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              padding: '8px 12px',
-                              borderRadius: '6px',
-                              backgroundColor: videoUploadMethod === 'youtube' ? '#eff6ff' : 'transparent',
-                              border: `1px solid ${videoUploadMethod === 'youtube' ? '#3b82f6' : '#d1d5db'}`,
-                              cursor: 'pointer'
-                            }}
-                          >
-                            <div style={{
-                              width: '16px',
-                              height: '16px',
-                              borderRadius: '50%',
-                              border: `2px solid ${videoUploadMethod === 'youtube' ? '#3b82f6' : '#d1d5db'}`,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}>
-                              {videoUploadMethod === 'youtube' && (
-                                <div style={{
-                                  width: '8px',
-                                  height: '8px',
-                                  borderRadius: '50%',
-                                  backgroundColor: '#3b82f6'
-                                }}></div>
-                              )}
-                            </div>
-                            <span style={{ color: videoUploadMethod === 'youtube' ? '#3b82f6' : '#374151' }}>YouTube URL</span>
-                          </div>
-                        </div>
-                        
-                        {videoUploadMethod === 'file' ? (
-                          <div>
-                            <label 
-                              htmlFor="videoFile"
-                              style={{
-                                display: 'block',
-                                marginBottom: '8px',
-                                fontSize: '14px',
-                                fontWeight: '500',
-                                color: '#374151'
-                              }}
-                            >
-                              Upload Video File
-                            </label>
-                            <div style={{ 
-                              border: '1px solid #d1d5db',
-                              borderRadius: '6px',
-                              padding: '12px',
-                              backgroundColor: '#f9fafb'
-                            }}>
-                              <input
-                                id="videoFile"
-                                type="file"
-                                accept="video/*"
-                                onChange={handleVideoFileChange}
-                                style={{ display: 'none' }}
-                              />
-                              <div style={{ 
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between'
-                              }}>
-                                <div>
-                                  <label
-                                    htmlFor="videoFile"
-                                    style={{
-                                      display: 'inline-block',
-                                      padding: '8px 16px',
-                                      backgroundColor: '#3b82f6',
-                                      color: 'white',
-                                      borderRadius: '6px',
-                                      cursor: 'pointer',
-                                      marginRight: '12px'
-                                    }}
-                                  >
-                                    Browse Files
-                                  </label>
-                                  <span style={{ color: '#6b7280', fontSize: '14px' }}>
-                                    {selectedVideoFile ? selectedVideoFile.name : 
-                                     (newsData.videoPath || newsData.video) ? 
-                                     getDisplayVideoPath(newsData) : 'No file selected'}
-                                  </span>
-                                </div>
-                              </div>
-                              
-                              {/* Video preview */}
-                              {(videoPreviewUrl || newsData.videoPath || newsData.video) && (
-                                <div style={{ marginTop: '16px' }}>
-                                  <video
-                                    controls
-                                    key={videoPreviewUrl || newsData.videoPath || newsData.video}
-                                    style={{ maxWidth: '100%', maxHeight: '300px', borderRadius: '4px' }}
-                                    src={videoPreviewUrl || getVideoUrl(newsData.videoPath || newsData.video)}
-                                  />
-                                </div>
-                              )}
-                              
-                              {/* Upload progress bar */}
-                              {uploadProgress > 0 && uploadProgress < 100 && (
-                                <div style={{ marginTop: '12px' }}>
-                                  <div style={{ 
-                                    height: '4px', 
-                                    backgroundColor: '#e5e7eb',
-                                    borderRadius: '2px',
-                                    overflow: 'hidden'
-                                  }}>
-                                    <div 
-                                      style={{ 
-                                        height: '100%', 
-                                        width: `${uploadProgress}%`,
-                                        backgroundColor: '#3b82f6'
-                                      }}
-                                    />
-                                  </div>
-                                  <div style={{ 
-                                    display: 'flex', 
-                                    justifyContent: 'space-between',
-                                    fontSize: '12px',
-                                    color: '#6b7280',
-                                    marginTop: '4px'
-                                  }}>
-                                    <span>Uploading...</span>
-                                    <span>{uploadProgress}%</span>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        ) : (
-                          <div>
-                            <label 
-                              htmlFor="youtubeUrl"
-                              style={{
-                                display: 'block',
-                                marginBottom: '8px',
-                                fontSize: '14px',
-                                fontWeight: '500',
-                                color: '#374151'
-                              }}
-                            >
-                              YouTube Video URL
-                            </label>
-                            <input
-                              id="youtubeUrl"
-                              type="url"
-                              value={newsData.youtubeUrl || ''}
-                              onChange={handleYoutubeUrlChange}
-                              placeholder="https://www.youtube.com/watch?v=..."
-                              style={{
-                                width: '100%',
-                                padding: '10px 12px',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '6px',
-                                fontSize: '16px'
-                              }}
-                            />
-                            
-                            {/* YouTube preview */}
-                            {newsData.youtubeUrl && (
-                              <div style={{ marginTop: '16px' }}>
-                                <iframe
-                                  width="100%"
-                                  height="315"
-                                  src={`https://www.youtube.com/embed/${newsData.youtubeUrl.split('v=')[1]?.split('&')[0]}`}
-                                  title="YouTube video player"
-                                  frameBorder="0"
-                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                  allowFullScreen
-                                  style={{ borderRadius: '4px' }}
-                                ></iframe>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-
                     {/* Post content */}
                     <div style={{ marginBottom: '24px' }}>
                       <label 
