@@ -92,10 +92,161 @@ const StandardPost = () => {
   const [district, setDistrict] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [journalistProfile, setJournalistProfile] = useState(null);
   const editorRef = useRef(null);
   const navigate = useNavigate();
+
+  // Define the state and district data structure
+  const locationData = {
+    jharkhand: [
+      { hindi: "रांची", english: "Ranchi", value: "ranchi" },
+      { hindi: "जमशेदपुर", english: "Jamshedpur", value: "jamshedpur" },
+      { hindi: "धनबाद", english: "Dhanbad", value: "dhanbad" },
+      { hindi: "बोकारो", english: "Bokaro", value: "bokaro" },
+      { hindi: "देवघर", english: "Deoghar", value: "deoghar" },
+      { hindi: "हजारीबाग", english: "Hazaribagh", value: "hazaribagh" },
+      { hindi: "गिरिडीह", english: "Giridih", value: "giridih" },
+      { hindi: "कोडरमा", english: "Koderma", value: "koderma" },
+      { hindi: "चतरा", english: "Chatra", value: "chatra" },
+      { hindi: "गुमला", english: "Gumla", value: "gumla" },
+      { hindi: "लातेहार", english: "Latehar", value: "latehar" },
+      { hindi: "लोहरदगा", english: "Lohardaga", value: "lohardaga" },
+      { hindi: "पाकुड़", english: "Pakur", value: "pakur" },
+      { hindi: "पलामू", english: "Palamu", value: "palamu" },
+      { hindi: "रामगढ़", english: "Ramgarh", value: "ramgarh" },
+      { hindi: "साहिबगंज", english: "Sahibganj", value: "sahibganj" },
+      { hindi: "सिमडेगा", english: "Simdega", value: "simdega" },
+      { hindi: "सिंहभूम", english: "Singhbhum", value: "singhbhum" },
+      { hindi: "सरायकेला खरसावां", english: "Seraikela Kharsawan", value: "seraikela-kharsawan" },
+      { hindi: "पूर्वी सिंहभूम", english: "East Singhbhum", value: "east-singhbhum" },
+      { hindi: "पश्चिमी सिंहभूम", english: "West Singhbhum", value: "west-singhbhum" },
+      { hindi: "डुमका", english: "Dumka", value: "dumka" },
+      { hindi: "गढ़वा", english: "Garhwa", value: "garhwa" },
+      { hindi: "गोड्डा", english: "Godda", value: "godda" }
+    ],
+    bihar: [
+      { hindi: "पटना", english: "Patna", value: "patna" },
+      { hindi: "गया", english: "Gaya", value: "gaya" },
+      { hindi: "मुंगेर", english: "Munger", value: "munger" },
+      { hindi: "भागलपुर", english: "Bhagalpur", value: "bhagalpur" },
+      { hindi: "पूर्णिया", english: "Purnia", value: "purnia" },
+      { hindi: "दरभंगा", english: "Darbhanga", value: "darbhanga" },
+      { hindi: "मुजफ्फरपुर", english: "Muzaffarpur", value: "muzaffarpur" },
+      { hindi: "सहरसा", english: "Saharsa", value: "saharsa" },
+      { hindi: "सीतामढ़ी", english: "Sitamarhi", value: "sitamarhi" },
+      { hindi: "वैशाली", english: "Vaishali", value: "vaishali" },
+      { hindi: "सिवान", english: "Siwan", value: "siwan" },
+      { hindi: "सारण", english: "Saran", value: "saran" },
+      { hindi: "गोपालगंज", english: "Gopalganj", value: "gopalganj" },
+      { hindi: "बेगूसराय", english: "Begusarai", value: "begusarai" },
+      { hindi: "समस्तीपुर", english: "Samastipur", value: "samastipur" },
+      { hindi: "मधुबनी", english: "Madhubani", value: "madhubani" },
+      { hindi: "सुपौल", english: "Supaul", value: "supaul" },
+      { hindi: "अररिया", english: "Araria", value: "araria" },
+      { hindi: "किशनगंज", english: "Kishanganj", value: "kishanganj" },
+      { hindi: "कटिहार", english: "Katihar", value: "katihar" },
+      { hindi: "पूर्वी चंपारण", english: "East Champaran", value: "east-champaran" },
+      { hindi: "पश्चिमी चंपारण", english: "West Champaran", value: "west-champaran" },
+      { hindi: "शिवहर", english: "Sheohar", value: "sheohar" },
+      { hindi: "मधेपुरा", english: "Madhepura", value: "madhepura" },
+      { hindi: "अरवल", english: "Arwal", value: "arwal" },
+      { hindi: "औरंगाबाद", english: "Aurangabad", value: "aurangabad-bihar" },
+      { hindi: "बांका", english: "Banka", value: "banka" },
+      { hindi: "भोजपुर", english: "Bhojpur", value: "bhojpur" },
+      { hindi: "बक्सर", english: "Buxar", value: "buxar" },
+      { hindi: "जमुई", english: "Jamui", value: "jamui" },
+      { hindi: "जहानाबाद", english: "Jehanabad", value: "jehanabad" },
+      { hindi: "कैमूर", english: "Kaimur", value: "kaimur" },
+      { hindi: "खगरिया", english: "Khagaria", value: "khagaria" },
+      { hindi: "लखीसराय", english: "Lakhisarai", value: "lakhisarai" },
+      { hindi: "नालंदा", english: "Nalanda", value: "nalanda" },
+      { hindi: "नवादा", english: "Nawada", value: "nawada" },
+      { hindi: "रोहतास", english: "Rohtas", value: "rohtas" },
+      { hindi: "शेखपुरा", english: "Sheikhpura", value: "sheikhpura" }
+    ],
+    "up": [
+      { hindi: "लखनऊ", english: "Lucknow", value: "lucknow" },
+      { hindi: "कानपुर", english: "Kanpur", value: "kanpur" },
+      { hindi: "आगरा", english: "Agra", value: "agra" },
+      { hindi: "वाराणसी", english: "Varanasi", value: "varanasi" },
+      { hindi: "प्रयागराज", english: "Prayagraj", value: "prayagraj" },
+      { hindi: "मेरठ", english: "Meerut", value: "meerut" },
+      { hindi: "नोएडा", english: "Noida", value: "noida" },
+      { hindi: "गाजियाबाद", english: "Ghaziabad", value: "ghaziabad" },
+      { hindi: "बरेली", english: "Bareilly", value: "bareilly" },
+      { hindi: "अलीगढ़", english: "Aligarh", value: "aligarh" },
+      { hindi: "मुरादाबाद", english: "Moradabad", value: "moradabad" },
+      { hindi: "सहारनपुर", english: "Saharanpur", value: "saharanpur" },
+      { hindi: "गोरखपुर", english: "Gorakhpur", value: "gorakhpur" },
+      { hindi: "फैजाबाद", english: "Faizabad", value: "faizabad" },
+      { hindi: "जौनपुर", english: "Jaunpur", value: "jaunpur" },
+      { hindi: "मथुरा", english: "Mathura", value: "mathura" },
+      { hindi: "बलिया", english: "Ballia", value: "ballia" },
+      { hindi: "रायबरेली", english: "Rae Bareli", value: "rae-bareli" },
+      { hindi: "सुल्तानपुर", english: "Sultanpur", value: "sultanpur" },
+      { hindi: "फतेहपुर", english: "Fatehpur", value: "fatehpur" },
+      { hindi: "प्रतापगढ़", english: "Pratapgarh", value: "pratapgarh" },
+      { hindi: "कौशाम्बी", english: "Kaushambi", value: "kaushambi" },
+      { hindi: "झांसी", english: "Jhansi", value: "jhansi" },
+      { hindi: "ललितपुर", english: "Lalitpur", value: "lalitpur" },
+      { hindi: "अम्बेडकर नगर", english: "Ambedkar Nagar", value: "ambedkar-nagar" },
+      { hindi: "अमेठी", english: "Amethi", value: "amethi" },
+      { hindi: "अमरोहा", english: "Amroha", value: "amroha" },
+      { hindi: "औरैया", english: "Auraiya", value: "auraiya" },
+      { hindi: "अयोध्या", english: "Ayodhya", value: "ayodhya" },
+      { hindi: "आजमगढ़", english: "Azamgarh", value: "azamgarh" },
+      { hindi: "बागपत", english: "Baghpat", value: "baghpat" },
+      { hindi: "बहराइच", english: "Bahraich", value: "bahraich" },
+      { hindi: "बलरामपुर", english: "Balrampur", value: "balrampur" },
+      { hindi: "बांदा", english: "Banda", value: "banda" },
+      { hindi: "बाराबंकी", english: "Barabanki", value: "barabanki" },
+      { hindi: "बस्ती", english: "Basti", value: "basti" },
+      { hindi: "भदोही", english: "Bhadohi", value: "bhadohi" },
+      { hindi: "बिजनौर", english: "Bijnor", value: "bijnor" },
+      { hindi: "बदायूं", english: "Budaun", value: "budaun" },
+      { hindi: "बुलंदशहर", english: "Bulandshahr", value: "bulandshahr" },
+      { hindi: "चंदौली", english: "Chandauli", value: "chandauli" },
+      { hindi: "चित्रकूट", english: "Chitrakoot", value: "chitrakoot" },
+      { hindi: "देवरिया", english: "Deoria", value: "deoria" },
+      { hindi: "एटा", english: "Etah", value: "etah" },
+      { hindi: "इटावा", english: "Etawah", value: "etawah" },
+      { hindi: "फर्रुखाबाद", english: "Farrukhabad", value: "farrukhabad" },
+      { hindi: "फिरोजाबाद", english: "Firozabad", value: "firozabad" },
+      { hindi: "गौतम बुद्ध नगर", english: "Gautam Buddha Nagar", value: "gautam-buddha-nagar" },
+      { hindi: "गाजीपुर", english: "Ghazipur", value: "ghazipur" },
+      { hindi: "गोंडा", english: "Gonda", value: "gonda" },
+      { hindi: "हमीरपुर", english: "Hamirpur", value: "hamirpur" },
+      { hindi: "हापुड़", english: "Hapur", value: "hapur" },
+      { hindi: "हरदोई", english: "Hardoi", value: "hardoi" },
+      { hindi: "हाथरस", english: "Hathras", value: "hathras" },
+      { hindi: "जालौन", english: "Jalaun", value: "jalaun" },
+      { hindi: "कन्नौज", english: "Kannauj", value: "kannauj" },
+      { hindi: "कानपुर देहात", english: "Kanpur Dehat", value: "kanpur-dehat" },
+      { hindi: "कानपुर नगर", english: "Kanpur Nagar", value: "kanpur-nagar" },
+      { hindi: "कासगंज", english: "Kasganj", value: "kasganj" },
+      { hindi: "खीरी", english: "Kheri", value: "kheri" },
+      { hindi: "कुशीनगर", english: "Kushinagar", value: "kushinagar" },
+      { hindi: "महोबा", english: "Mahoba", value: "mahoba" },
+      { hindi: "महराजगंज", english: "Mahrajganj", value: "mahrajganj" },
+      { hindi: "मैनपुरी", english: "Mainpuri", value: "mainpuri" },
+      { hindi: "मऊ", english: "Mau", value: "mau" },
+      { hindi: "मिर्जापुर", english: "Mirzapur", value: "mirzapur" },
+      { hindi: "मुजफ्फरनगर", english: "Muzaffarnagar", value: "muzaffarnagar" },
+      { hindi: "पीलीभीत", english: "Pilibhit", value: "pilibhit" },
+      { hindi: "रामपुर", english: "Rampur", value: "rampur" },
+      { hindi: "संभल", english: "Sambhal", value: "sambhal" },
+      { hindi: "संत कबीर नगर", english: "Sant Kabir Nagar", value: "sant-kabir-nagar" },
+      { hindi: "शाहजहांपुर", english: "Shahjahanpur", value: "shahjahanpur" },
+      { hindi: "शामली", english: "Shamli", value: "shamli" },
+      { hindi: "श्रावस्ती", english: "Shrawasti", value: "shrawasti" },
+      { hindi: "सिद्धार्थनगर", english: "Siddharthnagar", value: "siddharthnagar" },
+      { hindi: "सीतापुर", english: "Sitapur", value: "sitapur" },
+      { hindi: "सोनभद्र", english: "Sonbhadra", value: "sonbhadra" },
+      { hindi: "उन्नाव", english: "Unnao", value: "unnao" }
+    ]
+  };
 
   // Function to get auth token
   const getAuthToken = () => {
@@ -480,6 +631,12 @@ const StandardPost = () => {
     setContent(content);
   };
 
+  // Handle category change
+  const handleCategoryChange = (e) => {
+    const selectedCategory = e.target.value;
+    setCategory(selectedCategory);
+  };
+
   return (
     <div style={{ padding: '30px', backgroundColor: '#f9fafb' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -714,27 +871,9 @@ const StandardPost = () => {
                 }}
               />
             </div>
-          </form>
-        </div>
-        
-        {/* Right Sidebar */}
-        <div style={{ flex: '1' }}>
-          <div style={{ 
-            backgroundColor: 'white', 
-            borderRadius: '8px', 
-            padding: '20px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
-          }}>
-            <h2 style={{ 
-              fontSize: '18px', 
-              fontWeight: '600', 
-              marginBottom: '16px',
-              color: '#111827'
-            }}>
-              Organize
-            </h2>
-            
-            <div style={{ marginBottom: '16px' }}>
+
+            {/* Category Dropdown */}
+            <div style={{ marginBottom: '24px' }}>
               <label 
                 htmlFor="category"
                 style={{ 
@@ -752,7 +891,7 @@ const StandardPost = () => {
                 <select
                   id="category"
                   value={category}
-                  onChange={(e) => setCategory(e.target.value)}
+                  onChange={handleCategoryChange}
                   style={{
                     width: '100%',
                     padding: '10px 14px',
@@ -781,6 +920,25 @@ const StandardPost = () => {
                 />
               </div>
             </div>
+          </form>
+        </div>
+        
+        {/* Right Sidebar */}
+        <div style={{ flex: '1' }}>
+          <div style={{ 
+            backgroundColor: 'white', 
+            borderRadius: '8px', 
+            padding: '20px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h2 style={{ 
+              fontSize: '18px', 
+              fontWeight: '600', 
+              marginBottom: '16px',
+              color: '#111827'
+            }}>
+              Organize
+            </h2>
             
             {/* State Dropdown */}
             <div style={{ marginBottom: '16px' }}>
@@ -866,87 +1024,11 @@ const StandardPost = () => {
                   disabled={!state || !!journalistProfile?.assignDistrict}
                 >
                   <option value="">---------</option>
-                  {state === 'bihar' && (
-                    <>
-                      <option value="patna">पटना | Patna</option>
-                      <option value="gaya">गया | Gaya</option>
-                      <option value="munger">मुंगेर | Munger</option>
-                      <option value="bhagalpur">भागलपुर | Bhagalpur</option>
-                      <option value="purnia">पूर्णिया | Purnia</option>
-                      <option value="darbhanga">दरभंगा | Darbhanga</option>
-                      <option value="muzaffarpur">मुजफ्फरपुर | Muzaffarpur</option>
-                      <option value="saharsa">सहरसा | Saharsa</option>
-                      <option value="sitamarhi">सीतामढ़ी | Sitamarhi</option>
-                      <option value="vaishali">वैशाली | Vaishali</option>
-                      <option value="siwan">सिवान | Siwan</option>
-                      <option value="saran">सारण | Saran</option>
-                      <option value="gopalganj">गोपालगंज | Gopalganj</option>
-                      <option value="begusarai">बेगूसराय | Begusarai</option>
-                      <option value="samastipur">समस्तीपुर | Samastipur</option>
-                      <option value="madhubani">मधुबनी | Madhubani</option>
-                      <option value="supaul">सुपौल | Supaul</option>
-                      <option value="araria">अररिया | Araria</option>
-                      <option value="kishanganj">किशनगंज | Kishanganj</option>
-                      <option value="katihar">कटिहार | Katihar</option>
-                      <option value="east-champaran">पूर्वी चंपारण | East Champaran</option>
-                      <option value="west-champaran">पश्चिमी चंपारण | West Champaran</option>
-                      <option value="sheohar">शिवहर | Sheohar</option>
-                      <option value="madhepura">मधेपुरा | Madhepura</option>
-                    </>
-                  )}
-                  {state === 'jharkhand' && (
-                    <>
-                      <option value="ranchi">रांची | Ranchi</option>
-                      <option value="jamshedpur">जमशेदपुर | Jamshedpur</option>
-                      <option value="dhanbad">धनबाद | Dhanbad</option>
-                      <option value="bokaro">बोकारो | Bokaro</option>
-                      <option value="deoghar">देवघर | Deoghar</option>
-                      <option value="hazaribagh">हजारीबाग | Hazaribagh</option>
-                      <option value="giridih">गिरिडीह | Giridih</option>
-                      <option value="koderma">कोडरमा | Koderma</option>
-                      <option value="chatra">चतरा | Chatra</option>
-                      <option value="gumla">गुमला | Gumla</option>
-                      <option value="latehar">लातेहार | Latehar</option>
-                      <option value="lohardaga">लोहरदगा | Lohardaga</option>
-                      <option value="pakur">पाकुड़ | Pakur</option>
-                      <option value="palamu">पलामू | Palamu</option>
-                      <option value="ramgarh">रामगढ़ | Ramgarh</option>
-                      <option value="sahibganj">साहिबगंज | Sahibganj</option>
-                      <option value="simdega">सिमडेगा | Simdega</option>
-                      <option value="singhbhum">सिंहभूम | Singhbhum</option>
-                      <option value="seraikela-kharsawan">सरायकेला खरसावां | Seraikela Kharsawan</option>
-                      <option value="east-singhbhum">पूर्वी सिंहभूम | East Singhbhum</option>
-                      <option value="west-singhbhum">पश्चिमी सिंहभूम | West Singhbhum</option>
-                    </>
-                  )}
-                  {state === 'up' && (
-                    <>
-                      <option value="lucknow">लखनऊ | Lucknow</option>
-                      <option value="kanpur">कानपुर | Kanpur</option>
-                      <option value="agra">आगरा | Agra</option>
-                      <option value="varanasi">वाराणसी | Varanasi</option>
-                      <option value="prayagraj">प्रयागराज | Prayagraj</option>
-                      <option value="meerut">मेरठ | Meerut</option>
-                      <option value="noida">नोएडा | Noida</option>
-                      <option value="ghaziabad">गाजियाबाद | Ghaziabad</option>
-                      <option value="bareilly">बरेली | Bareilly</option>
-                      <option value="aligarh">अलीगढ़ | Aligarh</option>
-                      <option value="moradabad">मुरादाबाद | Moradabad</option>
-                      <option value="saharanpur">सहारनपुर | Saharanpur</option>
-                      <option value="gorakhpur">गोरखपुर | Gorakhpur</option>
-                      <option value="faizabad">फैजाबाद | Faizabad</option>
-                      <option value="jaunpur">जौनपुर | Jaunpur</option>
-                      <option value="mathura">मथुरा | Mathura</option>
-                      <option value="ballia">बलिया | Ballia</option>
-                      <option value="rae-bareli">रायबरेली | Rae Bareli</option>
-                      <option value="sultanpur">सुल्तानपुर | Sultanpur</option>
-                      <option value="fatehpur">फतेहपुर | Fatehpur</option>
-                      <option value="pratapgarh">प्रतापगढ़ | Pratapgarh</option>
-                      <option value="kaushambi">कौशाम्बी | Kaushambi</option>
-                      <option value="jhansi">झांसी | Jhansi</option>
-                      <option value="lalitpur">ललितपुर | Lalitpur</option>
-                    </>
-                  )}
+                  {state && locationData[state] && locationData[state].map(district => (
+                    <option key={district.value} value={district.value}>
+                      {district.hindi} | {district.english}
+                    </option>
+                  ))}
                 </select>
                 <FiChevronDown 
                   style={{ 

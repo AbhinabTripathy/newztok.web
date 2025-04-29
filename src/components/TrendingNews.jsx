@@ -60,7 +60,7 @@ const TrendingNews = () => {
     
     try {
       console.log('Fetching trending news from endpoint...');
-      const response = await axios.get('https://api.newztok.in/api/news/trending');
+      const response = await axios.get('https://api.newztok.in/api/news/featured');
       console.log('API Response:', response);
       
       let fetchedNews = [];

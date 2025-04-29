@@ -10,10 +10,6 @@ import {
   Divider,
   CircularProgress,
 } from '@mui/material';
-import FacebookIcon from '@mui/icons-material/Facebook';
-import InstagramIcon from '@mui/icons-material/Instagram';
-import TwitterIcon from '@mui/icons-material/Twitter';
-import YouTubeIcon from '@mui/icons-material/YouTube';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import axios from 'axios';
@@ -52,20 +48,20 @@ const HomeScreen = () => {
     state: null
   });
 
-  // Social media stats exactly as in the image
-  const socialMedia = [
-    { icon: <FacebookIcon sx={{ fontSize: 28, color: '#4267B2' }} />, count: '20.5k', label: 'likes' },
-    { icon: <InstagramIcon sx={{ fontSize: 28, color: '#C13584' }} />, count: '20.5k', label: 'followers' },
-    { icon: <TwitterIcon sx={{ fontSize: 28, color: '#1DA1F2' }} />, count: '20.5k', label: 'followers' },
-    { icon: <YouTubeIcon sx={{ fontSize: 28, color: '#FF0000' }} />, count: '20.5k', label: 'subscribers' },
-  ];
+  // // Social media stats exactly as in the image
+  // const socialMedia = [
+  //   { icon: <FacebookIcon sx={{ fontSize: 28, color: '#4267B2' }} />, count: '20.5k', label: 'likes' },
+  //   { icon: <InstagramIcon sx={{ fontSize: 28, color: '#C13584' }} />, count: '20.5k', label: 'followers' },
+  //   { icon: <TwitterIcon sx={{ fontSize: 28, color: '#1DA1F2' }} />, count: '20.5k', label: 'followers' },
+  //   { icon: <YouTubeIcon sx={{ fontSize: 28, color: '#FF0000' }} />, count: '20.5k', label: 'subscribers' },
+  // ];
 
-  // Category tabs data
-  const categoryTabs = [
-    { name: 'Active', count: '11' },
-    { name: 'Business', count: '10' },
-    { name: 'Crazy', count: '5' },
-  ];
+  // // Category tabs data
+  // const categoryTabs = [
+  //   { name: 'Active', count: '11' },
+  //   { name: 'Business', count: '10' },
+  //   { name: 'Crazy', count: '5' },
+  // ];
 
   // Base URL for API
   const baseUrl = 'https://api.newztok.in';
@@ -165,7 +161,7 @@ const HomeScreen = () => {
     
     try {
       console.log('Fetching trending news...');
-      const response = await axios.get(`${baseUrl}/api/news/trending`);
+      const response = await axios.get(`${baseUrl}/api/news/featured`);
       const news = processApiResponseWithVideos(response, 'trending');
       console.log('Trending news:', news);
       setTrendingNews(news);
@@ -960,43 +956,43 @@ const HomeScreen = () => {
     </Box>
   );
 
-  // Category tab component
-  const CategoryTab = ({ name, count }) => (
-    <Box 
-      sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        backgroundColor: '#000',
-        color: 'white',
-        p: 2,
-        borderRadius: 2,
-        mb: 2,
-        cursor: 'pointer',
-        '&:hover': {
-          opacity: 0.9
-        }
-      }}
-    >
-      <Typography fontWeight="medium">{name}</Typography>
-      <Box 
-        sx={{ 
-          backgroundColor: 'white', 
-          color: 'black', 
-          width: 30, 
-          height: 30, 
-          borderRadius: '50%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontWeight: 'bold',
-          fontSize: '0.9rem'
-        }}
-      >
-        {count}
-      </Box>
-    </Box>
-  );
+  // // Category tab component
+  // const CategoryTab = ({ name, count }) => (
+  //   <Box 
+  //     sx={{ 
+  //       display: 'flex', 
+  //       justifyContent: 'space-between', 
+  //       alignItems: 'center',
+  //       backgroundColor: '#000',
+  //       color: 'white',
+  //       p: 2,
+  //       borderRadius: 2,
+  //       mb: 2,
+  //       cursor: 'pointer',
+  //       '&:hover': {
+  //         opacity: 0.9
+  //       }
+  //     }}
+  //   >
+  //     <Typography fontWeight="medium">{name}</Typography>
+  //     <Box 
+  //       sx={{ 
+  //         backgroundColor: 'white', 
+  //         color: 'black', 
+  //         width: 30, 
+  //         height: 30, 
+  //         borderRadius: '50%',
+  //         display: 'flex',
+  //         alignItems: 'center',
+  //         justifyContent: 'center',
+  //         fontWeight: 'bold',
+  //         fontSize: '0.9rem'
+  //       }}
+  //     >
+  //       {count}
+  //     </Box>
+  //   </Box>
+  // );
 
   // 970 x 100 Advertisement component
   const LargeAd = () => {
@@ -1355,7 +1351,7 @@ const HomeScreen = () => {
             mb: 3, 
             fontWeight: 'bold',
             position: 'relative',
-            pl: 2,
+            pl: 4,
             '&:before': {
               content: '""',
               position: 'absolute',
@@ -1407,15 +1403,40 @@ const HomeScreen = () => {
               {/* Advertisement */}
               <SideAd />
               
-              {/* Category Tabs */}
+              {/* Category Tabs
               <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                 {categoryTabs.map((tab, index) => (
                   <CategoryTab key={index} name={tab.name} count={tab.count} />
                 ))}
-              </Box>
+              </Box> */}
             </Box>
           </Box>
         )}
+
+        {/* Second row of trending news cards */}
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3, mt: 3, mb: 3 }}>
+          {trendingNews.length > 2 && (
+            <Box sx={{ flex: 1 }}>
+              <NewsCard 
+                item={trendingNews[2]} 
+                categoryLabel="TRENDING"
+                categoryColor="#FF5722"
+                isLarge={true}
+              />
+            </Box>
+          )}
+          
+          {trendingNews.length > 3 && (
+            <Box sx={{ flex: 1 }}>
+              <NewsCard 
+                item={trendingNews[3]}
+                categoryLabel="TRENDING"
+                categoryColor="#FF5722" 
+                isLarge={true}
+              />
+            </Box>
+          )}
+        </Box>
 
         {/* Advertisement after Trending */}
         <LargeAd />
@@ -1532,48 +1553,37 @@ const HomeScreen = () => {
               )}
             </Box>
             
-            {/* Right Side - Social Media and Recent Posts */}
+            {/* Right Side - Advertisement */}
             <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {/* Social Media Stats Box */}
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  flexWrap: 'wrap',
-                  border: '1px solid #eee',
-                  borderRadius: 1,
-                  overflow: 'hidden',
-                  mb: 3,
-                  backgroundColor: 'white',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                }}
-              >
-                {socialMedia.map((item, index) => (
-                  <Box 
-                    key={index}
-                    sx={{ 
-                      width: '50%', 
-                      p: 2, 
-                      display: 'flex', 
-                      flexDirection: 'column', 
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      borderRight: index % 2 === 0 ? '1px solid #eee' : 'none',
-                      borderBottom: index < 2 ? '1px solid #eee' : 'none',
-                    }}
-                  >
-                    {item.icon}
-                    <Typography sx={{ fontWeight: 'bold', fontSize: '1.1rem', mt: 1 }}>
-                      {item.count}
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: '#666', fontSize: '0.8rem' }}>
-                      {item.label}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
+              <SideAd />
             </Box>
           </Box>
         )}
+        
+        {/* Second row of national news cards */}
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3, mt: 3, mb: 3 }}>
+          {nationalNews.length > 3 && (
+            <Box sx={{ flex: 1 }}>
+              <NewsCard 
+                item={nationalNews[3]} 
+                categoryLabel="NATIONAL"
+                categoryColor="#D32F2F"
+                isLarge={true}
+              />
+            </Box>
+          )}
+          
+          {nationalNews.length > 4 && (
+            <Box sx={{ flex: 1 }}>
+              <NewsCard 
+                item={nationalNews[4]}
+                categoryLabel="NATIONAL"
+                categoryColor="#D32F2F" 
+                isLarge={true}
+              />
+            </Box>
+          )}
+        </Box>
 
         {/* Advertisement after National */}
         <LargeAd />
@@ -1639,6 +1649,31 @@ const HomeScreen = () => {
             </Box>
           </Box>
         )}
+        
+        {/* Second row of international news cards */}
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3, mt: 3, mb: 3 }}>
+          {internationalNews.length > 2 && (
+            <Box sx={{ flex: 1 }}>
+              <NewsCard 
+                item={internationalNews[2]} 
+                categoryLabel="INTERNATIONAL"
+                categoryColor="#1976D2"
+                isLarge={true}
+              />
+            </Box>
+          )}
+          
+          {internationalNews.length > 3 && (
+            <Box sx={{ flex: 1 }}>
+              <NewsCard 
+                item={internationalNews[3]}
+                categoryLabel="INTERNATIONAL"
+                categoryColor="#1976D2" 
+                isLarge={true}
+              />
+            </Box>
+          )}
+        </Box>
 
         {/* Advertisement after International */}
         <LargeAd />
@@ -1704,6 +1739,31 @@ const HomeScreen = () => {
             </Box>
           </Box>
         )}
+        
+        {/* Second row of sports news cards */}
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3, mt: 3, mb: 3 }}>
+          {sportsNews.length > 0 && (
+            <Box sx={{ flex: 1 }}>
+              <NewsCard 
+                item={sportsNews[0]} 
+                categoryLabel="SPORTS"
+                categoryColor="#4CAF50"
+                isLarge={true}
+              />
+            </Box>
+          )}
+          
+          {sportsNews.length > 1 && (
+            <Box sx={{ flex: 1 }}>
+              <NewsCard 
+                item={sportsNews[1]}
+                categoryLabel="SPORTS"
+                categoryColor="#4CAF50" 
+                isLarge={true}
+              />
+            </Box>
+          )}
+        </Box>
 
         {/* Advertisement after Sports */}
         <LargeAd />
@@ -1711,11 +1771,22 @@ const HomeScreen = () => {
         {/* STATE NEWS SECTION */}
         <Typography 
           variant="h5" 
+          component="h2"
           sx={{ 
-            fontWeight: 'bold', 
-            mb: 2,
-            color: '#111827',
-            fontSize: { xs: '1.25rem', md: '1.5rem' }
+            mb: 3, 
+            fontWeight: 'bold',
+            position: 'relative',
+            pl: 2,
+            '&:before': {
+              content: '""',
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: 5,
+              backgroundColor: '#FFC107',
+              borderRadius: 1
+            }
           }}
         >
           STATE NEWS
@@ -1758,6 +1829,31 @@ const HomeScreen = () => {
             </Box>
           </Box>
         )}
+        
+        {/* Second row of state news cards (these may not show if only 2 items exist) */}
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3, mt: 3, mb: 3 }}>
+          {stateNews.length > 2 && (
+            <Box sx={{ flex: 1 }}>
+              <NewsCard 
+                item={stateNews[2]} 
+                categoryLabel="STATE"
+                categoryColor="#FFC107"
+                isLarge={true}
+              />
+            </Box>
+          )}
+          
+          {stateNews.length > 3 && (
+            <Box sx={{ flex: 1 }}>
+              <NewsCard 
+                item={stateNews[3]}
+                categoryLabel="STATE"
+                categoryColor="#FFC107" 
+                isLarge={true}
+              />
+            </Box>
+          )}
+        </Box>
 
         {/* Last Advertisement */}
         <LargeAd />
@@ -1823,6 +1919,31 @@ const HomeScreen = () => {
             </Box>
           </Box>
         )}
+        
+        {/* Second row of entertainment news cards */}
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3, mt: 3, mb: 3 }}>
+          {entertainmentNews.length > 2 && (
+            <Box sx={{ flex: 1 }}>
+              <NewsCard 
+                item={entertainmentNews[2]} 
+                categoryLabel="ENTERTAINMENT"
+                categoryColor="#9C27B0"
+                isLarge={true}
+              />
+            </Box>
+          )}
+          
+          {entertainmentNews.length > 3 && (
+            <Box sx={{ flex: 1 }}>
+              <NewsCard 
+                item={entertainmentNews[3]}
+                categoryLabel="ENTERTAINMENT"
+                categoryColor="#9C27B0" 
+                isLarge={true}
+              />
+            </Box>
+          )}
+        </Box>
 
         {/* Final Advertisement */}
         <LargeAd />

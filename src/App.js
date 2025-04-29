@@ -26,6 +26,7 @@ import ProtectedRoute from './components/Journalist/ProtectedRoute';
 import EditPost from './components/Journalist/EditPost';
 import EditorHome from './components/Editor/EditorHome';
 import EditorEditScreen from './components/Editor/EditorEditScreen';
+import ReEditPost from './components/Editor/ReEditPost';
 import ProtectedEditorRoute from './components/ProtectedEditorRoute';
 import NewsFeed from './components/NewsFeed';
 import { ThemeProvider, createTheme, Box, Button } from '@mui/material';
@@ -185,6 +186,7 @@ function App() {
               <Routes>
                 <Route path="/*" element={<EditorHome />} />
                 <Route path="/edit/:newsId" element={<EditorEditScreen />} />
+                <Route path="/re-edit/:newsId" element={<ReEditPost />} />
               </Routes>
             </ProtectedEditorRoute>
           } 

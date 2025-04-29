@@ -37,7 +37,11 @@ const locationData = {
         { hindi: "सिंहभूम", english: "Singhbhum", value: "singhbhum" },
         { hindi: "सरायकेला खरसावां", english: "Seraikela Kharsawan", value: "seraikela-kharsawan" },
         { hindi: "पूर्वी सिंहभूम", english: "East Singhbhum", value: "east-singhbhum" },
-        { hindi: "पश्चिमी सिंहभूम", english: "West Singhbhum", value: "west-singhbhum" }
+        { hindi: "पश्चिमी सिंहभूम", english: "West Singhbhum", value: "west-singhbhum" },
+        // Added districts
+        { hindi: "डुमका", english: "Dumka", value: "dumka" },
+        { hindi: "गढ़वा", english: "Garhwa", value: "garhwa" },
+        { hindi: "गोड्डा", english: "Godda", value: "godda" }
     ],
     bihar: [
         { hindi: "पटना", english: "Patna", value: "patna" },
@@ -63,7 +67,22 @@ const locationData = {
         { hindi: "पूर्वी चंपारण", english: "East Champaran", value: "east-champaran" },
         { hindi: "पश्चिमी चंपारण", english: "West Champaran", value: "west-champaran" },
         { hindi: "शिवहर", english: "Sheohar", value: "sheohar" },
-        { hindi: "मधेपुरा", english: "Madhepura", value: "madhepura" }
+        { hindi: "मधेपुरा", english: "Madhepura", value: "madhepura" },
+        // Added districts
+        { hindi: "अरवल", english: "Arwal", value: "arwal" },
+        { hindi: "औरंगाबाद", english: "Aurangabad", value: "aurangabad-bihar" },
+        { hindi: "बांका", english: "Banka", value: "banka" },
+        { hindi: "भोजपुर", english: "Bhojpur", value: "bhojpur" },
+        { hindi: "बक्सर", english: "Buxar", value: "buxar" },
+        { hindi: "जमुई", english: "Jamui", value: "jamui" },
+        { hindi: "जहानाबाद", english: "Jehanabad", value: "jehanabad" },
+        { hindi: "कैमूर", english: "Kaimur", value: "kaimur" },
+        { hindi: "खगरिया", english: "Khagaria", value: "khagaria" },
+        { hindi: "लखीसराय", english: "Lakhisarai", value: "lakhisarai" },
+        { hindi: "नालंदा", english: "Nalanda", value: "nalanda" },
+        { hindi: "नवादा", english: "Nawada", value: "nawada" },
+        { hindi: "रोहतास", english: "Rohtas", value: "rohtas" },
+        { hindi: "शेखपुरा", english: "Sheikhpura", value: "sheikhpura" }
     ],
     "up": [
         { hindi: "लखनऊ", english: "Lucknow", value: "lucknow" },
@@ -89,7 +108,62 @@ const locationData = {
         { hindi: "प्रतापगढ़", english: "Pratapgarh", value: "pratapgarh" },
         { hindi: "कौशाम्बी", english: "Kaushambi", value: "kaushambi" },
         { hindi: "झांसी", english: "Jhansi", value: "jhansi" },
-        { hindi: "ललितपुर", english: "Lalitpur", value: "lalitpur" }
+        { hindi: "ललितपुर", english: "Lalitpur", value: "lalitpur" },
+        // Added districts
+        { hindi: "अम्बेडकर नगर", english: "Ambedkar Nagar", value: "ambedkar-nagar" },
+        { hindi: "अमेठी", english: "Amethi", value: "amethi" },
+        { hindi: "अमरोहा", english: "Amroha", value: "amroha" },
+        { hindi: "औरैया", english: "Auraiya", value: "auraiya" },
+        { hindi: "अयोध्या", english: "Ayodhya", value: "ayodhya" },
+        { hindi: "आजमगढ़", english: "Azamgarh", value: "azamgarh" },
+        { hindi: "बागपत", english: "Baghpat", value: "baghpat" },
+        { hindi: "बहराइच", english: "Bahraich", value: "bahraich" },
+        { hindi: "बलरामपुर", english: "Balrampur", value: "balrampur" },
+        { hindi: "बांदा", english: "Banda", value: "banda" },
+        { hindi: "बाराबंकी", english: "Barabanki", value: "barabanki" },
+        { hindi: "बस्ती", english: "Basti", value: "basti" },
+        { hindi: "भदोही", english: "Bhadohi", value: "bhadohi" },
+        { hindi: "बिजनौर", english: "Bijnor", value: "bijnor" },
+        { hindi: "बदायूं", english: "Budaun", value: "budaun" },
+        { hindi: "बुलंदशहर", english: "Bulandshahr", value: "bulandshahr" },
+        { hindi: "चंदौली", english: "Chandauli", value: "chandauli" },
+        { hindi: "चित्रकूट", english: "Chitrakoot", value: "chitrakoot" },
+        { hindi: "देवरिया", english: "Deoria", value: "deoria" },
+        { hindi: "एटा", english: "Etah", value: "etah" },
+        { hindi: "इटावा", english: "Etawah", value: "etawah" },
+        { hindi: "फर्रुखाबाद", english: "Farrukhabad", value: "farrukhabad" },
+        { hindi: "फिरोजाबाद", english: "Firozabad", value: "firozabad" },
+        { hindi: "गौतम बुद्ध नगर", english: "Gautam Buddha Nagar", value: "gautam-buddha-nagar" },
+        { hindi: "गाजीपुर", english: "Ghazipur", value: "ghazipur" },
+        { hindi: "गोंडा", english: "Gonda", value: "gonda" },
+        { hindi: "हमीरपुर", english: "Hamirpur", value: "hamirpur" },
+        { hindi: "हापुड़", english: "Hapur", value: "hapur" },
+        { hindi: "हरदोई", english: "Hardoi", value: "hardoi" },
+        { hindi: "हाथरस", english: "Hathras", value: "hathras" },
+        { hindi: "जालौन", english: "Jalaun", value: "jalaun" },
+        { hindi: "कन्नौज", english: "Kannauj", value: "kannauj" },
+        { hindi: "कानपुर देहात", english: "Kanpur Dehat", value: "kanpur-dehat" },
+        { hindi: "कानपुर नगर", english: "Kanpur Nagar", value: "kanpur-nagar" },
+        { hindi: "कासगंज", english: "Kasganj", value: "kasganj" },
+        { hindi: "खीरी", english: "Kheri", value: "kheri" },
+        { hindi: "कुशीनगर", english: "Kushinagar", value: "kushinagar" },
+        { hindi: "महोबा", english: "Mahoba", value: "mahoba" },
+        { hindi: "महराजगंज", english: "Mahrajganj", value: "mahrajganj" },
+        { hindi: "मैनपुरी", english: "Mainpuri", value: "mainpuri" },
+        { hindi: "मऊ", english: "Mau", value: "mau" },
+        { hindi: "मिर्जापुर", english: "Mirzapur", value: "mirzapur" },
+        { hindi: "मुजफ्फरनगर", english: "Muzaffarnagar", value: "muzaffarnagar" },
+        { hindi: "पीलीभीत", english: "Pilibhit", value: "pilibhit" },
+        { hindi: "रामपुर", english: "Rampur", value: "rampur" },
+        { hindi: "संभल", english: "Sambhal", value: "sambhal" },
+        { hindi: "संत कबीर नगर", english: "Sant Kabir Nagar", value: "sant-kabir-nagar" },
+        { hindi: "शाहजहांपुर", english: "Shahjahanpur", value: "shahjahanpur" },
+        { hindi: "शामली", english: "Shamli", value: "shamli" },
+        { hindi: "श्रावस्ती", english: "Shrawasti", value: "shrawasti" },
+        { hindi: "सिद्धार्थनगर", english: "Siddharthnagar", value: "siddharthnagar" },
+        { hindi: "सीतापुर", english: "Sitapur", value: "sitapur" },
+        { hindi: "सोनभद्र", english: "Sonbhadra", value: "sonbhadra" },
+        { hindi: "उन्नाव", english: "Unnao", value: "unnao" }
     ]
 };
 
@@ -1102,6 +1176,71 @@ const EditorEditScreen = () => {
                   >
                     Cancel
                   </button>
+                  
+                  {/* Download Button - Only show for video content */}
+                  {isVideoContent && newsData.videoPath && (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        
+                        // Get video URL
+                        const videoUrl = getVideoUrl(newsData.videoPath || newsData.video);
+                        console.log('Forcing download from:', videoUrl);
+                        
+                        // Show feedback
+                        setSuccessMessage('Starting download...');
+                        
+                        // Use Fetch API to force download without redirection
+                        fetch(videoUrl)
+                          .then(response => response.blob())
+                          .then(blob => {
+                            // Create blob URL and force download
+                            const blobUrl = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            
+                            // Configure as download-only
+                            link.href = blobUrl;
+                            link.download = `video-${newsId}.mp4`;
+                            link.style.display = 'none';
+                            
+                            // Add to DOM, trigger download, then clean up
+                            document.body.appendChild(link);
+                            link.click();
+                            
+                            // Clean up
+                            window.URL.revokeObjectURL(blobUrl);
+                            document.body.removeChild(link);
+                            
+                            setSuccessMessage('Download complete!');
+                            setTimeout(() => setSuccessMessage(''), 3000);
+                          })
+                          .catch(error => {
+                            console.error('Download failed:', error);
+                            setError('Download failed. Please try again.');
+                          });
+                      }}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '14px'
+                      }}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                      </svg>
+                      Download
+                    </button>
+                  )}
+                  
                   <button
                     onClick={handleReject}
                     style={{
@@ -1328,24 +1467,90 @@ const EditorEditScreen = () => {
                               flexDirection: 'column',
                               gap: '4px'
                             }}>
-                              <input
-                                type="text"
-                                value={newsData.videoPath || newsData.video || 
-                                      (newsData.originalVideoData ? 
-                                       (newsData.originalVideoData.videoPath || 
-                                        newsData.originalVideoData.video || 
-                                        newsData.originalVideoData.featuredVideo || 
-                                        newsData.originalVideoData.videoUrl || '') : '')}
-                                readOnly
-                                style={{
-                                  width: '100%',
-                                  padding: '10px 12px',
-                                  border: '1px solid #D1D5DB',
-                                  borderRadius: '6px',
-                                  fontSize: '14px',
-                                  backgroundColor: '#f9fafb'
-                                }}
-                              />
+                              <div style={{
+                                position: 'relative',
+                                display: 'flex',
+                                alignItems: 'center'
+                              }}>
+                                <input
+                                  type="text"
+                                  value={newsData.videoPath || newsData.video || 
+                                        (newsData.originalVideoData ? 
+                                         (newsData.originalVideoData.videoPath || 
+                                          newsData.originalVideoData.video || 
+                                          newsData.originalVideoData.featuredVideo || 
+                                          newsData.originalVideoData.videoUrl || '') : '')}
+                                  readOnly
+                                  style={{
+                                    width: '100%',
+                                    padding: '10px 12px',
+                                    border: '1px solid #D1D5DB',
+                                    borderRadius: '6px',
+                                    fontSize: '14px',
+                                    backgroundColor: '#f9fafb'
+                                  }}
+                                />
+                                {/* Always show the clear button for debugging purposes */}
+                                <button
+                                  onClick={() => {
+                                    console.log('CLEAR VIDEO PATH BUTTON CLICKED');
+                                    console.log('Before clearing - Current state:', {
+                                      videoPath: newsData.videoPath,
+                                      video: newsData.video,
+                                      originalVideoData: newsData.originalVideoData,
+                                      uploadMethod
+                                    });
+                                    
+                                    // FORCE CLEAR ALL VIDEO PATHS
+                                    // Method 1: Direct assignment with spread
+                                    const clearedData = {
+                                      ...newsData,
+                                      videoPath: '',
+                                      video: '',
+                                      featuredVideo: '',
+                                      videoUrl: '',
+                                      // Force clear original data too
+                                      originalVideoData: null
+                                    };
+                                    
+                                    // Apply cleared data
+                                    setNewsData(clearedData);
+                                    console.log('After clearing - New state:', clearedData);
+                                    
+                                    // Method 2: Force YouTube mode
+                                    console.log('Setting upload method to youtube');
+                                    setUploadMethod('youtube');
+                                    
+                                    // Show confirmation
+                                    alert('Video path cleared! You can now use YouTube URL.');
+                                    setSuccessMessage('Video path cleared successfully. You can now use YouTube URL option.');
+                                    
+                                    // Debug message
+                                    console.log('CLEAR OPERATION COMPLETED');
+                                  }}
+                                  style={{
+                                    position: 'absolute',
+                                    right: '10px',
+                                    background: 'none',
+                                    border: 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    color: '#EF4444',
+                                    width: '30px',
+                                    height: '30px',
+                                    borderRadius: '50%',
+                                    padding: '0'
+                                  }}
+                                  title="Clear video path"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                                  </svg>
+                                </button>
+                              </div>
                               {(newsData.videoPath || newsData.video) && (
                                 <div style={{ 
                                   fontSize: '13px', 
@@ -1444,40 +1649,74 @@ const EditorEditScreen = () => {
                                   <p style={{ fontSize: '14px', color: '#10B981', marginBottom: '8px', fontWeight: '500' }}>
                                     ✓ New video selected (will be uploaded when you save)
                                   </p>
-                                  <div style={{ 
-                                    position: 'relative', 
-                                    paddingBottom: '56.25%', /* 16:9 aspect ratio */
-                                    height: 0,
-                                    borderRadius: '4px',
-                                    overflow: 'hidden',
-                                    backgroundColor: '#f3f4f6',
-                                    border: '2px solid #10B981',
-                                    padding: '2px'
-                                  }}>
-                                    <video 
-                                      src={newsData.videoPreviewUrl || URL.createObjectURL(videoFile)}
-                                      controls
+                                  <div style={{ position: 'relative' }}>
+                                    <div style={{ 
+                                      position: 'relative', 
+                                      paddingBottom: '56.25%', /* 16:9 aspect ratio */
+                                      height: 0,
+                                      borderRadius: '4px',
+                                      overflow: 'hidden',
+                                      backgroundColor: '#f3f4f6',
+                                      border: '2px solid #10B981',
+                                      padding: '2px'
+                                    }}>
+                                      <video 
+                                        src={newsData.videoPreviewUrl || URL.createObjectURL(videoFile)}
+                                        controls
+                                        style={{
+                                          position: 'absolute',
+                                          top: 0,
+                                          left: 0,
+                                          width: '100%',
+                                          height: '100%',
+                                          objectFit: 'contain'
+                                        }}
+                                        onError={(e) => {
+                                          console.error("Preview video failed to load:", e);
+                                          e.target.parentNode.innerHTML = `
+                                            <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #f3f4f6; color: #6b7280;">
+                                              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                                <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                                                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                                              </svg>
+                                              <p style="margin-top: 8px; font-size: 14px;">Video preview cannot be displayed</p>
+                                            </div>
+                                          `;
+                                        }}
+                                      ></video>
+                                    </div>
+                                    {/* Remove button */}
+                                    <button 
+                                      onClick={() => {
+                                        setVideoFile(null);
+                                        setNewsData(prev => ({
+                                          ...prev,
+                                          videoPreviewUrl: null
+                                        }));
+                                      }}
                                       style={{
                                         position: 'absolute',
-                                        top: 0,
-                                        left: 0,
-                                        width: '100%',
-                                        height: '100%',
-                                        objectFit: 'contain'
+                                        top: '10px',
+                                        right: '10px',
+                                        width: '36px',
+                                        height: '36px',
+                                        borderRadius: '50%',
+                                        backgroundColor: 'rgba(239, 68, 68, 0.9)',
+                                        color: 'white',
+                                        border: 'none',
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        cursor: 'pointer',
+                                        zIndex: 1000
                                       }}
-                                      onError={(e) => {
-                                        console.error("Preview video failed to load:", e);
-                                        e.target.parentNode.innerHTML = `
-                                          <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #f3f4f6; color: #6b7280;">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                              <polygon points="23 7 16 12 23 17 23 7"></polygon>
-                                              <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
-                                            </svg>
-                                            <p style="margin-top: 8px; font-size: 14px;">Video preview cannot be displayed</p>
-                                          </div>
-                                        `;
-                                      }}
-                                    ></video>
+                                      title="Remove video"
+                                    >
+                                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                      </svg>
+                                    </button>
                                   </div>
                                 </div>
                               ) : (
@@ -1514,67 +1753,37 @@ const EditorEditScreen = () => {
                                         <p style={{ fontSize: '14px', color: '#4B5563', marginBottom: '8px', fontWeight: '500' }}>
                                           ✓ MP4 video file: {videoPath}
                                         </p>
-                                        <div style={{ 
-                                          position: 'relative', 
-                                          paddingBottom: '56.25%',
-                                          height: 0,
-                                          borderRadius: '4px',
-                                          overflow: 'hidden',
-                                          backgroundColor: '#f3f4f6',
-                                          border: '2px solid #10B981',
-                                          padding: '2px'
-                                        }}>
-                                          <video 
-                                            key={`video-${videoPath}`}
-                                            src={videoUrl}
-                                            controls
-                                            preload="metadata"
-                                            style={{
-                                              position: 'absolute',
-                                              top: 0,
-                                              left: 0,
-                                              width: '100%',
-                                              height: '100%',
-                                              objectFit: 'contain'
-                                            }}
-                                            onLoadStart={() => {
-                                              console.log('Video loaded successfully using URL:', videoUrl);
-                                            }}
-                                            onLoadedMetadata={(e) => {
-                                              console.log('✓ Video metadata loaded successfully at:', videoUrl);
-                                              console.log('✓ Video duration:', e.target.duration);
-                                              console.log('✓ Video dimensions:', e.target.videoWidth, 'x', e.target.videoHeight);
-                                            }}
-                                            onError={(e) => {
-                                              console.error("Video failed to load from path:", videoUrl);
-                                              
-                                              // Log detailed error information
-                                              if (e.target.error) {
-                                                console.error('Video error code:', e.target.error.code);
-                                                console.error('Video error message:', e.target.error.message);
-                                              }
-                                              
-                                              // Try removing any double slashes in the URL that might cause issues
-                                              const cleanedUrl = videoUrl.replace(/([^:])\/+/g, '$1/');
-                                              if (cleanedUrl !== videoUrl) {
-                                                console.log('Attempting with cleaned URL:', cleanedUrl);
-                                                e.target.src = cleanedUrl;
-                                                return;
-                                              }
-                                              
-                                              e.target.parentNode.innerHTML = `
-                                                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #f3f4f6; color: #6b7280;">
-                                                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                                    <polygon points="23 7 16 12 23 17 23 7"></polygon>
-                                                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
-                                                  </svg>
-                                                  <p style="margin-top: 8px; font-size: 14px;">Video cannot be previewed</p>
-                                                  <p style="margin-top: 4px; font-size: 12px;">Path: ${videoPath}</p>
-                                                  <p style="margin-top: 4px; font-size: 12px;">URL: ${videoUrl}</p>
-                                                </div>
-                                              `;
-                                            }}
-                                          ></video>
+                                        
+                                        {/* Using div with relative positioning to ensure buttons stay on top */}
+                                        <div style={{ position: 'relative' }}>
+                                          {/* Video container */}
+                                          <div style={{ 
+                                            position: 'relative', 
+                                            paddingBottom: '56.25%',
+                                            height: 0,
+                                            borderRadius: '4px',
+                                            overflow: 'hidden',
+                                            backgroundColor: '#f3f4f6',
+                                            border: '2px solid #10B981',
+                                            padding: '2px'
+                                          }}>
+                                            <video 
+                                              key={`video-${videoPath}`}
+                                              src={videoUrl}
+                                              controls
+                                              preload="metadata"
+                                              style={{
+                                                position: 'absolute',
+                                                top: 0,
+                                                left: 0,
+                                                width: '100%',
+                                                height: '100%',
+                                                objectFit: 'contain'
+                                              }}
+                                            ></video>
+                                          </div>
+                                          
+                                          {/* Remove button removed */}
                                         </div>
                                       </div>
                                     );
@@ -1600,45 +1809,50 @@ const EditorEditScreen = () => {
                                     
                                     // Handle other video formats
                                     return (
-                                      <div style={{ 
-                                        position: 'relative', 
-                                        paddingBottom: '56.25%',
-                                        height: 0,
-                                        borderRadius: '4px',
-                                        overflow: 'hidden',
-                                        backgroundColor: '#f3f4f6',
-                                        border: '2px solid #e5e7eb',
-                                        padding: '2px'
-                                      }}>
-                                        <video 
-                                          controls
-                                          style={{
-                                            position: 'absolute',
-                                            top: 0,
-                                            left: 0,
-                                            width: '100%',
-                                            height: '100%',
-                                            objectFit: 'contain'
-                                          }}
-                                          src={videoUrl}
-                                          onError={(e) => {
-                                            console.error("Video failed to load", e);
-                                            e.target.parentNode.innerHTML = `
-                                              <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #f3f4f6; color: #6b7280;">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                                                  <polygon points="23 7 16 12 23 17 23 7"></polygon>
-                                                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
-                                                </svg>
-                                                <p style="margin-top: 8px; font-size: 14px;">Video cannot be previewed</p>
-                                                <p style="margin-top: 4px; font-size: 12px;">Path: ${newsData.videoPath || newsData.video || 'unknown'}</p>
-                                                <p style="margin-top: 4px; font-size: 12px;">Source URL: ${e.target.src || 'unknown'}</p>
-                                                <button onclick="console.log('Attempting to reload video with new path'); window.location.reload();" style="margin-top: 8px; padding: 6px 12px; background: #4f46e5; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                                  Reload Page
-                                                </button>
-                                              </div>
-                                            `;
-                                          }}
-                                        ></video>
+                                      <div style={{ position: 'relative' }}>
+                                        {/* Video container */}
+                                        <div style={{ 
+                                          position: 'relative', 
+                                          paddingBottom: '56.25%',
+                                          height: 0,
+                                          borderRadius: '4px',
+                                          overflow: 'hidden',
+                                          backgroundColor: '#f3f4f6',
+                                          border: '2px solid #e5e7eb',
+                                          padding: '2px'
+                                        }}>
+                                          <video 
+                                            controls
+                                            style={{
+                                              position: 'absolute',
+                                              top: 0,
+                                              left: 0,
+                                              width: '100%',
+                                              height: '100%',
+                                              objectFit: 'contain'
+                                            }}
+                                            src={videoUrl}
+                                            onError={(e) => {
+                                              console.error("Video failed to load", e);
+                                              e.target.parentNode.innerHTML = `
+                                                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #f3f4f6; color: #6b7280;">
+                                                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                                    <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                                                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                                                  </svg>
+                                                  <p style="margin-top: 8px; font-size: 14px;">Video cannot be previewed</p>
+                                                  <p style="margin-top: 4px; font-size: 12px;">Path: ${newsData.videoPath || newsData.video || 'unknown'}</p>
+                                                  <p style="margin-top: 4px; font-size: 12px;">Source URL: ${e.target.src || 'unknown'}</p>
+                                                  <button onclick="console.log('Attempting to reload video with new path'); window.location.reload();" style="margin-top: 8px; padding: 6px 12px; background: #4f46e5; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                                    Reload Page
+                                                  </button>
+                                                </div>
+                                              `;
+                                            }}
+                                          ></video>
+                                        </div>
+                                        
+                                        {/* Remove button removed */}
                                       </div>
                                     );
                                   }
@@ -1932,7 +2146,6 @@ const EditorEditScreen = () => {
                         }}
                       >
                         <option value="">---------</option> {/* Placeholder like EditPost */}
-                        <option value="trending">ट्रेंडिंग | Trending</option>
                         <option value="national">राष्ट्रीय | National</option>
                         <option value="international">अंतरराष्ट्रीय | International</option>
                         <option value="sports">खेल | Sports</option>

@@ -194,8 +194,44 @@ const Posts = () => {
         const formattedSubmittedAt = formatToIST(post.createdAt || post.submittedAt);
         const formattedApprovedAt = formatToIST(post.approvedAt || post.updatedAt);
         
+        // Process state and district data
+        let stateData = post.state || '';
+        let districtData = post.district || '';
+        
+        // Format state names if available
+        if (stateData) {
+          // Map state values to display names if needed
+          switch(stateData.toLowerCase()) {
+            case 'jharkhand': 
+              stateData = 'झारखंड | Jharkhand';
+              break;
+            case 'bihar': 
+              stateData = 'बिहार | Bihar';
+              break;
+            case 'up':
+              stateData = 'उत्तर प्रदेश | Uttar Pradesh';
+              break;
+            default:
+              // Leave as is if not one of the main states
+              break;
+          }
+        }
+        
+        // Format district names if available
+        if (districtData) {
+          // Fetch district information from application data
+          // This uses common district patterns based on state
+          console.log(`Processing district: ${districtData} for state: ${post.state}`);
+          
+          // You can expand this with the actual district mapping if needed
+          // For now, we'll just make it clear this is a district value
+          if (!districtData.includes('|')) {
+            districtData = `${districtData} District`;
+          }
+        }
+        
         // Log the extracted names for debugging
-        console.log(`Post ${post._id || post.id} - Journalist: ${journalistName}, Editor: ${editorName}`);
+        console.log(`Post ${post._id || post.id} - Journalist: ${journalistName}, Editor: ${editorName}, State: ${stateData}, District: ${districtData}`);
           
         return {
           ...post,
@@ -207,7 +243,10 @@ const Posts = () => {
           editorName,
           // Store formatted dates
           formattedSubmittedAt,
-          formattedApprovedAt
+          formattedApprovedAt,
+          // Store formatted location data
+          formattedState: stateData,
+          formattedDistrict: districtData
         };
       });
       
@@ -484,6 +523,93 @@ const Posts = () => {
     setCurrentPage(1);
   };
 
+  // Function to handle edit action
+  const handleEdit = (postId) => {
+    // Find the post from the existing posts array
+    const postToEdit = posts.find(post => {
+      return String(post.id) === String(postId) || String(post._id) === String(postId);
+    });
+    
+    if (postToEdit) {
+      // Log the post object to debug
+      console.log("Post to edit (raw data from list):", postToEdit);
+      
+      // Process the post data for consistency
+      const processedPostData = {
+        id: postToEdit.id || postToEdit._id,
+        title: postToEdit.title || postToEdit.headline || '',
+        content: postToEdit.content || '',
+        featuredImage: postToEdit.featuredImage || postToEdit.image || '',
+        category: postToEdit.category || '',
+        state: postToEdit.state || '',
+        district: postToEdit.district || '',
+        contentType: postToEdit.contentType || 'standard',
+        status: postToEdit.status || 'approved',
+        youtubeUrl: postToEdit.youtubeUrl || '',
+        thumbnailUrl: postToEdit.thumbnailUrl || '',
+        
+        // Enhanced video path handling with proper synchronization
+        videoPath: postToEdit.videoPath || postToEdit.video || '',
+        video: postToEdit.video || postToEdit.videoPath || '',
+        videoUrl: postToEdit.videoUrl || '',
+        featuredVideo: postToEdit.featuredVideo || '',
+        
+        // Store original data for reference
+        originalVideoData: {
+          videoPath: postToEdit.videoPath || '',
+          video: postToEdit.video || '',
+          videoUrl: postToEdit.videoUrl || '',
+          featuredVideo: postToEdit.featuredVideo || ''
+        },
+        
+        // Location data with comprehensive backups
+        state: postToEdit.state || '',
+        district: postToEdit.district || '',
+        
+        // Featured status
+        isFeatured: postToEdit.isFeatured || postToEdit.featured || false
+      };
+      
+      // Log location data for debugging
+      console.log("LOCATION DATA BEING PASSED:", {
+        state: processedPostData.state,
+        district: processedPostData.district,
+        originalState: postToEdit.state,
+        originalDistrict: postToEdit.district,
+        formattedState: postToEdit.formattedState,
+        formattedDistrict: postToEdit.formattedDistrict
+      });
+      
+      // Log each video-related field for debugging
+      console.log("VIDEO FIELDS BEING PASSED:", {
+        videoPath: processedPostData.videoPath,
+        video: processedPostData.video,
+        videoUrl: processedPostData.videoUrl,
+        featuredVideo: processedPostData.featuredVideo,
+        originalVideoData: processedPostData.originalVideoData
+      });
+      
+      // Set the appropriate content type if video-related fields are present
+      if (postToEdit.contentType === 'video' || 
+          postToEdit.youtubeUrl || 
+          postToEdit.videoPath || 
+          postToEdit.video || 
+          postToEdit.videoUrl || 
+          postToEdit.featuredVideo) {
+        processedPostData.contentType = 'video';
+        console.log("Video content detected, setting contentType to 'video'");
+      }
+      
+      console.log("Processed post data:", processedPostData);
+      
+      // Navigate to the ReEditPost screen with the post ID and pass the data in state
+      navigate(`/editor/re-edit/${postId}`, { state: { newsData: processedPostData } });
+    } else {
+      setError('Could not find the post to edit');
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
   return (
     <div style={{ padding: '30px', backgroundColor: '#f9fafb' }}>
       {/* Header section with title and button */}
@@ -671,6 +797,22 @@ const Posts = () => {
                     fontWeight: '500',
                     color: '#374151'
                   }}>
+                    State <span style={{ color: '#9ca3af' }}>↓</span>
+                  </th>
+                  <th style={{ 
+                    padding: '12px 16px', 
+                    textAlign: 'left', 
+                    fontWeight: '500',
+                    color: '#374151'
+                  }}>
+                    District <span style={{ color: '#9ca3af' }}>↓</span>
+                  </th>
+                  <th style={{ 
+                    padding: '12px 16px', 
+                    textAlign: 'left', 
+                    fontWeight: '500',
+                    color: '#374151'
+                  }}>
                     Submitted By <span style={{ color: '#9ca3af' }}>↓</span>
                   </th>
                   <th style={{ 
@@ -746,11 +888,13 @@ const Posts = () => {
                             alignItems: 'center',
                             gap: '4px'
                           }}>
-                            <FaStar size={10} /> FEATURED NEWS
+                            <FaStar size={10} /> TRENDING NEWS
                           </span>
                         )}
                       </td>
                       <td style={{ padding: '16px' }}>{post.category || 'Uncategorized'}</td>
+                      <td style={{ padding: '16px' }}>{post.formattedState || post.state || 'Not specified'}</td>
+                      <td style={{ padding: '16px' }}>{post.formattedDistrict || post.district || 'Not specified'}</td>
                       <td style={{ padding: '16px' }}>
                         {/* Show the journalist information */}
                         {post.journalist && typeof post.journalist === 'object' ? 
@@ -817,7 +961,27 @@ const Posts = () => {
                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                               >
                                 <FaStar size={16} />
-                                <span>{isPostFeatured ? 'Remove Featured' : 'Mark Featured'}</span>
+                                <span>{isPostFeatured ? 'Remove Trending' : 'Mark Trending'}</span>
+                              </div>
+                              
+                              {/* Edit Post Button */}
+                              <div 
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '10px',
+                                  padding: '12px 16px',
+                                  cursor: 'pointer',
+                                  color: '#4b5563',
+                                  borderBottom: '1px solid #e5e7eb',
+                                  transition: 'background-color 0.2s'
+                                }}
+                                onClick={() => handleEdit(postId)}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                              >
+                                <FaEdit size={16} />
+                                <span>Edit Post</span>
                               </div>
                               
                               {/* Remove Post Button */}

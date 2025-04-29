@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -13,7 +13,12 @@ import {
   Button,
   Link,
   Divider,
-  CircularProgress
+  CircularProgress,
+  FormControl,
+  MenuItem,
+  Select,
+  InputLabel,
+  OutlinedInput
 } from '@mui/material';
 import axios from 'axios';
 import FacebookIcon from '@mui/icons-material/Facebook';
@@ -306,9 +311,13 @@ const BannerAd = () => {
 
 const StateNewsPage = () => {
   const { state } = useParams();
+  const navigate = useNavigate();
   const [news, setNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedDistrict, setSelectedDistrict] = useState('');
+  const [districtNews, setDistrictNews] = useState([]);
+  const [districtNewsLoading, setDistrictNewsLoading] = useState(false);
 
   // Map state names to their Hindi names and endpoints
   const stateConfig = {
@@ -329,12 +338,202 @@ const StateNewsPage = () => {
     }
   };
 
+  // District data for each state
+  const districtData = {
+    jharkhand: [
+      { hindi: "रांची", english: "Ranchi", value: "ranchi" },
+      { hindi: "जमशेदपुर", english: "Jamshedpur", value: "jamshedpur" },
+      { hindi: "धनबाद", english: "Dhanbad", value: "dhanbad" },
+      { hindi: "बोकारो", english: "Bokaro", value: "bokaro" },
+      { hindi: "देवघर", english: "Deoghar", value: "deoghar" },
+      { hindi: "हजारीबाग", english: "Hazaribagh", value: "hazaribagh" },
+      { hindi: "गिरिडीह", english: "Giridih", value: "giridih" },
+      { hindi: "कोडरमा", english: "Koderma", value: "koderma" },
+      { hindi: "चतरा", english: "Chatra", value: "chatra" },
+      { hindi: "गुमला", english: "Gumla", value: "gumla" },
+      { hindi: "लातेहार", english: "Latehar", value: "latehar" },
+      { hindi: "लोहरदगा", english: "Lohardaga", value: "lohardaga" },
+      { hindi: "पाकुड़", english: "Pakur", value: "pakur" },
+      { hindi: "पलामू", english: "Palamu", value: "palamu" },
+      { hindi: "रामगढ़", english: "Ramgarh", value: "ramgarh" },
+      { hindi: "साहिबगंज", english: "Sahibganj", value: "sahibganj" },
+      { hindi: "सिमडेगा", english: "Simdega", value: "simdega" },
+      { hindi: "सिंहभूम", english: "Singhbhum", value: "singhbhum" },
+      { hindi: "सरायकेला खरसावां", english: "Seraikela Kharsawan", value: "seraikela-kharsawan" },
+      { hindi: "पूर्वी सिंहभूम", english: "East Singhbhum", value: "east-singhbhum" },
+      { hindi: "पश्चिमी सिंहभूम", english: "West Singhbhum", value: "west-singhbhum" },
+      { hindi: "डुमका", english: "Dumka", value: "dumka" },
+      { hindi: "गढ़वा", english: "Garhwa", value: "garhwa" },
+      { hindi: "गोड्डा", english: "Godda", value: "godda" }
+    ],
+    bihar: [
+      { hindi: "पटना", english: "Patna", value: "patna" },
+      { hindi: "गया", english: "Gaya", value: "gaya" },
+      { hindi: "मुंगेर", english: "Munger", value: "munger" },
+      { hindi: "भागलपुर", english: "Bhagalpur", value: "bhagalpur" },
+      { hindi: "पूर्णिया", english: "Purnia", value: "purnia" },
+      { hindi: "दरभंगा", english: "Darbhanga", value: "darbhanga" },
+      { hindi: "मुजफ्फरपुर", english: "Muzaffarpur", value: "muzaffarpur" },
+      { hindi: "सहरसा", english: "Saharsa", value: "saharsa" },
+      { hindi: "सीतामढ़ी", english: "Sitamarhi", value: "sitamarhi" },
+      { hindi: "वैशाली", english: "Vaishali", value: "vaishali" },
+      { hindi: "सिवान", english: "Siwan", value: "siwan" },
+      { hindi: "सारण", english: "Saran", value: "saran" },
+      { hindi: "गोपालगंज", english: "Gopalganj", value: "gopalganj" },
+      { hindi: "बेगूसराय", english: "Begusarai", value: "begusarai" },
+      { hindi: "समस्तीपुर", english: "Samastipur", value: "samastipur" },
+      { hindi: "मधुबनी", english: "Madhubani", value: "madhubani" },
+      { hindi: "सुपौल", english: "Supaul", value: "supaul" },
+      { hindi: "अररिया", english: "Araria", value: "araria" },
+      { hindi: "किशनगंज", english: "Kishanganj", value: "kishanganj" },
+      { hindi: "कटिहार", english: "Katihar", value: "katihar" },
+      { hindi: "पूर्वी चंपारण", english: "East Champaran", value: "east-champaran" },
+      { hindi: "पश्चिमी चंपारण", english: "West Champaran", value: "west-champaran" },
+      { hindi: "शिवहर", english: "Sheohar", value: "sheohar" },
+      { hindi: "मधेपुरा", english: "Madhepura", value: "madhepura" },
+      { hindi: "अरवल", english: "Arwal", value: "arwal" },
+      { hindi: "औरंगाबाद", english: "Aurangabad", value: "aurangabad-bihar" },
+      { hindi: "बांका", english: "Banka", value: "banka" },
+      { hindi: "भोजपुर", english: "Bhojpur", value: "bhojpur" },
+      { hindi: "बक्सर", english: "Buxar", value: "buxar" },
+      { hindi: "जमुई", english: "Jamui", value: "jamui" },
+      { hindi: "जहानाबाद", english: "Jehanabad", value: "jehanabad" },
+      { hindi: "कैमूर", english: "Kaimur", value: "kaimur" },
+      { hindi: "खगरिया", english: "Khagaria", value: "khagaria" },
+      { hindi: "लखीसराय", english: "Lakhisarai", value: "lakhisarai" },
+      { hindi: "नालंदा", english: "Nalanda", value: "nalanda" },
+      { hindi: "नवादा", english: "Nawada", value: "nawada" },
+      { hindi: "रोहतास", english: "Rohtas", value: "rohtas" },
+      { hindi: "शेखपुरा", english: "Sheikhpura", value: "sheikhpura" }
+    ],
+    "up": [
+      { hindi: "लखनऊ", english: "Lucknow", value: "lucknow" },
+      { hindi: "कानपुर", english: "Kanpur", value: "kanpur" },
+      { hindi: "आगरा", english: "Agra", value: "agra" },
+      { hindi: "वाराणसी", english: "Varanasi", value: "varanasi" },
+      { hindi: "प्रयागराज", english: "Prayagraj", value: "prayagraj" },
+      { hindi: "मेरठ", english: "Meerut", value: "meerut" },
+      { hindi: "नोएडा", english: "Noida", value: "noida" },
+      { hindi: "गाजियाबाद", english: "Ghaziabad", value: "ghaziabad" },
+      { hindi: "बरेली", english: "Bareilly", value: "bareilly" },
+      { hindi: "अलीगढ़", english: "Aligarh", value: "aligarh" },
+      { hindi: "मुरादाबाद", english: "Moradabad", value: "moradabad" },
+      { hindi: "सहारनपुर", english: "Saharanpur", value: "saharanpur" },
+      { hindi: "गोरखपुर", english: "Gorakhpur", value: "gorakhpur" },
+      { hindi: "फैजाबाद", english: "Faizabad", value: "faizabad" },
+      { hindi: "जौनपुर", english: "Jaunpur", value: "jaunpur" },
+      { hindi: "मथुरा", english: "Mathura", value: "mathura" },
+      { hindi: "बलिया", english: "Ballia", value: "ballia" },
+      { hindi: "रायबरेली", english: "Rae Bareli", value: "rae-bareli" },
+      { hindi: "सुल्तानपुर", english: "Sultanpur", value: "sultanpur" },
+      { hindi: "फतेहपुर", english: "Fatehpur", value: "fatehpur" },
+      { hindi: "प्रतापगढ़", english: "Pratapgarh", value: "pratapgarh" },
+      { hindi: "कौशाम्बी", english: "Kaushambi", value: "kaushambi" },
+      { hindi: "झांसी", english: "Jhansi", value: "jhansi" },
+      { hindi: "ललितपुर", english: "Lalitpur", value: "lalitpur" },
+      { hindi: "अम्बेडकर नगर", english: "Ambedkar Nagar", value: "ambedkar-nagar" },
+      { hindi: "अमेठी", english: "Amethi", value: "amethi" },
+      { hindi: "अमरोहा", english: "Amroha", value: "amroha" },
+      { hindi: "औरैया", english: "Auraiya", value: "auraiya" },
+      { hindi: "अयोध्या", english: "Ayodhya", value: "ayodhya" },
+      { hindi: "आजमगढ़", english: "Azamgarh", value: "azamgarh" },
+      { hindi: "बागपत", english: "Baghpat", value: "baghpat" },
+      { hindi: "बहराइच", english: "Bahraich", value: "bahraich" },
+      { hindi: "बलरामपुर", english: "Balrampur", value: "balrampur" },
+      { hindi: "बांदा", english: "Banda", value: "banda" },
+      { hindi: "बाराबंकी", english: "Barabanki", value: "barabanki" },
+      { hindi: "बस्ती", english: "Basti", value: "basti" },
+      { hindi: "भदोही", english: "Bhadohi", value: "bhadohi" },
+      { hindi: "बिजनौर", english: "Bijnor", value: "bijnor" },
+      { hindi: "बदायूं", english: "Budaun", value: "budaun" },
+      { hindi: "बुलंदशहर", english: "Bulandshahr", value: "bulandshahr" },
+      { hindi: "चंदौली", english: "Chandauli", value: "chandauli" },
+      { hindi: "चित्रकूट", english: "Chitrakoot", value: "chitrakoot" },
+      { hindi: "देवरिया", english: "Deoria", value: "deoria" },
+      { hindi: "एटा", english: "Etah", value: "etah" },
+      { hindi: "इटावा", english: "Etawah", value: "etawah" },
+      { hindi: "फर्रुखाबाद", english: "Farrukhabad", value: "farrukhabad" },
+      { hindi: "फिरोजाबाद", english: "Firozabad", value: "firozabad" },
+      { hindi: "गौतम बुद्ध नगर", english: "Gautam Buddha Nagar", value: "gautam-buddha-nagar" },
+      { hindi: "गाजीपुर", english: "Ghazipur", value: "ghazipur" },
+      { hindi: "गोंडा", english: "Gonda", value: "gonda" },
+      { hindi: "हमीरपुर", english: "Hamirpur", value: "hamirpur" },
+      { hindi: "हापुड़", english: "Hapur", value: "hapur" },
+      { hindi: "हरदोई", english: "Hardoi", value: "hardoi" },
+      { hindi: "हाथरस", english: "Hathras", value: "hathras" },
+      { hindi: "जालौन", english: "Jalaun", value: "jalaun" },
+      { hindi: "कन्नौज", english: "Kannauj", value: "kannauj" },
+      { hindi: "कानपुर देहात", english: "Kanpur Dehat", value: "kanpur-dehat" },
+      { hindi: "कानपुर नगर", english: "Kanpur Nagar", value: "kanpur-nagar" },
+      { hindi: "कासगंज", english: "Kasganj", value: "kasganj" },
+      { hindi: "खीरी", english: "Kheri", value: "kheri" },
+      { hindi: "कुशीनगर", english: "Kushinagar", value: "kushinagar" },
+      { hindi: "महोबा", english: "Mahoba", value: "mahoba" },
+      { hindi: "महराजगंज", english: "Mahrajganj", value: "mahrajganj" },
+      { hindi: "मैनपुरी", english: "Mainpuri", value: "mainpuri" },
+      { hindi: "मऊ", english: "Mau", value: "mau" },
+      { hindi: "मिर्जापुर", english: "Mirzapur", value: "mirzapur" },
+      { hindi: "मुजफ्फरनगर", english: "Muzaffarnagar", value: "muzaffarnagar" },
+      { hindi: "पीलीभीत", english: "Pilibhit", value: "pilibhit" },
+      { hindi: "रामपुर", english: "Rampur", value: "rampur" },
+      { hindi: "संभल", english: "Sambhal", value: "sambhal" },
+      { hindi: "संत कबीर नगर", english: "Sant Kabir Nagar", value: "sant-kabir-nagar" },
+      { hindi: "शाहजहांपुर", english: "Shahjahanpur", value: "shahjahanpur" },
+      { hindi: "शामली", english: "Shamli", value: "shamli" },
+      { hindi: "श्रावस्ती", english: "Shrawasti", value: "shrawasti" },
+      { hindi: "सिद्धार्थनगर", english: "Siddharthnagar", value: "siddharthnagar" },
+      { hindi: "सीतापुर", english: "Sitapur", value: "sitapur" },
+      { hindi: "सोनभद्र", english: "Sonbhadra", value: "sonbhadra" },
+      { hindi: "उन्नाव", english: "Unnao", value: "unnao" }
+    ]
+  };
+
+  // Handler for district change
+  const handleDistrictChange = (event) => {
+    const district = event.target.value;
+    setSelectedDistrict(district);
+    
+    if (district) {
+      fetchDistrictNews(district);
+    } else {
+      setDistrictNews([]);
+    }
+  };
+
+  // Function to fetch district-specific news
+  const fetchDistrictNews = async (district) => {
+    if (!district || !state) return;
+    
+    setDistrictNewsLoading(true);
+    
+    try {
+      const stateParam = state === 'uttar-pradesh' ? 'up' : state;
+      const response = await axios.get(`${baseUrl}/api/news/location/${stateParam}/${district}`);
+
+      let newsData = [];
+      if (Array.isArray(response.data)) {
+        newsData = response.data;
+      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
+        newsData = response.data.data;
+      }
+
+      setDistrictNews(newsData);
+    } catch (err) {
+      console.error(`Error fetching news for district ${district}:`, err);
+      // Don't set error state here, just log the error
+    } finally {
+      setDistrictNewsLoading(false);
+    }
+  };
+
   useEffect(() => {
     const fetchStateNews = async () => {
       if (!state) return;
       
       setLoading(true);
       setNews(Array(6).fill({}));
+      setSelectedDistrict(''); // Reset district when state changes
+      setDistrictNews([]);
 
       try {
         const stateInfo = stateConfig[state];
@@ -342,7 +541,7 @@ const StateNewsPage = () => {
           throw new Error('Invalid state');
         }
 
-        const response = await axios.get(`https://api.newztok.in/${stateInfo.endpoint}`);
+        const response = await axios.get(`${baseUrl}/${stateInfo.endpoint}`);
 
         let newsData = [];
         if (Array.isArray(response.data)) {
@@ -594,6 +793,7 @@ const StateNewsPage = () => {
   };
 
   const currentState = stateConfig[state];
+  const districts = state ? districtData[state === 'uttar-pradesh' ? 'up' : state] || [] : [];
 
   // Categories with counts
   const categories = [
@@ -696,13 +896,86 @@ const StateNewsPage = () => {
                   textShadow: '1px 1px 2px rgba(0,0,0,0.3)',
                   fontSize: '1.2rem',
                   fontWeight: 500,
-                  letterSpacing: '0.5px'
+                  letterSpacing: '0.5px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexWrap: 'wrap',
+                  gap: 1
                 }}
               >
                 News from {state === 'uttar-pradesh' ? 'Uttar Pradesh' : 
                            state === 'jharkhand' ? 'Jharkhand' : 
                            state === 'bihar' ? 'Bihar' : 
-                           state?.replace('-', ' ')} / {currentState?.hindi || ''}
+                           state?.replace('-', ' ')} / 
+                
+                {districts.length > 0 ? (
+                  <FormControl 
+                    variant="outlined" 
+                    size="small"
+                    sx={{
+                      minWidth: 150,
+                      maxWidth: '100%',
+                      backgroundColor: 'rgba(0,0,0,0.2)',
+                      borderRadius: 1,
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: 'rgba(255,255,255,0.3)',
+                          borderWidth: '1px',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: 'rgba(255,255,255,0.5)',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: 'white',
+                          borderWidth: '1px',
+                        },
+                        color: 'white',
+                        fontSize: '1rem',
+                        fontWeight: 500,
+                      },
+                      '& .MuiSelect-icon': {
+                        color: 'white',
+                      }
+                    }}
+                  >
+                    <Select
+                      value={selectedDistrict}
+                      onChange={handleDistrictChange}
+                      displayEmpty
+                      input={<OutlinedInput />}
+                      renderValue={(selected) => {
+                        if (!selected) {
+                          return state === 'uttar-pradesh' ? 'उत्तर प्रदेश' : 
+                                 state === 'jharkhand' ? 'झारखंड' :
+                                 state === 'bihar' ? 'बिहार' : '';
+                        }
+                        const selectedDistrict = districts.find(d => d.value === selected);
+                        return selectedDistrict ? selectedDistrict.hindi : selected;
+                      }}
+                      MenuProps={{
+                        PaperProps: {
+                          style: {
+                            maxHeight: 300,
+                          },
+                        },
+                      }}
+                    >
+                      <MenuItem value="">
+                        {state === 'uttar-pradesh' ? 'उत्तर प्रदेश' : 
+                         state === 'jharkhand' ? 'झारखंड' :
+                         state === 'bihar' ? 'बिहार' : ''}
+                      </MenuItem>
+                      {districts.map((district) => (
+                        <MenuItem key={district.value} value={district.value}>
+                          {district.hindi} ({district.english})
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                ) : (
+                  currentState?.hindi || ''
+                )}
               </Typography>
               {/* Small accent decoration */}
               <Box sx={{
@@ -773,6 +1046,68 @@ const StateNewsPage = () => {
           mb: 8
         }}
       >
+        {/* Display District-specific News if available */}
+        {selectedDistrict && (
+          <>
+            {districtNewsLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 5, mb: 4 }}>
+                <CircularProgress size={30} />
+                <Typography variant="h6" sx={{ ml: 2 }}>Loading district news...</Typography>
+              </Box>
+            ) : districtNews.length > 0 ? (
+              <Box sx={{ mb: 5 }}>
+                <Typography 
+                  variant="h5" 
+                  sx={{ 
+                    mb: 3, 
+                    pb: 2, 
+                    borderBottom: `3px solid ${currentState?.bannerColor || '#1B5E20'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1
+                  }}
+                >
+                  <LocationOnIcon /> 
+                  {districts.find(d => d.value === selectedDistrict)?.english || selectedDistrict} News
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
+                  {/* First District News Card */}
+                  <Box sx={{ flex: 1 }}>
+                    {districtNews[0] && <NewsCard item={districtNews[0]} isLoading={false} />}
+                  </Box>
+                  
+                  {/* Second District News Card */}
+                  <Box sx={{ flex: 1 }}>
+                    {districtNews[1] && <NewsCard item={districtNews[1]} isLoading={false} />}
+                  </Box>
+                </Box>
+              </Box>
+            ) : (
+              <Box sx={{ 
+                p: 3, 
+                backgroundColor: '#FFFDE7', 
+                borderRadius: 2, 
+                color: '#D97706', 
+                textAlign: 'center',
+                mb: 5
+              }}>
+                <Typography>No news available for {districts.find(d => d.value === selectedDistrict)?.english || selectedDistrict}</Typography>
+              </Box>
+            )}
+            
+            <Typography 
+              variant="h5" 
+              sx={{ 
+                mb: 3, 
+                pb: 2, 
+                borderBottom: `3px solid ${currentState?.bannerColor || '#1B5E20'}`
+              }}
+            >
+              Other News from {state === 'uttar-pradesh' ? 'Uttar Pradesh' : state === 'jharkhand' ? 'Jharkhand' : 'Bihar'}
+            </Typography>
+          </>
+        )}
+      
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 5 }}>
             <CircularProgress />
