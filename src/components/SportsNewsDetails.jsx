@@ -35,6 +35,7 @@ const SportsNewsDetails = () => {
   const [isLiked, setIsLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [viewCount, setViewCount] = useState(0);
+  const [shareCount, setShareCount] = useState(0);
   const [loadingComments, setLoadingComments] = useState(false);
   const [commentSuccess, setCommentSuccess] = useState(false);
   
@@ -63,12 +64,57 @@ const SportsNewsDetails = () => {
     
     fetchSportsNewsDetail();
     fetchComments();
+    fetchInteractionStats();
     
     // Check if user has already liked the article when component mounts
     if (isLoggedIn) {
       checkLikeStatus();
     }
   }, [id]);
+
+  // Update meta tags when news data is loaded
+  useEffect(() => {
+    if (newsData && window.setDynamicMetaTags) {
+      // Get a clean description from content (strip HTML)
+      const description = newsData.content
+        ? newsData.content.replace(/<[^>]*>/g, '').substring(0, 150) + '...'
+        : 'Check out this sports news article from NewzTok!';
+      
+      // Get the best image for sharing
+      let imageUrl = 'https://api.newztok.in/uploads/newztok-logo.png'; // Default fallback
+      
+      // Try to get image from youtubeUrl first
+      if (newsData.youtubeUrl) {
+        const youtubeRegex = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+        const match = newsData.youtubeUrl.match(youtubeRegex);
+        
+        if (match && match[1]) {
+          imageUrl = `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
+        }
+      } 
+      // Then try featuredImage and other sources
+      else if (newsData.featuredImage) {
+        imageUrl = newsData.featuredImage.startsWith('http') 
+          ? newsData.featuredImage 
+          : `${baseURL}${newsData.featuredImage.startsWith('/') ? '' : '/'}${newsData.featuredImage}`;
+      } else if (newsData.imageUrl) {
+        imageUrl = newsData.imageUrl.startsWith('http') 
+          ? newsData.imageUrl 
+          : `${baseURL}${newsData.imageUrl.startsWith('/') ? '' : '/'}${newsData.imageUrl}`;
+      } else if (newsData.thumbnailUrl) {
+        imageUrl = newsData.thumbnailUrl.startsWith('http') 
+          ? newsData.thumbnailUrl 
+          : `${baseURL}${newsData.thumbnailUrl.startsWith('/') ? '' : '/'}${newsData.thumbnailUrl}`;
+      }
+      
+      // Update meta tags for better sharing
+      window.setDynamicMetaTags(
+        newsData.title || 'NewzTok Sports News Article',
+        description,
+        imageUrl
+      );
+    }
+  }, [newsData]);
 
   // Clear comment success message after 3 seconds
   useEffect(() => {
@@ -332,24 +378,79 @@ const SportsNewsDetails = () => {
   const handleShareClick = () => {
     try {
       // Get the title
-      const title = newsData?.title || 'Sports NewzTok Article';
+      const title = newsData?.title || 'NewzTok Sports Article';
       
-      // Use NewzTok logo instead of article media
-      const newztokLogo = 'https://api.newztok.in/uploads/newztok-logo.png';
+      // Create the proper news URL with the ID
+      const newsUrl = `https://newztok.in/sports/${id}`;
+      
+      // First check if the newsData has a featuredImage and ensure it's properly formatted
+      let mediaToShare = '';
+      
+      // Handle featured image with priority
+      if (newsData.featuredImage) {
+        // Make sure the URL is complete by adding the base URL if needed
+        mediaToShare = newsData.featuredImage.startsWith('http') 
+          ? newsData.featuredImage 
+          : `${baseURL}${newsData.featuredImage.startsWith('/') ? '' : '/'}${newsData.featuredImage}`;
+          
+        console.log("Using featured image for sharing:", mediaToShare);
+      }
+      // If no featured image, try YouTube thumbnail
+      else if (newsData.youtubeUrl) {
+        const youtubeRegex = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+        const match = newsData.youtubeUrl.match(youtubeRegex);
+        
+        if (match && match[1]) {
+          const videoId = match[1];
+          mediaToShare = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+        }
+      }
+      // Try other image sources if no featuredImage or YouTube
+      else if (mediaUrl) {
+        if (mediaUrl.type === 'image') {
+          mediaToShare = mediaUrl.url;
+        } else if (mediaUrl.type === 'youtube' && mediaUrl.thumbnail) {
+          mediaToShare = mediaUrl.thumbnail;
+        }
+      }
+      // Last resort - try other image fields
+      else {
+        // Try common image field names
+        const imageFields = ['imageUrl', 'thumbnailUrl', 'thumbnail', 'image'];
+        
+        for (const field of imageFields) {
+          if (newsData[field] && typeof newsData[field] === 'string') {
+            mediaToShare = newsData[field].startsWith('http') 
+              ? newsData[field] 
+              : `${baseURL}${newsData[field].startsWith('/') ? '' : '/'}${newsData[field]}`;
+            break;
+          }
+        }
+      }
+      
+      // Fallback to NewzTok logo if no image found
+      if (!mediaToShare) {
+        mediaToShare = 'https://api.newztok.in/uploads/newztok-logo.png';
+      }
       
       // Get a brief excerpt from the content (first 100 characters)
-      // Strip HTML tags for clean text
       const contentText = newsData?.content 
         ? newsData.content.replace(/<[^>]*>/g, '').substring(0, 100) + '...' 
-        : 'Check out this sports article from NewzTok!';
+        : 'Check out this sports news article from NewzTok!';
       
-      // Create the share text with Read More link and NewzTok logo
-      const shareText = encodeURIComponent(
-        `*${title}*\n\n${contentText}\n\n*Read More:* https://www.newztok.in\n\n${newztokLogo}`
-      );
+      // For mobile WhatsApp, create a share URL that will show the image preview
+      // First update meta tags to ensure proper sharing
+      if (window.setDynamicMetaTags) {
+        window.setDynamicMetaTags(
+          title,
+          contentText,
+          mediaToShare
+        );
+      }
       
-      // Create WhatsApp share URL
-      const whatsappUrl = `https://api.whatsapp.com/send?text=${shareText}`;
+      // Construct WhatsApp share URL with just the news URL to leverage meta tags
+      const shareText = encodeURIComponent(`*${title}*\n\n${contentText}\n\n*Read More:*`);
+      const whatsappUrl = `https://api.whatsapp.com/send?text=${shareText} ${encodeURIComponent(newsUrl)}`;
       
       // Open WhatsApp in a new tab
       window.open(whatsappUrl, '_blank');
@@ -357,12 +458,37 @@ const SportsNewsDetails = () => {
       console.log('Shared via WhatsApp:', {
         title,
         content: contentText,
-        logo: newztokLogo,
-        shareUrl: 'https://www.newztok.in'
+        featuredImage: newsData.featuredImage,
+        fullImageUrl: mediaToShare,
+        shareUrl: newsUrl,
+        newsId: id
       });
+      
+      // Increment share count optimistically
+      setShareCount(prev => prev + 1);
+      
+      // Record share in the backend
+      recordShare();
     } catch (err) {
       console.error("Error sharing to WhatsApp:", err);
       alert('Failed to share to WhatsApp. Please try again.');
+    }
+  };
+
+  // Record share interaction
+  const recordShare = async () => {
+    try {
+      const token = getUserToken();
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      await axios.post(`${baseURL}/api/interaction/news/${id}/share`, {}, { headers });
+      debug('Successfully recorded share interaction');
+      
+      // Refresh stats after recording share
+      fetchInteractionStats();
+    } catch (err) {
+      console.error('Error recording share:', err);
+      // Silent fail, user doesn't need to know about this error
     }
   };
 
@@ -663,6 +789,43 @@ const SportsNewsDetails = () => {
       
     } catch (error) {
       console.error("Error checking like status:", error);
+    }
+  };
+
+  // Fetch interaction stats (likes, views, comments, shares)
+  const fetchInteractionStats = async () => {
+    try {
+      debug('Fetching interaction stats for news ID', id);
+      
+      const statsUrl = `${baseURL}/api/interaction/news/${id}/stats`;
+      debug('Stats API URL', statsUrl);
+      
+      const response = await axios.get(statsUrl);
+      debug('Stats API response', response.data);
+      
+      if (response.data) {
+        // Extract stats from response
+        const { likes, views, comments: commentCount, shares } = response.data;
+        
+        // Update state with the fetched counts
+        if (typeof likes === 'number') {
+          debug('Setting like count from stats API', likes);
+          setLikeCount(likes);
+        }
+        
+        if (typeof views === 'number') {
+          debug('Setting view count from stats API', views);
+          setViewCount(views);
+        }
+        
+        if (typeof shares === 'number') {
+          debug('Setting share count from stats API', shares);
+          setShareCount(shares);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching interaction stats:", err);
+      // Don't set error state, just log it to avoid disrupting the UI
     }
   };
 

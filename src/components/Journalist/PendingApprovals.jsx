@@ -21,7 +21,12 @@ import {
   TablePagination,
   Chip,
   Tooltip,
-  Button
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle
 } from '@mui/material';
 import { Edit as EditIcon, VideoFile as VideoFileIcon, Image as ImageIcon } from '@mui/icons-material';
 
@@ -57,9 +62,60 @@ const PendingApprovals = () => {
   const [successMessage, setSuccessMessage] = useState(null);
   const [updateLoading, setUpdateLoading] = useState(false);
   const [isVideoContent, setIsVideoContent] = useState(false);
+  const [showSessionExpiredDialog, setShowSessionExpiredDialog] = useState(false);
   
   // API Base URL
   const baseURL = 'https://api.newztok.in';
+
+  // Check for token expiration
+  useEffect(() => {
+    const checkTokenExpiration = () => {
+      const tokenData = localStorage.getItem('authTokenData');
+      
+      if (!tokenData) {
+        // No token found, user is not logged in
+        setShowSessionExpiredDialog(true);
+        return;
+      }
+      
+      try {
+        const parsedTokenData = JSON.parse(tokenData);
+        const tokenTimestamp = parsedTokenData.timestamp;
+        const currentTime = Date.now();
+        
+        // Check if token is older than 24 hours (86400000 ms)
+        const tokenAge = currentTime - tokenTimestamp;
+        const tokenExpirationTime = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        
+        if (tokenAge > tokenExpirationTime) {
+          // Token has expired
+          console.log('Session expired. Token age:', tokenAge, 'ms');
+          setShowSessionExpiredDialog(true);
+        }
+      } catch (error) {
+        console.error('Error checking token expiration:', error);
+        setShowSessionExpiredDialog(true);
+      }
+    };
+    
+    // Check token expiration on component mount
+    checkTokenExpiration();
+  }, []);
+
+  // Handle redirect to login page
+  const handleLoginRedirect = () => {
+    // Clear auth data before redirecting
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authTokenData');
+    localStorage.removeItem('userRole');
+    sessionStorage.removeItem('authToken');
+    sessionStorage.removeItem('authTokenData');
+    sessionStorage.removeItem('userRole');
+    
+    // Close dialog and redirect to login page
+    setShowSessionExpiredDialog(false);
+    navigate('/user/login');
+  };
 
   // Add useEffect to fetch pending news when component mounts
   useEffect(() => {
@@ -233,6 +289,13 @@ const PendingApprovals = () => {
     } catch (err) {
       console.error('Error fetching pending news:', err);
       
+      // Check if the error is due to an expired token
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+        console.log('Token is invalid or expired');
+        setShowSessionExpiredDialog(true);
+        return; // Return early
+      }
+      
       // Detailed error logging
       if (err.response) {
         console.error('Server Error Details:', {
@@ -246,6 +309,7 @@ const PendingApprovals = () => {
           setError('Server error occurred. The server is experiencing issues processing your request.');
         } else if (err.response.status === 401) {
           setError('Authentication error. Please log in again.');
+          setShowSessionExpiredDialog(true);
         } else {
           setError(`Failed to fetch pending posts (${err.response.status}). Using cached data if available.`);
         }
@@ -658,6 +722,76 @@ const PendingApprovals = () => {
 
   return (
     <div style={{ padding: '30px', backgroundColor: '#f9fafb' }}>
+      {/* Session Expired Dialog */}
+      <Dialog
+        open={showSessionExpiredDialog}
+        onClose={() => {}}
+        aria-labelledby="session-expired-dialog-title"
+        aria-describedby="session-expired-dialog-description"
+        PaperProps={{
+          sx: {
+            width: '100%',
+            maxWidth: '450px',
+            borderRadius: '12px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+            backgroundColor: 'white',
+            position: 'absolute',
+            top: '50%',
+            left: '60%',
+            transform: 'translate(-50%, -50%)',
+            m: 0,
+            p: 3,
+            alignItems: "center"
+          }
+        }}
+      >
+        <DialogTitle id="session-expired-dialog-title" sx={{ 
+          textAlign: 'center',
+          fontWeight: 'bold',
+          fontSize: '24px',
+          pb: 1,
+          pt: 2
+        }}>
+          Session Expired
+        </DialogTitle>
+        <DialogContent sx={{ px: 3, pb: 2, pt: 0 }}>
+          <DialogContentText id="session-expired-dialog-description" sx={{ 
+            color: '#4b5563',
+            textAlign: 'center',
+            fontSize: '16px',
+            lineHeight: 1.5
+          }}>
+            Your session has expired. Please login again to continue.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ 
+          px: 3, 
+          pb: 2, 
+          pt: 1,
+          justifyContent: 'center'
+        }}>
+          <Button 
+            onClick={handleLoginRedirect} 
+            variant="contained"
+            autoFocus
+            sx={{
+              bgcolor: '#6366f1',
+              color: 'white',
+              px: 4,
+              py: 1.2,
+              borderRadius: '6px',
+              minWidth: '130px',
+              fontWeight: 'bold',
+              '&:hover': {
+                bgcolor: '#4f46e5'
+              }
+            }}
+          >
+            LOGIN
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
       {/* Add style tag for animations */}
       <style dangerouslySetInnerHTML={{ __html: spinAnimation }} />
       

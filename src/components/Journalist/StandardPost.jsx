@@ -3,6 +3,14 @@ import { Editor } from '@tinymce/tinymce-react';
 import axios from 'axios';
 import { FiChevronDown } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
+import { 
+  Dialog, 
+  DialogActions, 
+  DialogContent, 
+  DialogContentText, 
+  DialogTitle, 
+  Button 
+} from '@mui/material';
 
 const API_BASE_URL = 'https://api.newztok.in';
 
@@ -95,6 +103,7 @@ const StandardPost = () => {
   const [success, setSuccess] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [journalistProfile, setJournalistProfile] = useState(null);
+  const [showSessionExpiredDialog, setShowSessionExpiredDialog] = useState(false);
   const editorRef = useRef(null);
   const navigate = useNavigate();
 
@@ -248,6 +257,56 @@ const StandardPost = () => {
     ]
   };
 
+  // Check for token expiration
+  useEffect(() => {
+    const checkTokenExpiration = () => {
+      const tokenData = localStorage.getItem('authTokenData');
+      
+      if (!tokenData) {
+        // No token found, user is not logged in
+        setShowSessionExpiredDialog(true);
+        return;
+      }
+      
+      try {
+        const parsedTokenData = JSON.parse(tokenData);
+        const tokenTimestamp = parsedTokenData.timestamp;
+        const currentTime = Date.now();
+        
+        // Check if token is older than 24 hours (86400000 ms)
+        const tokenAge = currentTime - tokenTimestamp;
+        const tokenExpirationTime = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        
+        if (tokenAge > tokenExpirationTime) {
+          // Token has expired
+          console.log('Session expired. Token age:', tokenAge, 'ms');
+          setShowSessionExpiredDialog(true);
+        }
+      } catch (error) {
+        console.error('Error checking token expiration:', error);
+        setShowSessionExpiredDialog(true);
+      }
+    };
+    
+    // Check token expiration on component mount
+    checkTokenExpiration();
+  }, []);
+
+  // Handle redirect to login page
+  const handleLoginRedirect = () => {
+    // Clear auth data before redirecting
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authTokenData');
+    localStorage.removeItem('userRole');
+    sessionStorage.removeItem('authToken');
+    sessionStorage.removeItem('authTokenData');
+    sessionStorage.removeItem('userRole');
+    
+    // Close dialog and redirect to login page
+    setShowSessionExpiredDialog(false);
+    navigate('/user/login');
+  };
+
   // Function to get auth token
   const getAuthToken = () => {
     const storageLocations = [localStorage, sessionStorage];
@@ -273,6 +332,7 @@ const StandardPost = () => {
         const token = getAuthToken();
         if (!token) {
           setError('Authentication token not found. Please login again.');
+          setShowSessionExpiredDialog(true);
           return;
         }
 
@@ -297,7 +357,14 @@ const StandardPost = () => {
         }
       } catch (err) {
         console.error('Failed to fetch journalist profile:', err);
-        // Don't show error to user, just log it
+        
+        // Check if the error is due to an expired token
+        if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+          console.log('Token is invalid or expired');
+          setShowSessionExpiredDialog(true);
+        }
+        
+        // Don't show error to user for profile fetch, just log it
       }
     };
 
@@ -391,9 +458,7 @@ const StandardPost = () => {
     
     if (!token) {
       setError('No authentication token found. Please login again.');
-      setTimeout(() => {
-        navigate('/login');
-      }, 3000);
+      setShowSessionExpiredDialog(true);
       return;
     }
 
@@ -462,6 +527,13 @@ const StandardPost = () => {
       } catch (mainEndpointErr) {
         console.error('Main endpoint failed:', mainEndpointErr);
         
+        // Check if the error is due to an expired token
+        if (mainEndpointErr.response && (mainEndpointErr.response.status === 401 || mainEndpointErr.response.status === 403)) {
+          console.log('Token is invalid or expired');
+          setShowSessionExpiredDialog(true);
+          throw mainEndpointErr; // Re-throw to skip the other endpoints
+        }
+        
         // Try to extract detailed error information
         let errorDetail = '';
         if (mainEndpointErr.response && mainEndpointErr.response.data) {
@@ -490,6 +562,13 @@ const StandardPost = () => {
         } catch (alt1Err) {
           console.error('Alternative endpoint #1 failed:', alt1Err);
           
+          // Check if the error is due to an expired token
+          if (alt1Err.response && (alt1Err.response.status === 401 || alt1Err.response.status === 403)) {
+            console.log('Token is invalid or expired');
+            setShowSessionExpiredDialog(true);
+            throw alt1Err; // Re-throw to skip the other endpoints
+          }
+          
           // Try alternative endpoint #2 - /api/content
           try {
             console.log('Trying alternative endpoint #2: /api/content');
@@ -504,6 +583,13 @@ const StandardPost = () => {
             });
           } catch (alt2Err) {
             console.error('Alternative endpoint #2 failed:', alt2Err);
+            
+            // Check if the error is due to an expired token
+            if (alt2Err.response && (alt2Err.response.status === 401 || alt2Err.response.status === 403)) {
+              console.log('Token is invalid or expired');
+              setShowSessionExpiredDialog(true);
+              throw alt2Err; // Re-throw to skip the other endpoints
+            }
             
             // Last resort - Try alternative endpoint #3 with minimal JSON
             try {
@@ -531,6 +617,14 @@ const StandardPost = () => {
               );
             } catch (lastResortErr) {
               console.error('All endpoints failed:', lastResortErr);
+              
+              // Check if the error is due to an expired token
+              if (lastResortErr.response && (lastResortErr.response.status === 401 || lastResortErr.response.status === 403)) {
+                console.log('Token is invalid or expired');
+                setShowSessionExpiredDialog(true);
+                throw lastResortErr;
+              }
+              
               // Let the main error handler deal with this
               throw {
                 message: 'Server unavailable: All API endpoints failed',
@@ -574,6 +668,15 @@ const StandardPost = () => {
       
     } catch (err) {
       console.error('API request failed:', err);
+      
+      // Check for session expiration
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+        console.log('Token is invalid or expired');
+        setShowSessionExpiredDialog(true);
+        setLoading(false);
+        setUploadProgress(0);
+        return;
+      }
       
       // Enhanced error reporting with more details
       if (err.originalErrors) {
@@ -639,6 +742,76 @@ const StandardPost = () => {
 
   return (
     <div style={{ padding: '30px', backgroundColor: '#f9fafb' }}>
+      {/* Session Expired Dialog */}
+      <Dialog
+        open={showSessionExpiredDialog}
+        onClose={() => {}}
+        aria-labelledby="session-expired-dialog-title"
+        aria-describedby="session-expired-dialog-description"
+        PaperProps={{
+          sx: {
+            width: '100%',
+            maxWidth: '450px',
+            borderRadius: '12px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+            backgroundColor: 'white',
+            position: 'absolute',
+            top: '50%',
+            left: '60%',
+            transform: 'translate(-50%, -50%)',
+            m: 0,
+            p: 3,
+            alignItems: "center"
+          }
+        }}
+      >
+        <DialogTitle id="session-expired-dialog-title" sx={{ 
+          textAlign: 'center',
+          fontWeight: 'bold',
+          fontSize: '24px',
+          pb: 1,
+          pt: 2
+        }}>
+          Session Expired
+        </DialogTitle>
+        <DialogContent sx={{ px: 3, pb: 2, pt: 0 }}>
+          <DialogContentText id="session-expired-dialog-description" sx={{ 
+            color: '#4b5563',
+            textAlign: 'center',
+            fontSize: '16px',
+            lineHeight: 1.5
+          }}>
+            Your session has expired. Please login again to continue.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ 
+          px: 3, 
+          pb: 2, 
+          pt: 1,
+          justifyContent: 'center'
+        }}>
+          <Button 
+            onClick={handleLoginRedirect} 
+            variant="contained"
+            autoFocus
+            sx={{
+              bgcolor: '#6366f1',
+              color: 'white',
+              px: 4,
+              py: 1.2,
+              borderRadius: '6px',
+              minWidth: '130px',
+              fontWeight: 'bold',
+              '&:hover': {
+                bgcolor: '#4f46e5'
+              }
+            }}
+          >
+            LOGIN
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
           <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', marginBottom: '5px' }}>Create a Standard Post</h1>

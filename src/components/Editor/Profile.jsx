@@ -3,6 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FaArrowLeft, FaUser, FaEnvelope, FaUserTag } from 'react-icons/fa';
 import { FaFileAlt, FaTimesCircle, FaRegNewspaper } from 'react-icons/fa';
+import {
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Button
+} from '@mui/material';
 
 const Profile = () => {
   const [profileData, setProfileData] = useState(null);
@@ -18,10 +26,113 @@ const Profile = () => {
     username: '',
     email: ''
   });
+  const [showSessionExpiredDialog, setShowSessionExpiredDialog] = useState(false);
   const navigate = useNavigate();
 
   // API Base URL
   const baseURL = 'https://api.newztok.in';
+
+  // Check for token expiration on component mount
+  useEffect(() => {
+    checkTokenExpiration();
+  }, []);
+
+  // Check for token expiration
+  const checkTokenExpiration = () => {
+    const tokenData = localStorage.getItem('authTokenData');
+    
+    if (!tokenData) {
+      // No token found, user is not logged in
+      setShowSessionExpiredDialog(true);
+      return;
+    }
+    
+    try {
+      const parsedTokenData = JSON.parse(tokenData);
+      const tokenTimestamp = parsedTokenData.timestamp;
+      const currentTime = Date.now();
+      
+      // Check if token is older than 24 hours (86400000 ms)
+      const tokenAge = currentTime - tokenTimestamp;
+      const tokenExpirationTime = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+      
+      if (tokenAge > tokenExpirationTime) {
+        // Token has expired
+        console.log('Session expired. Token age:', tokenAge, 'ms');
+        setShowSessionExpiredDialog(true);
+      }
+    } catch (error) {
+      console.error('Error checking token expiration:', error);
+      setShowSessionExpiredDialog(true);
+    }
+  };
+
+  // Handle redirect to login page
+  const handleLoginRedirect = () => {
+    // Clear auth data before redirecting
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authTokenData');
+    localStorage.removeItem('userRole');
+    sessionStorage.removeItem('authToken');
+    sessionStorage.removeItem('authTokenData');
+    sessionStorage.removeItem('userRole');
+    
+    // Close dialog and redirect to login page
+    setShowSessionExpiredDialog(false);
+    navigate('/user/login');
+  };
+
+  // Enhanced getAuthToken function with session expiration handling
+  const getEnhancedAuthToken = () => {
+    // Get token from all possible storage locations with fallbacks
+    const storageOptions = [localStorage, sessionStorage];
+    const tokenKeys = ['authToken', 'token', 'jwtToken', 'userToken', 'accessToken'];
+    
+    for (const storage of storageOptions) {
+      for (const key of tokenKeys) {
+        const token = storage.getItem(key);
+        if (token) {
+          console.log(`Found token with key '${key}'`);
+          try {
+            // Ensure token is properly formatted and not wrapped in quotes
+            const cleanToken = token.trim().replace(/^["'](.*)["']$/, '$1');
+            // Verify the token looks like a JWT (crude validation)
+            if (cleanToken.split('.').length === 3) {
+              return cleanToken;
+            } else {
+              console.warn('Token found but does not appear to be a valid JWT format');
+            }
+          } catch (e) {
+            console.error('Error parsing token:', e);
+          }
+          return token;
+        }
+      }
+    }
+    
+    console.error('No authentication token found');
+    setShowSessionExpiredDialog(true);
+    return null;
+  };
+
+  // Function to save a working token with timestamp
+  const saveWorkingToken = (token) => {
+    if (!token) return;
+    
+    // Save to both storage types for redundancy
+    localStorage.setItem('authToken', token);
+    sessionStorage.setItem('authToken', token);
+    
+    // Store timestamp for expiration tracking
+    const tokenData = {
+      token: token,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('authTokenData', JSON.stringify(tokenData));
+    sessionStorage.setItem('authTokenData', JSON.stringify(tokenData));
+    
+    console.log('Token saved to both localStorage and sessionStorage with timestamp');
+  };
 
   // Function to decode JWT token
   const decodeToken = (token) => {
@@ -67,8 +178,11 @@ const Profile = () => {
 
   // Extract data from token
   useEffect(() => {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = getEnhancedAuthToken();
     if (token) {
+      // Save token with timestamp if it's valid
+      saveWorkingToken(token);
+      
       try {
         // Try the standard decoding
         let decoded = decodeToken(token);
@@ -129,6 +243,8 @@ const Profile = () => {
       } catch (error) {
         console.error('Error processing token:', error);
       }
+    } else {
+      setShowSessionExpiredDialog(true);
     }
   }, []);
 
@@ -140,17 +256,22 @@ const Profile = () => {
     try {
       setLoading(true);
       
-      // Get the auth token from localStorage or sessionStorage
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      // Get the auth token using the enhanced function
+      const token = getEnhancedAuthToken();
       
       if (!token) {
+        setShowSessionExpiredDialog(true);
         throw new Error('No authentication token found');
       }
+
+      // Save token with timestamp if it's valid
+      saveWorkingToken(token);
 
       // Configure axios headers with the token
       const config = {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       };
 
@@ -186,12 +307,28 @@ const Profile = () => {
         });
       } catch (statsErr) {
         console.error('Error fetching stats:', statsErr);
+        
+        // Check for authentication errors in stats
+        if (statsErr.response && (statsErr.response.status === 401 || statsErr.response.status === 403)) {
+          console.log('Token is invalid or expired');
+          setShowSessionExpiredDialog(true);
+          return;
+        }
+        
         // Continue with profile display even if stats fail
       }
       
       setError(null);
     } catch (err) {
       console.error('Error fetching profile data:', err);
+      
+      // Check for authentication errors
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+        console.log('Token is invalid or expired');
+        setShowSessionExpiredDialog(true);
+        return;
+      }
+      
       setError('Failed to load profile data');
     } finally {
       setLoading(false);
@@ -242,6 +379,76 @@ const Profile = () => {
       backgroundColor: '#f4f6f8',
       minHeight: '100vh'
     }}>
+      {/* Session Expired Dialog */}
+      <Dialog
+        open={showSessionExpiredDialog}
+        onClose={() => {}}
+        aria-labelledby="session-expired-dialog-title"
+        aria-describedby="session-expired-dialog-description"
+        PaperProps={{
+          sx: {
+            width: '100%',
+            maxWidth: '450px',
+            borderRadius: '12px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+            backgroundColor: 'white',
+            position: 'absolute',
+            top: '50%',
+            left: '60%',
+            transform: 'translate(-50%, -50%)',
+            m: 0,
+            p: 3,
+            alignItems: "center"
+          }
+        }}
+      >
+        <DialogTitle id="session-expired-dialog-title" sx={{ 
+          textAlign: 'center',
+          fontWeight: 'bold',
+          fontSize: '24px',
+          pb: 1,
+          pt: 2
+        }}>
+          Session Expired
+        </DialogTitle>
+        <DialogContent sx={{ px: 3, pb: 2, pt: 0 }}>
+          <DialogContentText id="session-expired-dialog-description" sx={{ 
+            color: '#4b5563',
+            textAlign: 'center',
+            fontSize: '16px',
+            lineHeight: 1.5
+          }}>
+            Your session has expired. Please login again to continue.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ 
+          px: 3, 
+          pb: 2, 
+          pt: 1,
+          justifyContent: 'center'
+        }}>
+          <Button 
+            onClick={handleLoginRedirect} 
+            variant="contained"
+            autoFocus
+            sx={{
+              bgcolor: '#6366f1',
+              color: 'white',
+              px: 4,
+              py: 1.2,
+              borderRadius: '6px',
+              minWidth: '130px',
+              fontWeight: 'bold',
+              '&:hover': {
+                bgcolor: '#4f46e5'
+              }
+            }}
+          >
+            LOGIN
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Back Button */}
       <button 
         onClick={handleGoBack}

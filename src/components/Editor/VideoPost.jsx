@@ -1,9 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FiChevronDown } from 'react-icons/fi';
 import { Editor } from '@tinymce/tinymce-react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import TinyMCEEditor from '../common/TinyMCEEditor';
+import {
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Button
+} from '@mui/material';
 
 // API base URL configuration
 const API_BASE_URL = 'https://api.newztok.in';
@@ -28,6 +36,7 @@ const VideoPost = () => {
   const [success, setSuccess] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadMethod, setUploadMethod] = useState('youtube'); // 'youtube' or 'file'
+  const [showSessionExpiredDialog, setShowSessionExpiredDialog] = useState(false);
   const editorRef = useRef(null);
   const navigate = useNavigate();
 
@@ -181,6 +190,108 @@ const VideoPost = () => {
     ]
   };
 
+  // Check for token expiration on component mount
+  useEffect(() => {
+    checkTokenExpiration();
+  }, []);
+
+  // Check for token expiration
+  const checkTokenExpiration = () => {
+    const tokenData = localStorage.getItem('authTokenData');
+    
+    if (!tokenData) {
+      // No token found, user is not logged in
+      setShowSessionExpiredDialog(true);
+      return;
+    }
+    
+    try {
+      const parsedTokenData = JSON.parse(tokenData);
+      const tokenTimestamp = parsedTokenData.timestamp;
+      const currentTime = Date.now();
+      
+      // Check if token is older than 24 hours (86400000 ms)
+      const tokenAge = currentTime - tokenTimestamp;
+      const tokenExpirationTime = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+      
+      if (tokenAge > tokenExpirationTime) {
+        // Token has expired
+        console.log('Session expired. Token age:', tokenAge, 'ms');
+        setShowSessionExpiredDialog(true);
+      }
+    } catch (error) {
+      console.error('Error checking token expiration:', error);
+      setShowSessionExpiredDialog(true);
+    }
+  };
+
+  // Handle redirect to login page
+  const handleLoginRedirect = () => {
+    // Clear auth data before redirecting
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authTokenData');
+    localStorage.removeItem('userRole');
+    sessionStorage.removeItem('authToken');
+    sessionStorage.removeItem('authTokenData');
+    sessionStorage.removeItem('userRole');
+    
+    // Close dialog and redirect to login page
+    setShowSessionExpiredDialog(false);
+    navigate('/user/login');
+  };
+
+  // Enhanced getAuthToken function with session expiration handling
+  const getEnhancedAuthToken = () => {
+    // Get token from all possible storage locations with fallbacks
+    const storageOptions = [localStorage, sessionStorage];
+    const tokenKeys = ['authToken', 'token', 'jwtToken', 'userToken', 'accessToken'];
+    
+    for (const storage of storageOptions) {
+      for (const key of tokenKeys) {
+        const token = storage.getItem(key);
+        if (token) {
+          console.log(`Found token with key '${key}'`);
+          try {
+            // Ensure token is properly formatted and not wrapped in quotes
+            const cleanToken = token.trim().replace(/^["'](.*)["']$/, '$1');
+            // Verify the token looks like a JWT (crude validation)
+            if (cleanToken.split('.').length === 3) {
+              return cleanToken;
+            } else {
+              console.warn('Token found but does not appear to be a valid JWT format');
+            }
+          } catch (e) {
+            console.error('Error parsing token:', e);
+          }
+          return token;
+        }
+      }
+    }
+    
+    console.error('No authentication token found');
+    setShowSessionExpiredDialog(true);
+    return null;
+  };
+
+  // Function to save a working token with timestamp
+  const saveWorkingToken = (token) => {
+    if (!token) return;
+    
+    // Save to both storage types for redundancy
+    localStorage.setItem('authToken', token);
+    sessionStorage.setItem('authToken', token);
+    
+    // Store timestamp for expiration tracking
+    const tokenData = {
+      token: token,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('authTokenData', JSON.stringify(tokenData));
+    sessionStorage.setItem('authTokenData', JSON.stringify(tokenData));
+    
+    console.log('Token saved to both localStorage and sessionStorage with timestamp');
+  };
+
   const handleVideoFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
@@ -269,16 +380,17 @@ const VideoPost = () => {
       return;
     }
     
-    // Get the auth token
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    // Get the auth token using the enhanced method
+    const token = getEnhancedAuthToken();
     
     if (!token) {
       setError('No authentication token found. Please login again.');
-      setTimeout(() => {
-        navigate('/login');
-      }, 3000);
+      setShowSessionExpiredDialog(true);
       return;
     }
+
+    // Save token with timestamp if it's valid
+    saveWorkingToken(token);
 
     try {
       setLoading(true);
@@ -314,22 +426,68 @@ const VideoPost = () => {
       // Set upload message
       setError('Uploading video... Please wait');
       
-      // Make the API request to the specified endpoint
-      const response = await axios({
-        method: 'post',
-        url: 'https://api.newztok.in/api/news/create',
-        data: formData,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
-        },
-        timeout: uploadMethod === 'file' ? VIDEO_UPLOAD_TIMEOUT : axios.defaults.timeout,
-        onUploadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          setUploadProgress(percentCompleted);
-          console.log(`Upload progress: ${percentCompleted}%`);
+      // Try main endpoint
+      let response;
+      try {
+        console.log('Attempting main endpoint: /api/news/create');
+        // Make the API request to the specified endpoint
+        response = await axios({
+          method: 'post',
+          url: `${API_BASE_URL}/api/news/create`,
+          data: formData,
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          },
+          timeout: uploadMethod === 'file' ? VIDEO_UPLOAD_TIMEOUT : axios.defaults.timeout,
+          onUploadProgress: (progressEvent) => {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setUploadProgress(percentCompleted);
+            console.log(`Upload progress: ${percentCompleted}%`);
+          }
+        });
+      } catch (mainEndpointErr) {
+        console.error('Main endpoint failed:', mainEndpointErr);
+        
+        // Check for authentication errors (401/403)
+        if (mainEndpointErr.response && (mainEndpointErr.response.status === 401 || mainEndpointErr.response.status === 403)) {
+          console.log('Token is invalid or expired');
+          setShowSessionExpiredDialog(true);
+          return;
         }
-      });
+        
+        // Try fallback endpoint
+        try {
+          console.log('Trying alternative endpoint: /api/videos');
+          response = await axios({
+            method: 'post',
+            url: `${API_BASE_URL}/api/videos`,
+            data: formData,
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'multipart/form-data'
+            },
+            timeout: uploadMethod === 'file' ? VIDEO_UPLOAD_TIMEOUT : axios.defaults.timeout,
+            onUploadProgress: (progressEvent) => {
+              const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+              setUploadProgress(percentCompleted);
+              console.log(`Upload progress: ${percentCompleted}%`);
+            }
+          });
+        } catch (altErr) {
+          console.error('Alternative endpoint failed:', altErr);
+          
+          // Check for authentication errors
+          if (altErr.response && (altErr.response.status === 401 || altErr.response.status === 403)) {
+            console.log('Token is invalid or expired');
+            setShowSessionExpiredDialog(true);
+            return;
+          }
+          
+          // If both endpoints fail, throw error to be caught by outer catch
+          throw altErr;
+        }
+      }
       
       console.log('Video post created successfully:', response.data);
       
@@ -374,6 +532,13 @@ const VideoPost = () => {
       
     } catch (err) {
       console.error('API request failed:', err);
+      
+      // Check for authentication errors
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+        console.log('Token is invalid or expired');
+        setShowSessionExpiredDialog(true);
+        return;
+      }
       
       if (err.code === 'ECONNABORTED') {
         setError(
@@ -433,6 +598,76 @@ const VideoPost = () => {
 
   return (
     <div style={{ padding: '30px', backgroundColor: '#f9fafb' }}>
+      {/* Session Expired Dialog */}
+      <Dialog
+        open={showSessionExpiredDialog}
+        onClose={() => {}}
+        aria-labelledby="session-expired-dialog-title"
+        aria-describedby="session-expired-dialog-description"
+        PaperProps={{
+          sx: {
+            width: '100%',
+            maxWidth: '450px',
+            borderRadius: '12px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+            backgroundColor: 'white',
+            position: 'absolute',
+            top: '50%',
+            left: '60%',
+            transform: 'translate(-50%, -50%)',
+            m: 0,
+            p: 3,
+            alignItems: "center"
+          }
+        }}
+      >
+        <DialogTitle id="session-expired-dialog-title" sx={{ 
+          textAlign: 'center',
+          fontWeight: 'bold',
+          fontSize: '24px',
+          pb: 1,
+          pt: 2
+        }}>
+          Session Expired
+        </DialogTitle>
+        <DialogContent sx={{ px: 3, pb: 2, pt: 0 }}>
+          <DialogContentText id="session-expired-dialog-description" sx={{ 
+            color: '#4b5563',
+            textAlign: 'center',
+            fontSize: '16px',
+            lineHeight: 1.5
+          }}>
+            Your session has expired. Please login again to continue.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ 
+          px: 3, 
+          pb: 2, 
+          pt: 1,
+          justifyContent: 'center'
+        }}>
+          <Button 
+            onClick={handleLoginRedirect} 
+            variant="contained"
+            autoFocus
+            sx={{
+              bgcolor: '#6366f1',
+              color: 'white',
+              px: 4,
+              py: 1.2,
+              borderRadius: '6px',
+              minWidth: '130px',
+              fontWeight: 'bold',
+              '&:hover': {
+                bgcolor: '#4f46e5'
+              }
+            }}
+          >
+            LOGIN
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
           <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', marginBottom: '5px' }}>Create a Video Post</h1>

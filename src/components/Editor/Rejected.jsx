@@ -2,6 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { FaEllipsisV, FaExclamationCircle, FaRedo } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import {
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Button
+} from '@mui/material';
 
 const Rejected = () => {
   const [activeDropdown, setActiveDropdown] = useState(null);
@@ -10,6 +18,7 @@ const Rejected = () => {
   const [error, setError] = useState(null);
   const [userState, setUserState] = useState('N/A');
   const [userDistrict, setUserDistrict] = useState('N/A');
+  const [showSessionExpiredDialog, setShowSessionExpiredDialog] = useState(false);
   const navigate = useNavigate();
 
   // API Base URL
@@ -21,56 +30,106 @@ const Rejected = () => {
     'https://newztok.in/api'      // Another possible structure
   ];
 
-  // Get auth token - try multiple possible storage keys
-  const getAuthToken = () => {
-    // Check all possible storage locations for the token
-    const storageLocations = [localStorage, sessionStorage];
-    const possibleKeys = ['authToken', 'token', 'jwtToken', 'userToken', 'accessToken'];
+  // Check for token expiration on component mount
+  useEffect(() => {
+    checkTokenExpiration();
+  }, []);
+
+  // Check for token expiration
+  const checkTokenExpiration = () => {
+    const tokenData = localStorage.getItem('authTokenData');
     
-    let foundToken = null;
-    let tokenSource = '';
-    let state = 'N/A';
-    let district = 'N/A';
+    if (!tokenData) {
+      // No token found, user is not logged in
+      setShowSessionExpiredDialog(true);
+      return;
+    }
     
-    for (const storage of storageLocations) {
-      for (const key of possibleKeys) {
+    try {
+      const parsedTokenData = JSON.parse(tokenData);
+      const tokenTimestamp = parsedTokenData.timestamp;
+      const currentTime = Date.now();
+      
+      // Check if token is older than 24 hours (86400000 ms)
+      const tokenAge = currentTime - tokenTimestamp;
+      const tokenExpirationTime = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+      
+      if (tokenAge > tokenExpirationTime) {
+        // Token has expired
+        console.log('Session expired. Token age:', tokenAge, 'ms');
+        setShowSessionExpiredDialog(true);
+      }
+    } catch (error) {
+      console.error('Error checking token expiration:', error);
+      setShowSessionExpiredDialog(true);
+    }
+  };
+
+  // Handle redirect to login page
+  const handleLoginRedirect = () => {
+    // Clear auth data before redirecting
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authTokenData');
+    localStorage.removeItem('userRole');
+    sessionStorage.removeItem('authToken');
+    sessionStorage.removeItem('authTokenData');
+    sessionStorage.removeItem('userRole');
+    
+    // Close dialog and redirect to login page
+    setShowSessionExpiredDialog(false);
+    navigate('/user/login');
+  };
+
+  // Enhanced getAuthToken function with session expiration handling
+  const getEnhancedAuthToken = () => {
+    // Get token from all possible storage locations with fallbacks
+    const storageOptions = [localStorage, sessionStorage];
+    const tokenKeys = ['authToken', 'token', 'jwtToken', 'userToken', 'accessToken'];
+    
+    for (const storage of storageOptions) {
+      for (const key of tokenKeys) {
         const token = storage.getItem(key);
         if (token) {
-          foundToken = token;
-          tokenSource = `${storage === localStorage ? 'localStorage' : 'sessionStorage'}.${key}`;
-          console.log(`Found auth token in ${tokenSource}`);
-          
-          // Try to decode the token to extract state and district
+          console.log(`Found token with key '${key}'`);
           try {
-            // JWT tokens are in the format header.payload.signature
-            const tokenParts = token.split('.');
-            if (tokenParts.length === 3) {
-              // Decode the payload (second part)
-              const payload = JSON.parse(atob(tokenParts[1]));
-              console.log('Token payload:', payload);
-              
-              // Extract state and district if available
-              if (payload.state) state = payload.state;
-              if (payload.district) district = payload.district;
-              
-              // Look in common nested locations too
-              if (payload.user && payload.user.state) state = payload.user.state;
-              if (payload.user && payload.user.district) district = payload.user.district;
-              if (payload.data && payload.data.state) state = payload.data.state;
-              if (payload.data && payload.data.district) district = payload.data.district;
-              if (payload.location && payload.location.state) state = payload.location.state;
-              if (payload.location && payload.location.district) district = payload.location.district;
+            // Ensure token is properly formatted and not wrapped in quotes
+            const cleanToken = token.trim().replace(/^["'](.*)["']$/, '$1');
+            // Verify the token looks like a JWT (crude validation)
+            if (cleanToken.split('.').length === 3) {
+              return cleanToken;
+            } else {
+              console.warn('Token found but does not appear to be a valid JWT format');
             }
-          } catch (err) {
-            console.error('Error decoding token:', err);
+          } catch (e) {
+            console.error('Error parsing token:', e);
           }
-          
-          return { token: foundToken, source: tokenSource, state, district };
+          return token;
         }
       }
     }
     
-    return { token: null, source: 'none', state, district };
+    console.error('No authentication token found');
+    setShowSessionExpiredDialog(true);
+    return null;
+  };
+
+  // Function to save a working token with timestamp
+  const saveWorkingToken = (token) => {
+    if (!token) return;
+    
+    // Save to both storage types for redundancy
+    localStorage.setItem('authToken', token);
+    sessionStorage.setItem('authToken', token);
+    
+    // Store timestamp for expiration tracking
+    const tokenData = {
+      token: token,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('authTokenData', JSON.stringify(tokenData));
+    sessionStorage.setItem('authTokenData', JSON.stringify(tokenData));
+    
+    console.log('Token saved to both localStorage and sessionStorage with timestamp');
   };
 
   // Try all possible ways to fetch rejected posts
@@ -80,28 +139,28 @@ const Rejected = () => {
       setError(null);
       
       // Get the auth token
-      const { token, source, state, district } = getAuthToken();
-      
-      // Set the state and district from the token
-      setUserState(state);
-      setUserDistrict(district);
+      const token = getEnhancedAuthToken();
       
       if (!token) {
         console.log('No token found');
-        setError('Authentication token not found. Please log in again.');
+        setShowSessionExpiredDialog(true);
         setLoading(false);
         return;
       }
+
+      // Save token with timestamp if it's valid
+      saveWorkingToken(token);
       
       // Configure axios headers with the token
       const config = {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       };
       
       console.log(`Attempting to fetch rejected posts with token`);
-      console.log(`User state: ${state}, district: ${district}`);
+      console.log(`User state: ${userState}, district: ${userDistrict}`);
       
       // Define all possible endpoints to try in sequence
       const possibleEndpoints = [
@@ -168,6 +227,13 @@ const Rejected = () => {
           lastError = apiError;
           console.error(`Error with endpoint ${endpoint}:`, apiError.message);
           
+          // Check for authentication errors (401/403)
+          if (apiError.response && (apiError.response.status === 401 || apiError.response.status === 403)) {
+            console.log('Token is invalid or expired');
+            setShowSessionExpiredDialog(true);
+            return;
+          }
+          
           // If it's a timeout, log specifically
           if (apiError.message.includes('timeout')) {
             console.log(`Timeout occurred with endpoint ${endpoint}, trying next endpoint...`);
@@ -193,6 +259,14 @@ const Rejected = () => {
       }
     } catch (err) {
       console.error('Overall error in fetchRejectedPosts:', err);
+      
+      // Check for authentication errors
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+        console.log('Token is invalid or expired');
+        setShowSessionExpiredDialog(true);
+        return;
+      }
+      
       setError(`Error loading rejected posts: ${err.message}`);
       setRejectedPosts([]);
     } finally {
@@ -255,11 +329,15 @@ const Rejected = () => {
     
     try {
       // Get the auth token
-      const { token } = getAuthToken();
+      const token = getEnhancedAuthToken();
       
       if (!token) {
+        setShowSessionExpiredDialog(true);
         throw new Error('No authentication token found');
       }
+
+      // Save token with timestamp if it's valid
+      saveWorkingToken(token);
       
       // Confirm resubmission
       if (window.confirm('Are you sure you want to resubmit this post for review?')) {
@@ -285,6 +363,13 @@ const Rejected = () => {
           fetchRejectedPosts();
         } catch (directErr) {
           console.error('Error with direct resubmit:', directErr);
+          
+          // Check for authentication errors
+          if (directErr.response && (directErr.response.status === 401 || directErr.response.status === 403)) {
+            console.log('Token is invalid or expired');
+            setShowSessionExpiredDialog(true);
+            return;
+          }
           
           // Try fallback endpoints
           const possibleEndpoints = [
@@ -318,6 +403,13 @@ const Rejected = () => {
               break;
             } catch (endpointErr) {
               console.error(`Failed with endpoint ${endpoint}:`, endpointErr.message);
+              
+              // Check for authentication errors
+              if (endpointErr.response && (endpointErr.response.status === 401 || endpointErr.response.status === 403)) {
+                console.log('Token is invalid or expired');
+                setShowSessionExpiredDialog(true);
+                return;
+              }
             }
           }
           
@@ -331,6 +423,14 @@ const Rejected = () => {
       }
     } catch (err) {
       console.error('Error resubmitting post:', err);
+      
+      // Check for authentication errors
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+        console.log('Token is invalid or expired');
+        setShowSessionExpiredDialog(true);
+        return;
+      }
+      
       alert(`Failed to resubmit post: ${err.message}`);
     }
     
@@ -342,11 +442,15 @@ const Rejected = () => {
     
     try {
       // Get the auth token
-      const { token } = getAuthToken();
+      const token = getEnhancedAuthToken();
       
       if (!token) {
+        setShowSessionExpiredDialog(true);
         throw new Error('No authentication token found');
       }
+
+      // Save token with timestamp if it's valid
+      saveWorkingToken(token);
       
       // Confirm deletion
       if (window.confirm('Are you sure you want to permanently delete this post?')) {
@@ -358,7 +462,8 @@ const Rejected = () => {
             method: 'delete',
             url: `http://13.234.42.114:3333/api/news/${post._id || post.id}`,
             headers: {
-              'Authorization': `Bearer ${token}`
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
             }
           });
           
@@ -371,11 +476,27 @@ const Rejected = () => {
           );
         } catch (err) {
           console.error('Error with delete request:', err);
+          
+          // Check for authentication errors
+          if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+            console.log('Token is invalid or expired');
+            setShowSessionExpiredDialog(true);
+            return;
+          }
+          
           alert('Failed to delete post. Please try again later.');
         }
       }
     } catch (err) {
       console.error('Error deleting post:', err);
+      
+      // Check for authentication errors
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+        console.log('Token is invalid or expired');
+        setShowSessionExpiredDialog(true);
+        return;
+      }
+      
       alert(`Failed to delete post: ${err.message}`);
     }
     
@@ -413,6 +534,76 @@ const Rejected = () => {
 
   return (
     <div style={{ padding: '30px', backgroundColor: '#f9fafb' }}>
+      {/* Session Expired Dialog */}
+      <Dialog
+        open={showSessionExpiredDialog}
+        onClose={() => {}}
+        aria-labelledby="session-expired-dialog-title"
+        aria-describedby="session-expired-dialog-description"
+        PaperProps={{
+          sx: {
+            width: '100%',
+            maxWidth: '450px',
+            borderRadius: '12px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+            backgroundColor: 'white',
+            position: 'absolute',
+            top: '50%',
+            left: '60%',
+            transform: 'translate(-50%, -50%)',
+            m: 0,
+            p: 3,
+            alignItems: "center"
+          }
+        }}
+      >
+        <DialogTitle id="session-expired-dialog-title" sx={{ 
+          textAlign: 'center',
+          fontWeight: 'bold',
+          fontSize: '24px',
+          pb: 1,
+          pt: 2
+        }}>
+          Session Expired
+        </DialogTitle>
+        <DialogContent sx={{ px: 3, pb: 2, pt: 0 }}>
+          <DialogContentText id="session-expired-dialog-description" sx={{ 
+            color: '#4b5563',
+            textAlign: 'center',
+            fontSize: '16px',
+            lineHeight: 1.5
+          }}>
+            Your session has expired. Please login again to continue.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ 
+          px: 3, 
+          pb: 2, 
+          pt: 1,
+          justifyContent: 'center'
+        }}>
+          <Button 
+            onClick={handleLoginRedirect} 
+            variant="contained"
+            autoFocus
+            sx={{
+              bgcolor: '#6366f1',
+              color: 'white',
+              px: 4,
+              py: 1.2,
+              borderRadius: '6px',
+              minWidth: '130px',
+              fontWeight: 'bold',
+              '&:hover': {
+                bgcolor: '#4f46e5'
+              }
+            }}
+          >
+            LOGIN
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Header section with title */}
       <div style={{
         display: 'flex',

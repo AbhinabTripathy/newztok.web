@@ -20,7 +20,12 @@ import {
   Typography,
   TablePagination,
   Chip,
-  Tooltip
+  Tooltip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle
 } from '@mui/material';
 
 // CSS for spinner animation
@@ -46,6 +51,7 @@ const PendingApprovals = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [showSessionExpiredDialog, setShowSessionExpiredDialog] = useState(false);
   const navigate = useNavigate();
   const [lastFetchTime, setLastFetchTime] = useState(null);
   const baseURL = 'https://api.newztok.in';
@@ -53,12 +59,58 @@ const PendingApprovals = () => {
   useEffect(() => {
     console.log('PendingApprovals component mounted at:', new Date().toISOString());
     console.log('Starting to fetch pending news...');
+    checkTokenExpiration();
     fetchPendingNews();
     
     return () => {
       console.log('PendingApprovals component unmounting');
     };
   }, []);
+
+  // Check for token expiration
+  const checkTokenExpiration = () => {
+    const tokenData = localStorage.getItem('authTokenData');
+    
+    if (!tokenData) {
+      // No token found, user is not logged in
+      setShowSessionExpiredDialog(true);
+      return;
+    }
+    
+    try {
+      const parsedTokenData = JSON.parse(tokenData);
+      const tokenTimestamp = parsedTokenData.timestamp;
+      const currentTime = Date.now();
+      
+      // Check if token is older than 24 hours (86400000 ms)
+      const tokenAge = currentTime - tokenTimestamp;
+      const tokenExpirationTime = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+      
+      if (tokenAge > tokenExpirationTime) {
+        // Token has expired
+        console.log('Session expired. Token age:', tokenAge, 'ms');
+        setShowSessionExpiredDialog(true);
+      }
+    } catch (error) {
+      console.error('Error checking token expiration:', error);
+      setShowSessionExpiredDialog(true);
+    }
+  };
+
+  // Handle redirect to login page
+  const handleLoginRedirect = () => {
+    // Clear auth data before redirecting
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authTokenData');
+    localStorage.removeItem('userRole');
+    sessionStorage.removeItem('authToken');
+    sessionStorage.removeItem('authTokenData');
+    sessionStorage.removeItem('userRole');
+    
+    // Close dialog and redirect to login page
+    setShowSessionExpiredDialog(false);
+    navigate('/user/login');
+  };
 
   const getAuthToken = () => {
     // Get token from all possible storage locations with fallbacks
@@ -88,7 +140,27 @@ const PendingApprovals = () => {
     }
     
     console.error('No authentication token found');
+    setShowSessionExpiredDialog(true);
     return null;
+  };
+
+  // Function to save a working token with timestamp
+  const saveWorkingToken = (token) => {
+    if (!token) return;
+    
+    // Save to both storage types for redundancy
+    localStorage.setItem('authToken', token);
+    sessionStorage.setItem('authToken', token);
+    
+    // Store timestamp for expiration tracking
+    const tokenData = {
+      token: token,
+      timestamp: Date.now()
+    };
+    localStorage.setItem('authTokenData', JSON.stringify(tokenData));
+    sessionStorage.setItem('authTokenData', JSON.stringify(tokenData));
+    
+    console.log('Token saved to both localStorage and sessionStorage with timestamp');
   };
 
   const fetchPendingNews = async (retryCount = 0, delay = 1000) => {
@@ -108,6 +180,9 @@ const PendingApprovals = () => {
       if (!token) {
         throw new Error('Authentication token not found - please login again');
       }
+      
+      // Save token with timestamp if it's valid
+      saveWorkingToken(token);
       
       // Log token format for debugging (safely)
       console.log('Token length:', token.length);
@@ -143,6 +218,13 @@ const PendingApprovals = () => {
         try {
           const response = await fetch(endpoint, requestOptions);
           console.log(`Response from ${endpoint}: status ${response.status}`);
+          
+          // Check for authentication issues
+          if (response.status === 401 || response.status === 403) {
+            console.error(`Authentication error (${response.status}) from ${endpoint}`);
+            setShowSessionExpiredDialog(true);
+            throw new Error(`Authentication error (${response.status})`);
+          }
           
           // Handle successful response
           if (response.ok) {
@@ -343,12 +425,10 @@ const PendingApprovals = () => {
       // Set empty array to prevent undefined errors
       setPendingNews([]);
       
-      // Try to login again if token error
-      if (err.message && err.message.includes('401')) {
-        setError('Your session has expired. Please login again.');
-        setTimeout(() => {
-          navigate('/login');
-        }, 3000);
+      // Check for authentication errors
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+        console.log('Token is invalid or expired');
+        setShowSessionExpiredDialog(true);
         return;
       }
       
@@ -433,6 +513,7 @@ const PendingApprovals = () => {
       const token = getAuthToken();
       
       if (!token) {
+        setShowSessionExpiredDialog(true);
         throw new Error('Authentication token not found - please login again');
       }
       
@@ -459,6 +540,9 @@ const PendingApprovals = () => {
       // Send the request
       const response = await axios.put(endpoint, payload, config);
       
+      // Save token if request was successful
+      saveWorkingToken(token);
+      
       console.log(`Status update successful:`, response.data);
       
       // Update the news item locally to remove it from the list
@@ -477,6 +561,13 @@ const PendingApprovals = () => {
       
     } catch (err) {
       console.error(`Error updating news status:`, err);
+      
+      // Check for authentication errors
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+        console.log('Token is invalid or expired');
+        setShowSessionExpiredDialog(true);
+        return;
+      }
       
       // Show detailed error information
       if (err.response) {
@@ -731,6 +822,76 @@ const PendingApprovals = () => {
     <div style={{ padding: '30px', backgroundColor: '#f9fafb' }}>
       {/* Add style tag for animations */}
       <style dangerouslySetInnerHTML={{ __html: spinAnimation }} />
+      
+      {/* Session Expired Dialog */}
+      <Dialog
+        open={showSessionExpiredDialog}
+        onClose={() => {}}
+        aria-labelledby="session-expired-dialog-title"
+        aria-describedby="session-expired-dialog-description"
+        PaperProps={{
+          sx: {
+            width: '100%',
+            maxWidth: '450px',
+            borderRadius: '12px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+            backgroundColor: 'white',
+            position: 'absolute',
+            top: '50%',
+            left: '60%',
+            transform: 'translate(-50%, -50%)',
+            m: 0,
+            p: 3,
+            alignItems: "center"
+          }
+        }}
+      >
+        <DialogTitle id="session-expired-dialog-title" sx={{ 
+          textAlign: 'center',
+          fontWeight: 'bold',
+          fontSize: '24px',
+          pb: 1,
+          pt: 2
+        }}>
+          Session Expired
+        </DialogTitle>
+        <DialogContent sx={{ px: 3, pb: 2, pt: 0 }}>
+          <DialogContentText id="session-expired-dialog-description" sx={{ 
+            color: '#4b5563',
+            textAlign: 'center',
+            fontSize: '16px',
+            lineHeight: 1.5
+          }}>
+            Your session has expired. Please login again to continue.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ 
+          px: 3, 
+          pb: 2, 
+          pt: 1,
+          justifyContent: 'center'
+        }}>
+          <Button 
+            onClick={handleLoginRedirect} 
+            variant="contained"
+            autoFocus
+            sx={{
+              bgcolor: '#6366f1',
+              color: 'white',
+              px: 4,
+              py: 1.2,
+              borderRadius: '6px',
+              minWidth: '130px',
+              fontWeight: 'bold',
+              '&:hover': {
+                bgcolor: '#4f46e5'
+              }
+            }}
+          >
+            LOGIN
+          </Button>
+        </DialogActions>
+      </Dialog>
       
       <Box sx={{ 
         display: 'flex', 

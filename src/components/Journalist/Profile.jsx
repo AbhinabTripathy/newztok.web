@@ -3,6 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { FaArrowLeft, FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaCalendarAlt } from 'react-icons/fa';
 import { FaFileAlt, FaTimesCircle, FaRegNewspaper, FaClock } from 'react-icons/fa';
+import { 
+  Dialog, 
+  DialogActions, 
+  DialogContent, 
+  DialogContentText, 
+  DialogTitle, 
+  Button 
+} from '@mui/material';
 
 const Profile = () => {
   const [profileData, setProfileData] = useState(null);
@@ -17,10 +25,82 @@ const Profile = () => {
     username: '',
     email: ''
   });
+  const [showSessionExpiredDialog, setShowSessionExpiredDialog] = useState(false);
   const navigate = useNavigate();
 
   // API Base URL
   const baseURL = 'https://api.newztok.in';
+
+  // Function to get auth token from storage (matching JournalistPost.jsx)
+  const getAuthToken = () => {
+    // Check all possible storage locations for the token
+    const storageLocations = [localStorage, sessionStorage];
+    // Use the same key order as other components for consistency
+    const possibleKeys = ['authToken', 'token', 'jwtToken', 'userToken', 'accessToken'];
+    
+    for (const storage of storageLocations) {
+      for (const key of possibleKeys) {
+        const token = storage.getItem(key);
+        if (token) {
+          console.log(`Found token with key '${key}' in ${storage === localStorage ? 'localStorage' : 'sessionStorage'}`);
+          return token;
+        }
+      }
+    }
+    
+    console.error('No authentication token found');
+    return null;
+  };
+
+  // Check for token expiration
+  useEffect(() => {
+    const checkTokenExpiration = () => {
+      const tokenData = localStorage.getItem('authTokenData');
+      
+      if (!tokenData) {
+        // No token found, user is not logged in
+        setShowSessionExpiredDialog(true);
+        return;
+      }
+      
+      try {
+        const parsedTokenData = JSON.parse(tokenData);
+        const tokenTimestamp = parsedTokenData.timestamp;
+        const currentTime = Date.now();
+        
+        // Check if token is older than 24 hours (86400000 ms)
+        const tokenAge = currentTime - tokenTimestamp;
+        const tokenExpirationTime = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        
+        if (tokenAge > tokenExpirationTime) {
+          // Token has expired
+          console.log('Session expired. Token age:', tokenAge, 'ms');
+          setShowSessionExpiredDialog(true);
+        }
+      } catch (error) {
+        console.error('Error checking token expiration:', error);
+        setShowSessionExpiredDialog(true);
+      }
+    };
+    
+    // Check token expiration on component mount
+    checkTokenExpiration();
+  }, []);
+
+  // Handle redirect to login page
+  const handleLoginRedirect = () => {
+    // Clear auth data before redirecting
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('authTokenData');
+    localStorage.removeItem('userRole');
+    sessionStorage.removeItem('authToken');
+    sessionStorage.removeItem('authTokenData');
+    sessionStorage.removeItem('userRole');
+    
+    // Close dialog and redirect to login page
+    setShowSessionExpiredDialog(false);
+    navigate('/user/login');
+  };
 
   // Function to decode JWT token
   const decodeToken = (token) => {
@@ -66,7 +146,7 @@ const Profile = () => {
 
   // Extract data from token
   useEffect(() => {
-    const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    const token = getAuthToken();
     if (token) {
       try {
         // Try the standard decoding
@@ -139,8 +219,8 @@ const Profile = () => {
     try {
       setLoading(true);
       
-      // Get the auth token from localStorage or sessionStorage
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+      // Get the auth token using the new getAuthToken function
+      const token = getAuthToken();
       
       if (!token) {
         throw new Error('No authentication token found');
@@ -162,6 +242,14 @@ const Profile = () => {
         setProfileData(profileResponse.data);
       } catch (profileErr) {
         console.error('Error fetching profile:', profileErr);
+        
+        // Check if the error is due to an expired token
+        if (profileErr.response && (profileErr.response.status === 401 || profileErr.response.status === 403)) {
+          console.log('Token is invalid or expired');
+          setShowSessionExpiredDialog(true);
+          return; // Return early
+        }
+        
         // Try alternative profile endpoints
         try {
           const altProfileResponse = await axios.get(`${baseURL}/api/users/profile`, config);
@@ -169,6 +257,14 @@ const Profile = () => {
           setProfileData(altProfileResponse.data);
         } catch (altProfileErr) {
           console.error('Error fetching from alternative profile endpoint:', altProfileErr);
+          
+          // Check if the error is due to an expired token
+          if (altProfileErr.response && (altProfileErr.response.status === 401 || altProfileErr.response.status === 403)) {
+            console.log('Token is invalid or expired');
+            setShowSessionExpiredDialog(true);
+            return; // Return early
+          }
+          
           // Continue with token data even if profile fetch fails
         }
       }
@@ -194,6 +290,12 @@ const Profile = () => {
           }
         } catch (err) {
           console.log(`Failed to fetch pending posts: ${err.message}`);
+          
+          // Check if the error is due to an expired token
+          if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+            console.log('Token is invalid or expired while fetching pending posts');
+            setShowSessionExpiredDialog(true);
+          }
         }
         
         // Fetch rejected posts with correct endpoint
@@ -209,6 +311,12 @@ const Profile = () => {
           }
         } catch (err) {
           console.log(`Failed to fetch rejected posts: ${err.message}`);
+          
+          // Check if the error is due to an expired token
+          if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+            console.log('Token is invalid or expired while fetching rejected posts');
+            setShowSessionExpiredDialog(true);
+          }
         }
         
         // Fetch approved posts with correct endpoint
@@ -224,6 +332,12 @@ const Profile = () => {
           }
         } catch (err) {
           console.log(`Failed to fetch approved posts: ${err.message}`);
+          
+          // Check if the error is due to an expired token
+          if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+            console.log('Token is invalid or expired while fetching approved posts');
+            setShowSessionExpiredDialog(true);
+          }
         }
         
         return statsData;
@@ -235,6 +349,12 @@ const Profile = () => {
     } catch (err) {
       console.error('Error fetching profile data:', err);
       setError('Failed to load profile data');
+      
+      // Check if the error is due to an expired token
+      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+        console.log('Token is invalid or expired');
+        setShowSessionExpiredDialog(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -317,6 +437,76 @@ const Profile = () => {
         backgroundColor: '#f4f6f8',
         minHeight: '100vh'
       }}>
+        {/* Session Expired Dialog */}
+        <Dialog
+          open={showSessionExpiredDialog}
+          onClose={() => {}}
+          aria-labelledby="session-expired-dialog-title"
+          aria-describedby="session-expired-dialog-description"
+          PaperProps={{
+            sx: {
+              width: '100%',
+              maxWidth: '450px',
+              borderRadius: '12px',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+              backgroundColor: 'white',
+              position: 'absolute',
+              top: '50%',
+              left: '60%',
+              transform: 'translate(-50%, -50%)',
+              m: 0,
+              p: 3,
+              alignItems: "center"
+            }
+          }}
+        >
+          <DialogTitle id="session-expired-dialog-title" sx={{ 
+            textAlign: 'center',
+            fontWeight: 'bold',
+            fontSize: '24px',
+            pb: 1,
+            pt: 2
+          }}>
+            Session Expired
+          </DialogTitle>
+          <DialogContent sx={{ px: 3, pb: 2, pt: 0 }}>
+            <DialogContentText id="session-expired-dialog-description" sx={{ 
+              color: '#4b5563',
+              textAlign: 'center',
+              fontSize: '16px',
+              lineHeight: 1.5
+            }}>
+              Your session has expired. Please login again to continue.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions sx={{ 
+            px: 3, 
+            pb: 2, 
+            pt: 1,
+            justifyContent: 'center'
+          }}>
+            <Button 
+              onClick={handleLoginRedirect} 
+              variant="contained"
+              autoFocus
+              sx={{
+                bgcolor: '#6366f1',
+                color: 'white',
+                px: 4,
+                py: 1.2,
+                borderRadius: '6px',
+                minWidth: '130px',
+                fontWeight: 'bold',
+                '&:hover': {
+                  bgcolor: '#4f46e5'
+                }
+              }}
+            >
+              LOGIN
+            </Button>
+          </DialogActions>
+        </Dialog>
+
         {/* Back Button */}
         <button 
           onClick={handleGoBack}
