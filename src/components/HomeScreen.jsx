@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Box,
@@ -321,208 +321,17 @@ const HomeScreen = () => {
     fetchStateNews();
   }, [selectedState]); // Re-fetch when selected state changes
 
-  // Get image URL with proper handling
-  const getImageUrl = (item) => {
-    // Debug logging to understand the item structure
-    console.log(`Getting image URL for item with title "${item.title || 'Unknown'}":`, {
-      id: item._id || item.id,
-      featuredImage: item.featuredImage,
-      image: item.image,
-      images: item.images,
-      youtubeUrl: item.youtubeUrl,
-      videoPath: item.videoPath,
-      hasVideo: item.hasVideo
-    });
-
-    // First, check if the item has video content but ignore for image preview purposes
-    if (item.youtubeUrl) {
-      console.log(`Found YouTube URL for item:`, item.youtubeUrl);
-      // Extract YouTube video ID from various YouTube URL formats
-      const youtubeRegex = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-      const match = item.youtubeUrl.match(youtubeRegex);
-      
-      if (match && match[1]) {
-        const videoId = match[1];
-        console.log(`Extracted YouTube video ID:`, videoId);
-        // Use high quality thumbnail (hqdefault.jpg)
-        return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-      }
-    }
-      
-    // Check if there's a dedicated thumbnail for the video
-    if (item.videoThumbnail) {
-      console.log(`Using video thumbnail: ${item.videoThumbnail}`);
-      return item.videoThumbnail.startsWith('http') 
-        ? item.videoThumbnail 
-        : `${baseUrl}${item.videoThumbnail.startsWith('/') ? '' : '/'}${item.videoThumbnail}`;
-    }
-    
-    // Check specifically for the upload path pattern first
-    if (item.featuredImage && typeof item.featuredImage === 'string') {
-      // Skip video files when looking for images
-      if (!item.featuredImage.includes('/uploads/videos/video-')) {
-        console.log(`Found featuredImage: ${item.featuredImage}`);
-        // If it's a full URL, use it directly
-        if (item.featuredImage.startsWith('http')) {
-          return item.featuredImage;
-        } else {
-          // Ensure proper path concatenation
-          return `${baseUrl}${item.featuredImage.startsWith('/') ? '' : '/'}${item.featuredImage}`;
-        }
-      }
-    }
-    
-    // Handle multiple possible image property names and formats
-    const possibleImageProps = ['images', 'image', 'featured_image', 'thumbnail', 'thumbnailUrl', 'imageUrl'];
-    
-    for (const prop of possibleImageProps) {
-      if (item[prop]) {
-        console.log(`Found ${prop} property:`, item[prop]);
-        
-        // Handle array of images
-        if (Array.isArray(item[prop]) && item[prop].length > 0) {
-          const imgSrc = item[prop][0];
-          console.log(`Using first image from ${prop} array:`, imgSrc);
-          
-          if (typeof imgSrc === 'string') {
-            // Skip video files
-            if (imgSrc.includes('/uploads/videos/video-')) continue;
-            
-            // If string starts with http or https, it's a full URL
-            if (imgSrc.startsWith('http')) {
-              return imgSrc;
-            } else {
-              // Otherwise it's a relative path
-              return `${baseUrl}${imgSrc.startsWith('/') ? '' : '/'}${imgSrc}`;
-            }
-          } else if (typeof imgSrc === 'object') {
-            // Handle if image is an object with url or src property
-            const url = imgSrc.url || imgSrc.src;
-            if (url && !url.includes('/uploads/videos/video-')) {
-              return url.startsWith('http') ? url : `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
-            }
-          }
-        }
-        
-        // Handle string format (direct URL or path)
-        if (typeof item[prop] === 'string' && !item[prop].includes('/uploads/videos/video-')) {
-          const imgSrc = item[prop];
-          console.log(`Using string ${prop}:`, imgSrc);
-          
-          // If it's a full URL
-          if (imgSrc.startsWith('http')) {
-            return imgSrc;
-          } else {
-            // Ensure proper path concatenation
-            return `${baseUrl}${imgSrc.startsWith('/') ? '' : '/'}${imgSrc}`;
-          }
-        }
-        
-        // Handle object format
-        if (typeof item[prop] === 'object' && !Array.isArray(item[prop])) {
-          const imgObj = item[prop];
-          const imgSrc = imgObj.url || imgObj.src || imgObj.path;
-          
-          if (imgSrc && !imgSrc.includes('/uploads/videos/video-')) {
-            console.log(`Using object ${prop} with url/src/path:`, imgSrc);
-            return imgSrc.startsWith('http') ? imgSrc : `${baseUrl}${imgSrc.startsWith('/') ? '' : '/'}${imgSrc}`;
-          }
-        }
-      }
-    }
-    
-    // Fallback to placeholder
-    console.log(`No image found for item, using placeholder`);
-    return 'https://via.placeholder.com/400x300?text=No+Image';
-  };
-
-  // Improve the getVideoUrl function to match the approach in TrendingNews.jsx
-  const getVideoUrl = (item) => {
-    console.log("Checking for video in item:", {
-      id: item._id || item.id,
-      title: item.title,
-      hasVideo: item.hasVideo,
-      videoPath: item.videoPath,
-      featuredImage: item.featuredImage,
-      image: item.image
-    });
-    
-    const videoPattern = '/uploads/videos/video-';
-    
-    const constructFullUrl = (path) => {
-      if (!path) return null;
-      
-      // If the path is already an absolute URL, return it as is
-      if (path.startsWith('http://') || path.startsWith('https://')) {
-        console.log("Video URL is already absolute:", path);
-        return path;
-      }
-      
-      // Make sure the path has a leading slash
-      const formattedPath = path.startsWith('/') ? path : `/${path}`;
-      const fullUrl = `${baseUrl}${formattedPath}`;
-      console.log("Constructed full video URL:", fullUrl);
-      return fullUrl;
-    };
-    
-    // First check if there's a dedicated videoPath property
-    if (item.videoPath) {
-      console.log("Found videoPath property:", item.videoPath);
-      return constructFullUrl(item.videoPath);
-    }
-    
-    // Check for video in featuredImage
-    if (item.featuredImage && typeof item.featuredImage === 'string') {
-      if (item.featuredImage.includes(videoPattern) || item.featuredImage.endsWith('.mp4')) {
-        console.log("Found video in featuredImage:", item.featuredImage);
-        return constructFullUrl(item.featuredImage);
-      }
-    }
-    
-    // Check for video in image
-    if (item.image && typeof item.image === 'string') {
-      if (item.image.includes(videoPattern) || item.image.endsWith('.mp4')) {
-        console.log("Found video in image:", item.image);
-        return constructFullUrl(item.image);
-      }
-    }
-    
-    // Check if video property exists
-    if (item.video) {
-      if (typeof item.video === 'string') {
-        console.log("Found string video property:", item.video);
-        return constructFullUrl(item.video);
-      } else if (typeof item.video === 'object' && (item.video.url || item.video.src)) {
-        const videoSrc = item.video.url || item.video.src;
-        console.log("Found video object with url/src:", videoSrc);
-        return constructFullUrl(videoSrc);
-      }
-    }
-    
-    // If we have YouTube URL, return it for iframe embedding
-    if (item.youtubeUrl) {
-      console.log("Found YouTube URL:", item.youtubeUrl);
-      // Convert YouTube URL to embed format if it's not already
-      if (item.youtubeUrl.includes('watch?v=')) {
-        const videoId = item.youtubeUrl.split('v=')[1].split('&')[0];
-        return `https://www.youtube.com/embed/${videoId}`;
-      }
-      return item.youtubeUrl;
-    }
-    
-    console.log("No video URL found in item");
-    return null;
-  };
-
   // News card component (single card with specific styling)
   const NewsCard = ({ item, categoryLabel, categoryColor = '#FF5722', isLarge = false }) => {
     const [imageError, setImageError] = useState(false);
     const [videoError, setVideoError] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
     
+    // Early return guard for null items
     if (!item) return null;
     
     const handleImageError = () => {
+      console.error(`Error loading image for "${item.title || 'Unknown'}"`);
       setImageError(true);
     };
     
@@ -539,6 +348,7 @@ const HomeScreen = () => {
       item.hasVideo || 
       item.video || 
       item.videoPath || 
+      item.youtubeUrl ||
       (item.featuredImage && typeof item.featuredImage === 'string' && 
         (item.featuredImage.includes('/uploads/videos/video-') || 
          item.featuredImage.endsWith('.mp4'))) ||
@@ -546,12 +356,114 @@ const HomeScreen = () => {
         (item.image.includes('/uploads/videos/video-') || 
          item.image.endsWith('.mp4')));
     
-    // Get video URL with improved detection
-    const videoUrl = hasVideo ? getVideoUrl(item) : null;
-    const imageUrl = getImageUrl(item);
+    // Get image URL with proper handling - Using the same logic as TrendingNews.jsx
+    const getImageUrl = () => {
+      console.log(`Getting image URL for item with title "${item.title || 'Unknown'}":`, {
+        id: item._id || item.id,
+        featuredImage: item.featuredImage,
+        image: item.image,
+        images: item.images,
+        youtubeUrl: item.youtubeUrl
+      });
+      
+      // If item has YouTube URL, use YouTube thumbnail
+      if (item.youtubeUrl) {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = item.youtubeUrl.match(regExp);
+        if (match && match[2].length === 11) {
+          const videoId = match[2];
+          console.log(`Using YouTube thumbnail for "${item.title || 'Unknown'}": ${videoId}`);
+          return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+        }
+      }
+      
+      // If item has images array with content
+      if (item.images && item.images.length > 0) {
+        console.log(`Using images[0] from array for "${item.title || 'Unknown'}": ${item.images[0]}`);
+        return item.images[0];
+      }
+      
+      // If item has featuredImage
+      if (item.featuredImage) {
+        // Check if it's a full URL or just a path
+        if (item.featuredImage.startsWith('http')) {
+          console.log(`Using full featuredImage URL for "${item.title || 'Unknown'}": ${item.featuredImage}`);
+          return item.featuredImage;
+        } else {
+          // Add base URL for relative paths
+          const fullUrl = `${baseUrl}${item.featuredImage.startsWith('/') ? '' : '/'}${item.featuredImage}`;
+          console.log(`Using relative featuredImage with base URL for "${item.title || 'Unknown'}": ${fullUrl}`);
+          return fullUrl;
+        }
+      }
+      
+      // If item has image property
+      if (item.image) {
+        // Check if it's a full URL or just a path
+        if (item.image.startsWith('http')) {
+          console.log(`Using full image URL for "${item.title || 'Unknown'}": ${item.image}`);
+          return item.image;
+        } else {
+          // Add base URL for relative paths
+          const fullUrl = `${baseUrl}${item.image.startsWith('/') ? '' : '/'}${item.image}`;
+          console.log(`Using relative image with base URL for "${item.title || 'Unknown'}": ${fullUrl}`);
+          return fullUrl;
+        }
+      }
+      
+      // Fallback to placeholder
+      console.log(`No image found for "${item.title || 'Unknown'}", using placeholder`);
+      return 'https://via.placeholder.com/400x300?text=No+Image';
+    };
+    
+    // Get video URL if present - Using the same logic as TrendingNews.jsx
+    const getVideoUrl = () => {
+      // First, check if video property is already set
+      if (item.video) {
+        return item.video;
+      }
+      
+      // Next, check for videoPath property
+      if (item.videoPath) {
+        return item.videoPath.startsWith('http') 
+          ? item.videoPath 
+          : `${baseUrl}${item.videoPath.startsWith('/') ? '' : '/'}${item.videoPath}`;
+      }
+      
+      // Check other fields for video paths
+      if (item.featuredImage && typeof item.featuredImage === 'string' && 
+          (item.featuredImage.includes('/uploads/videos/video-') || item.featuredImage.endsWith('.mp4'))) {
+        return item.featuredImage.startsWith('http') 
+          ? item.featuredImage 
+          : `${baseUrl}${item.featuredImage.startsWith('/') ? '' : '/'}${item.featuredImage}`;
+      }
+      
+      if (item.image && typeof item.image === 'string' && 
+          (item.image.includes('/uploads/videos/video-') || item.image.endsWith('.mp4'))) {
+        return item.image.startsWith('http') 
+          ? item.image 
+          : `${baseUrl}${item.image.startsWith('/') ? '' : '/'}${item.image}`;
+      }
+      
+      // If we have YouTube URL, return it for iframe embedding
+      if (item.youtubeUrl) {
+        console.log("Found YouTube URL:", item.youtubeUrl);
+        // Convert YouTube URL to embed format if it's not already
+        if (item.youtubeUrl.includes('watch?v=')) {
+          const videoId = item.youtubeUrl.split('v=')[1].split('&')[0];
+          return `https://www.youtube.com/embed/${videoId}`;
+        }
+        return item.youtubeUrl;
+      }
+      
+      return null;
+    };
+    
+    const videoUrl = hasVideo ? getVideoUrl() : null;
+    const imageUrl = !hasVideo || (hasVideo && !videoUrl) ? getImageUrl() : null;
     const isYouTubeVideo = !!item.youtubeUrl;
     
-    console.log(`Rendering NewsCard for "${item.title || 'Unknown'}" - hasVideo: ${hasVideo}, videoUrl: ${videoUrl}`);
+    console.log(`Rendering NewsCard for "${item.title || 'Unknown'}" - hasVideo: ${hasVideo}, videoUrl: ${videoUrl}, imageUrl: ${imageUrl}`);
     
     const title = item.title || "No Title";
     const time = formatDate(item.createdAt || item.publishedAt || item.updatedAt);
@@ -577,54 +489,8 @@ const HomeScreen = () => {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        {/* Background image or video */}
-        {videoUrl && !videoError ? (
-          isYouTubeVideo ? (
-            <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
-              <iframe
-                src={videoUrl}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={title}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  zIndex: 0,
-                }}
-                onClick={(e) => e.stopPropagation()}
-              />
-            </Box>
-          ) : (
-            <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
-              <Box
-                component="video"
-                src={videoUrl}
-                controls
-                preload="metadata"
-                controlsList="nodownload"
-                poster={imageUrl}
-                onClick={(e) => e.stopPropagation()}
-                onError={handleVideoError}
-                playsInline
-                muted
-                sx={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  zIndex: 0,
-                  backgroundColor: '#000',
-                }}
-              />
-            </Box>
-          )
-        ) : !imageError ? (
+        {/* Background image */}
+        {!imageError ? (
           <Box
             className="news-bg"
             sx={{
@@ -661,6 +527,30 @@ const HomeScreen = () => {
           </Box>
         )}
         
+        {/* YouTube play button overlay for videos */}
+        {hasVideo && (
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: isLarge ? '70px' : '60px',
+              height: isLarge ? '70px' : '60px',
+              backgroundColor: 'rgba(255, 0, 0, 0.8)',
+              borderRadius: '50%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 2,
+            }}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </Box>
+        )}
+        
         {/* Dark overlay */}
         <Box
           sx={{
@@ -685,7 +575,7 @@ const HomeScreen = () => {
         >
           <Box
             sx={{
-              backgroundColor: item.hasVideo ? '#FF0000' : categoryColor,
+              backgroundColor: hasVideo ? '#FF0000' : categoryColor,
               color: 'white',
               fontWeight: 'bold',
               fontSize: '0.7rem',
@@ -698,13 +588,13 @@ const HomeScreen = () => {
               gap: '4px'
             }}
           >
-            {item.hasVideo && (
+            {hasVideo && (
               <svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 24 24" fill="white" style={{ marginRight: '4px' }}>
                 <path d="M8 5v14l11-7z"/>
               </svg>
             )}
             {category}
-            {item.hasVideo && " VIDEO"}
+            {hasVideo && " VIDEO"}
           </Box>
         </Box>
         
@@ -785,10 +675,12 @@ const HomeScreen = () => {
     const [imageError, setImageError] = useState(false);
     const [videoError, setVideoError] = useState(false);
     const [isHovered, setIsHovered] = useState(false);
-
+    
+    // Early return guard for null items
     if (!item) return null;
-
+    
     const handleImageError = () => {
+      console.error(`Error loading image for "${item.title || 'Unknown'}"`);
       setImageError(true);
     };
     
@@ -805,6 +697,7 @@ const HomeScreen = () => {
       item.hasVideo || 
       item.video || 
       item.videoPath || 
+      item.youtubeUrl ||
       (item.featuredImage && typeof item.featuredImage === 'string' && 
         (item.featuredImage.includes('/uploads/videos/video-') || 
          item.featuredImage.endsWith('.mp4'))) ||
@@ -812,12 +705,96 @@ const HomeScreen = () => {
         (item.image.includes('/uploads/videos/video-') || 
          item.image.endsWith('.mp4')));
     
-    // Get video URL with improved detection
-    const videoUrl = hasVideo ? getVideoUrl(item) : null;
-    const imageUrl = getImageUrl(item);
+    // Get image URL with proper handling - Using the same logic as TrendingNews.jsx
+    const getImageUrl = () => {
+      // If item has YouTube URL, use YouTube thumbnail
+      if (item.youtubeUrl) {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = item.youtubeUrl.match(regExp);
+        if (match && match[2].length === 11) {
+          const videoId = match[2];
+          return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+        }
+      }
+      
+      // If item has images array with content
+      if (item.images && item.images.length > 0) {
+        return item.images[0];
+      }
+      
+      // If item has featuredImage
+      if (item.featuredImage) {
+        // Check if it's a full URL or just a path
+        if (item.featuredImage.startsWith('http')) {
+          return item.featuredImage;
+        } else {
+          // Add base URL for relative paths
+          return `${baseUrl}${item.featuredImage.startsWith('/') ? '' : '/'}${item.featuredImage}`;
+        }
+      }
+      
+      // If item has image property
+      if (item.image) {
+        // Check if it's a full URL or just a path
+        if (item.image.startsWith('http')) {
+          return item.image;
+        } else {
+          // Add base URL for relative paths
+          return `${baseUrl}${item.image.startsWith('/') ? '' : '/'}${item.image}`;
+        }
+      }
+      
+      // Fallback to placeholder
+      return 'https://via.placeholder.com/400x300?text=No+Image';
+    };
+    
+    // Get video URL if present - Using the same logic as TrendingNews.jsx
+    const getVideoUrl = () => {
+      // First, check if video property is already set
+      if (item.video) {
+        return item.video;
+      }
+      
+      // Next, check for videoPath property
+      if (item.videoPath) {
+        return item.videoPath.startsWith('http') 
+          ? item.videoPath 
+          : `${baseUrl}${item.videoPath.startsWith('/') ? '' : '/'}${item.videoPath}`;
+      }
+      
+      // Check other fields for video paths
+      if (item.featuredImage && typeof item.featuredImage === 'string' && 
+          (item.featuredImage.includes('/uploads/videos/video-') || item.featuredImage.endsWith('.mp4'))) {
+        return item.featuredImage.startsWith('http') 
+          ? item.featuredImage 
+          : `${baseUrl}${item.featuredImage.startsWith('/') ? '' : '/'}${item.featuredImage}`;
+      }
+      
+      if (item.image && typeof item.image === 'string' && 
+          (item.image.includes('/uploads/videos/video-') || item.image.endsWith('.mp4'))) {
+        return item.image.startsWith('http') 
+          ? item.image 
+          : `${baseUrl}${item.image.startsWith('/') ? '' : '/'}${item.image}`;
+      }
+      
+      // If we have YouTube URL, return it for iframe embedding
+      if (item.youtubeUrl) {
+        // Convert YouTube URL to embed format if it's not already
+        if (item.youtubeUrl.includes('watch?v=')) {
+          const videoId = item.youtubeUrl.split('v=')[1].split('&')[0];
+          return `https://www.youtube.com/embed/${videoId}`;
+        }
+        return item.youtubeUrl;
+      }
+      
+      return null;
+    };
+    
+    const videoUrl = hasVideo ? getVideoUrl() : null;
+    const imageUrl = !hasVideo || (hasVideo && !videoUrl) ? getImageUrl() : null;
     const isYouTubeVideo = !!item.youtubeUrl;
     
-    console.log(`Rendering SecondSectionNewsCard for "${item.title || 'Unknown'}" - hasVideo: ${hasVideo}, videoUrl: ${videoUrl}`);
+    console.log(`Rendering SecondSectionNewsCard for "${item.title || 'Unknown'}" - hasVideo: ${hasVideo}, videoUrl: ${videoUrl}, imageUrl: ${imageUrl}`);
 
     return (
       <Card 
@@ -851,65 +828,45 @@ const HomeScreen = () => {
           paddingTop: '56.25%', // 16:9 aspect ratio
           backgroundColor: '#f0f0f0'
         }}>
-          {/* Display video if available, otherwise fallback to image */}
-          {videoUrl && !videoError ? (
-            isYouTubeVideo ? (
-              <iframe
-                src={videoUrl}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={item.title || "Video"}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  zIndex: 1,
-                }}
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : (
-              <Box
-                component="video"
-                src={videoUrl}
-                controls
-                preload="metadata"
-                controlsList="nodownload"
-                poster={imageUrl}
-                onClick={(e) => e.stopPropagation()}
-                onError={handleVideoError}
-                playsInline
-                muted
-                sx={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  zIndex: 1,
-                }}
-              />
-            )
-          ) : (
-            <CardMedia
-              className="news-card-img"
-              component="img"
-              image={imageError ? fallbackImage : imageUrl}
-              alt={item.title || "News image"}
-              onError={handleImageError}
+          <CardMedia
+            className="news-card-img"
+            component="img"
+            image={imageError ? fallbackImage : imageUrl}
+            alt={item.title || "News image"}
+            onError={handleImageError}
+            sx={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              transition: 'transform 0.4s ease',
+            }}
+          />
+          
+          {/* YouTube play button overlay for videos */}
+          {hasVideo && (
+            <Box
               sx={{
                 position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                transition: 'transform 0.4s ease',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '60px',
+                height: '60px',
+                backgroundColor: 'rgba(255, 0, 0, 0.8)',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 2,
               }}
-            />
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </Box>
           )}
           
           {/* Category badge */}
