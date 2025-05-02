@@ -156,11 +156,24 @@ const TrendingNews = () => {
         return item;
       });
       
+      // Sort news items by date (most recent first)
+      fetchedNews = fetchedNews.sort((a, b) => {
+        // First try to get dates from common date fields
+        const dateA = new Date(a.createdAt || a.publishedAt || a.updatedAt || 0);
+        const dateB = new Date(b.createdAt || b.publishedAt || b.updatedAt || 0);
+        
+        // Sort in descending order (newest first)
+        return dateB - dateA;
+      });
+      
+      console.log('News items sorted by date (newest first)');
+      
       // Log each fetched news item to debug
       fetchedNews.forEach((item, index) => {
         console.log(`News item ${index + 1}:`, {
           id: item.id,
           title: item.title,
+          date: item.createdAt || item.publishedAt || item.updatedAt,
           featuredImage: item.featuredImage,
           image: item.image,
           images: item.images,
