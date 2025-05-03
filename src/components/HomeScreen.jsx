@@ -1612,63 +1612,6 @@ const HomeScreen = () => {
         {/* Advertisement after Trending */}
         <LargeAd />
         
-        {/* First Section - Top Grid (First Image Layout) */}
-        <Grid container spacing={2} sx={{ mb: -40 }}>
-          {/* Large card on left */}
-          <Grid item xs={12} md={6}>
-            {trendingNews.length > 2 && (
-              <NewsCard 
-                item={trendingNews[2]}
-                categoryLabel="TRENDING"
-                categoryColor="#FF5722"
-                isLarge={true}
-              />
-            )}
-          </Grid>
-          
-          {/* 2x2 grid on right */}
-          <Grid item xs={12} md={6}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                {sportsNews.length > 0 && (
-                  <NewsCard 
-                    item={sportsNews[0]}
-                    categoryLabel="SPORTS"
-                    categoryColor="#4CAF50"
-                  />
-                )}
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                {sportsNews.length > 1 && (
-                  <NewsCard 
-                    item={sportsNews[1]}
-                    categoryLabel="SPORTS"
-                    categoryColor="#4CAF50"
-                  />
-                )}
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                {trendingNews.length > 3 && (
-                  <NewsCard 
-                    item={trendingNews[3]}
-                    categoryLabel="TRENDING"
-                    categoryColor="#FF5722"
-                  />
-                )}
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                {nationalNews.length > 0 && (
-                  <NewsCard 
-                    item={nationalNews[0]}
-                    categoryLabel="NATIONAL"
-                    categoryColor="#D32F2F"
-                  />
-                )}
-              </Grid>
-            </Grid>
-          </Grid>
-        </Grid>
-
         {/* NATIONAL SECTION */}
         <Typography 
           variant="h5" 
