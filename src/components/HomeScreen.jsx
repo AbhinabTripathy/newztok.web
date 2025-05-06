@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Box,
   Container,
@@ -14,57 +14,33 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import axios from 'axios';
 import { useStateContext } from './Header'; // Import state context
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 
 const HomeScreen = () => {
-  // State variables for each news section
-  const [trendingNews, setTrendingNews] = useState([]);
-  const [nationalNews, setNationalNews] = useState([]);
-  const [internationalNews, setInternationalNews] = useState([]);
-  const [sportsNews, setSportsNews] = useState([]);
-  const [entertainmentNews, setEntertainmentNews] = useState([]);
-  const [stateNews, setStateNews] = useState([]);
+  // State variables for news sections
+  const [newsItems, setNewsItems] = useState([]);
+  const [secondSectionNews, setSecondSectionNews] = useState([]);
+  const [additionalNews, setAdditionalNews] = useState([]);
+  const [fourthSectionNews, setFourthSectionNews] = useState([]);
+  const [fifthSectionNews, setFifthSectionNews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [bannerAd, setBannerAd] = useState(null);
+  const [sideAd, setSideAd] = useState(null);
+  const [bannerError, setBannerError] = useState(null);
+  const [sideError, setSideError] = useState(null);
+  const [bannerLoading, setBannerLoading] = useState(true);
+  const [sideLoading, setSideLoading] = useState(true);
   const { selectedState } = useStateContext(); // Get selected state from context
-  
-  // Fallback image for errors
-  const fallbackImage = "https://via.placeholder.com/400x300?text=Image+Not+Available";
-  
-  // Loading and error states for each section
-  const [loading, setLoading] = useState({
-    trending: true,
-    national: true,
-    international: true,
-    sports: true,
-    entertainment: true,
-    state: true
-  });
-  
-  const [error, setError] = useState({
-    trending: null,
-    national: null,
-    international: null,
-    sports: null,
-    entertainment: null,
-    state: null
-  });
-
-  // // Social media stats exactly as in the image
-  // const socialMedia = [
-  //   { icon: <FacebookIcon sx={{ fontSize: 28, color: '#4267B2' }} />, count: '20.5k', label: 'likes' },
-  //   { icon: <InstagramIcon sx={{ fontSize: 28, color: '#C13584' }} />, count: '20.5k', label: 'followers' },
-  //   { icon: <TwitterIcon sx={{ fontSize: 28, color: '#1DA1F2' }} />, count: '20.5k', label: 'followers' },
-  //   { icon: <YouTubeIcon sx={{ fontSize: 28, color: '#FF0000' }} />, count: '20.5k', label: 'subscribers' },
-  // ];
-
-  // // Category tabs data
-  // const categoryTabs = [
-  //   { name: 'Active', count: '11' },
-  //   { name: 'Business', count: '10' },
-  //   { name: 'Crazy', count: '5' },
-  // ];
+  const navigate = useNavigate(); // Add this line to use navigation
 
   // Base URL for API
   const baseUrl = 'https://api.newztok.in';
+
+  // Helper function to capitalize first letter
+  const capitalize = (str) => {
+    if (!str) return '';
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  };
 
   // Format date function
   const formatDate = (dateString) => {
@@ -86,189 +62,101 @@ const HomeScreen = () => {
     }
   };
 
-  // Helper function to capitalize first letter of each word
-  const capitalizeFirstLetter = (string) => {
-    if (!string) return '';
-    return string
-      .split(' ')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
-  };
+  useEffect(() => {
+    fetchTrendingNews();
+    fetchBannerAd();
+    fetchSideAd();
+  }, [selectedState]); // Re-fetch when selected state changes
 
-  // Function to process API response and identify videos
-  const processApiResponseWithVideos = (response, category) => {
-    let news = [];
-    
-    if (response.data && Array.isArray(response.data)) {
-      news = response.data;
-    } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
-      news = response.data.data;
-    } else if (response.data && response.data.posts && Array.isArray(response.data.posts)) {
-      news = response.data.posts;
-    }
-    
-    // Process each news item to handle videos - exact implementation from TrendingNews.jsx
-    news = news.map(item => {
-      // Check all possible properties for video paths
-      const checkForVideoPath = (obj) => {
-        // Define properties to check for video paths
-        const propertiesToCheck = [
-          'video', 'videoPath', 'featuredImage', 'image', 'media', 'url', 'source'
-        ];
-        
-        let foundVideoPath = null;
-        
-        // Check each property for a video path
-        propertiesToCheck.forEach(prop => {
-          if (obj[prop] && typeof obj[prop] === 'string' && obj[prop].includes('/uploads/videos/video-')) {
-            foundVideoPath = obj[prop];
-            console.log(`Found video path in ${prop} property: ${foundVideoPath}`);
-          }
-        });
-        
-        // Also check if there's a directly assigned videoPath property
-        if (obj.videoPath && typeof obj.videoPath === 'string') {
-          foundVideoPath = obj.videoPath;
-          console.log(`Found direct videoPath property: ${foundVideoPath}`);
-        }
-        
-        return foundVideoPath;
-      };
+  const fetchBannerAd = async () => {
+    try {
+      setBannerLoading(true);
+      setBannerError(null);
+      console.log('Fetching banner ad from API...');
       
-      // Get video path from the item
-      const videoPath = checkForVideoPath(item);
+      const response = await axios.get(`${baseUrl}/api/ads/public/web/banner`);
+      console.log('Banner ad API response:', response.data);
       
-      if (videoPath) {
-        console.log(`Found video for news item "${item.title}": ${videoPath}`);
-        
-        // Ensure video URL has the base URL if it's a relative path
-        const fullVideoUrl = videoPath.startsWith('http') 
-          ? videoPath 
-          : `${baseUrl}${videoPath}`;
-        
-        console.log(`Full video URL for "${item.title}": ${fullVideoUrl}`);
-        
-        return {
-          ...item,
-          video: fullVideoUrl,
-          hasVideo: true
-        };
-      }
-      
-      return item;
-    });
-    
-    // Filter news by selected state if one is selected
-    if (selectedState) {
-      console.log(`Filtering ${category} news by state: ${selectedState}`);
-      
-      // First, try to match exact state name
-      let filteredNews = news.filter(item => 
-        item.state && (item.state.includes(selectedState) || selectedState.includes(item.state))
-      );
-      
-      // If no exact matches, check if state is mentioned in the content or title
-      if (filteredNews.length === 0) {
-        filteredNews = news.filter(item => 
-          (item.content && item.content.includes(selectedState)) || 
-          (item.title && item.title.includes(selectedState))
-        );
-      }
-      
-      // If we found filtered results, use them; otherwise, fall back to all news
-      if (filteredNews.length > 0) {
-        console.log(`Found ${filteredNews.length} ${category} news items for state: ${selectedState}`);
-        news = filteredNews;
+      if (response.data && response.data.data && Array.isArray(response.data.data) && response.data.data.length > 0) {
+        const ad = response.data.data[0];
+        console.log('Banner ad redirect URL:', ad.redirectUrl);
+        setBannerAd(ad);
+      } else if (response.data && !Array.isArray(response.data)) {
+        setBannerAd(response.data);
       } else {
-        console.log(`No ${category} news items found for state: ${selectedState}, showing all ${category} news`);
+        setBannerError('No ads available');
       }
+    } catch (err) {
+      console.error('Error fetching banner ad:', err);
+      setBannerError(err.message || 'Failed to load advertisement');
+    } finally {
+      setBannerLoading(false);
     }
-    
-    // Limit to 5 posts per section
-    return news.slice(0, 5);
   };
 
-  // Fetch trending news
+  const fetchSideAd = async () => {
+    try {
+      setSideLoading(true);
+      setSideError(null);
+      console.log('Fetching side ad from API...');
+      
+      const response = await axios.get(`${baseUrl}/api/ads/public/web/side`);
+      console.log('Side ad API response:', response.data);
+      
+      if (response.data && response.data.data && Array.isArray(response.data.data) && response.data.data.length > 0) {
+        const ad = response.data.data[0];
+        console.log('Side ad redirect URL:', ad.redirectUrl);
+        setSideAd(ad);
+      } else if (response.data && !Array.isArray(response.data)) {
+        setSideAd(response.data);
+      } else {
+        setSideError('No ads available');
+      }
+    } catch (err) {
+      console.error('Error fetching side ad:', err);
+      setSideError(err.message || 'Failed to load advertisement');
+    } finally {
+      setSideLoading(false);
+    }
+  };
+
   const fetchTrendingNews = async () => {
-    setLoading(prev => ({ ...prev, trending: true }));
-    setError(prev => ({ ...prev, trending: null }));
+    setLoading(true);
+    setError(null);
     
     try {
-      console.log('Fetching trending news...');
-      const response = await axios.get(`${baseUrl}/api/news/featured`);
+      console.log('Fetching trending news from endpoint...');
+      const response = await axios.get('https://api.newztok.in/api/news/trending');
+      console.log('API Response:', response);
       
-      let news = [];
+      let fetchedNews = [];
       if (response.data && Array.isArray(response.data)) {
-        news = response.data;
+        console.log(`Successfully fetched ${response.data.length} trending news items`);
+        fetchedNews = response.data;
       } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
-        news = response.data.data;
+        console.log(`Successfully fetched ${response.data.data.length} trending news items from data property`);
+        fetchedNews = response.data.data;
       } else if (response.data && response.data.posts && Array.isArray(response.data.posts)) {
-        news = response.data.posts;
+        console.log(`Successfully fetched ${response.data.posts.length} trending news items from posts property`);
+        fetchedNews = response.data.posts;
+      } else {
+        console.warn('Unexpected API response structure:', response.data);
+        setError('Unexpected data format received from server');
+        fetchedNews = [];
       }
-      
-      // Process each news item to handle videos - exactly like TrendingNews.jsx
-      news = news.map(item => {
-        // Check all possible properties for video paths
-        const checkForVideoPath = (obj) => {
-          // Define properties to check for video paths
-          const propertiesToCheck = [
-            'video', 'videoPath', 'featuredImage', 'image', 'media', 'url', 'source'
-          ];
-          
-          let foundVideoPath = null;
-          
-          // Check each property for a video path
-          propertiesToCheck.forEach(prop => {
-            if (obj[prop] && typeof obj[prop] === 'string' && obj[prop].includes('/uploads/videos/video-')) {
-              foundVideoPath = obj[prop];
-              console.log(`Found video path in ${prop} property: ${foundVideoPath}`);
-            }
-          });
-          
-          // Also check if there's a directly assigned videoPath property
-          if (obj.videoPath && typeof obj.videoPath === 'string') {
-            foundVideoPath = obj.videoPath;
-            console.log(`Found direct videoPath property: ${foundVideoPath}`);
-          }
-          
-          return foundVideoPath;
-        };
-        
-        // Get video path from the item
-        const videoPath = checkForVideoPath(item);
-        
-        if (videoPath) {
-          console.log(`Found video for news item "${item.title}": ${videoPath}`);
-          
-          // Ensure video URL has the base URL if it's a relative path
-          const fullVideoUrl = videoPath.startsWith('http') 
-            ? videoPath 
-            : `${baseUrl}${videoPath}`;
-          
-          console.log(`Full video URL for "${item.title}": ${fullVideoUrl}`);
-          
-          return {
-            ...item,
-            video: fullVideoUrl,
-            hasVideo: true
-          };
-        }
-        
-        return item;
-      });
       
       // Filter news by selected state if one is selected
       if (selectedState) {
         console.log(`Filtering trending news by state: ${selectedState}`);
         
         // First, try to match exact state name
-        let filteredNews = news.filter(item => 
+        let filteredNews = fetchedNews.filter(item => 
           item.state && (item.state.includes(selectedState) || selectedState.includes(item.state))
         );
         
         // If no exact matches, check if state is mentioned in the content or title
         if (filteredNews.length === 0) {
-          filteredNews = news.filter(item => 
+          filteredNews = fetchedNews.filter(item => 
             (item.content && item.content.includes(selectedState)) || 
             (item.title && item.title.includes(selectedState))
           );
@@ -277,45 +165,14 @@ const HomeScreen = () => {
         // If we found filtered results, use them; otherwise, fall back to all news
         if (filteredNews.length > 0) {
           console.log(`Found ${filteredNews.length} trending news items for state: ${selectedState}`);
-          news = filteredNews;
+          fetchedNews = filteredNews;
         } else {
           console.log(`No trending news items found for state: ${selectedState}, showing all trending news`);
         }
       }
       
-      console.log('Trending news:', news);
-      setTrendingNews(news);
-    } catch (err) {
-      console.error('Error fetching trending news:', err);
-      setError(prev => ({ 
-        ...prev, 
-        trending: err.response?.data?.message || err.message || 'Failed to fetch trending news' 
-      }));
-    } finally {
-      setLoading(prev => ({ ...prev, trending: false }));
-    }
-  };
-
-  // Fetch national news
-  const fetchNationalNews = async () => {
-    setLoading(prev => ({ ...prev, national: true }));
-    setError(prev => ({ ...prev, national: null }));
-    
-    try {
-      console.log('Fetching national news...');
-      const response = await axios.get(`${baseUrl}/api/news/category/national`);
-      
-      let news = [];
-      if (response.data && Array.isArray(response.data)) {
-        news = response.data;
-      } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
-        news = response.data.data;
-      } else if (response.data && response.data.posts && Array.isArray(response.data.posts)) {
-        news = response.data.posts;
-      }
-      
-      // Process each news item to handle videos - exactly like TrendingNews.jsx
-      news = news.map(item => {
+      // Process each news item to handle videos
+      fetchedNews = fetchedNews.map(item => {
         // Check all possible properties for video paths
         const checkForVideoPath = (obj) => {
           // Define properties to check for video paths
@@ -351,7 +208,7 @@ const HomeScreen = () => {
           // Ensure video URL has the base URL if it's a relative path
           const fullVideoUrl = videoPath.startsWith('http') 
             ? videoPath 
-            : `${baseUrl}${videoPath}`;
+            : `https://api.newztok.in${videoPath}`;
           
           console.log(`Full video URL for "${item.title}": ${fullVideoUrl}`);
           
@@ -365,191 +222,107 @@ const HomeScreen = () => {
         return item;
       });
       
-      // Filter news by selected state if one is selected
-      if (selectedState) {
-        console.log(`Filtering national news by state: ${selectedState}`);
+      // Sort news items by date (most recent first)
+      fetchedNews = fetchedNews.sort((a, b) => {
+        // First try to get dates from common date fields
+        const dateA = new Date(a.createdAt || a.publishedAt || a.updatedAt || 0);
+        const dateB = new Date(b.createdAt || b.publishedAt || b.updatedAt || 0);
         
-        // First, try to match exact state name
-        let filteredNews = news.filter(item => 
-          item.state && (item.state.includes(selectedState) || selectedState.includes(item.state))
-        );
-        
-        // If no exact matches, check if state is mentioned in the content or title
-        if (filteredNews.length === 0) {
-          filteredNews = news.filter(item => 
-            (item.content && item.content.includes(selectedState)) || 
-            (item.title && item.title.includes(selectedState))
-          );
-        }
-        
-        // If we found filtered results, use them; otherwise, fall back to all news
-        if (filteredNews.length > 0) {
-          console.log(`Found ${filteredNews.length} national news items for state: ${selectedState}`);
-          news = filteredNews;
-        } else {
-          console.log(`No national news items found for state: ${selectedState}, showing all national news`);
-        }
+        // Sort in descending order (newest first)
+        return dateB - dateA;
+      });
+      
+      console.log('News items sorted by date (newest first)');
+      
+      // Log each fetched news item to debug
+      fetchedNews.forEach((item, index) => {
+        console.log(`News item ${index + 1}:`, {
+          id: item.id,
+          title: item.title,
+          date: item.createdAt || item.publishedAt || item.updatedAt,
+          featuredImage: item.featuredImage,
+          image: item.image,
+          images: item.images,
+          video: item.video,
+          videoPath: item.videoPath,
+          hasVideo: item.hasVideo,
+          category: item.category,
+          state: item.state,
+          district: item.district
+        });
+      });
+      
+      console.log(`Total fetched news items: ${fetchedNews.length}`);
+      
+      // Clear existing news items
+      setNewsItems([]);
+      setSecondSectionNews([]);
+      setAdditionalNews([]);
+      setFourthSectionNews([]);
+      setFifthSectionNews([]);
+      
+      // Distribute fetched news to different sections
+      if (fetchedNews.length >= 1) {
+        console.log(`Setting first ${Math.min(fetchedNews.length, 2)} items as main news`);
+        setNewsItems(fetchedNews.slice(0, Math.min(fetchedNews.length, 2)));
       }
       
-      console.log('National news:', news);
-      setNationalNews(news);
+      if (fetchedNews.length >= 3) {
+        console.log('Setting items starting from index 2 as second section news');
+        setSecondSectionNews(fetchedNews.slice(2, 4));
+      }
+      
+      if (fetchedNews.length >= 5) {
+        console.log('Setting items starting from index 4 as additional news');
+        setAdditionalNews(fetchedNews.slice(4, 6));
+      }
+      
+      if (fetchedNews.length >= 7) {
+        console.log('Setting items starting from index 6 as fourth section news');
+        setFourthSectionNews(fetchedNews.slice(6, 8));
+      }
+      
+      if (fetchedNews.length >= 9) {
+        console.log('Setting items starting from index 8 as fifth section news');
+        setFifthSectionNews(fetchedNews.slice(8, 10));
+      }
     } catch (err) {
-      console.error('Error fetching national news:', err);
-      setError(prev => ({ 
-        ...prev, 
-        national: err.response?.data?.message || err.message || 'Failed to fetch national news' 
-      }));
+      console.error('Error fetching trending news:', err);
+      
+      // Better error message based on the error type
+      if (err.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error('Server responded with error:', err.response.status, err.response.data);
+        setError(`Server error (${err.response.status}): ${err.response.data.message || 'Unable to fetch news'}`);
+      } else if (err.request) {
+        // The request was made but no response was received
+        console.error('No response received from server');
+        setError('Network error: No response from server. Please check your connection.');
+      } else {
+        // Something happened in setting up the request that triggered an Error
+        console.error('Error setting up request:', err.message);
+        setError(`Error: ${err.message}`);
+      }
     } finally {
-      setLoading(prev => ({ ...prev, national: false }));
+      setLoading(false);
     }
   };
 
-  // Fetch international news
-  const fetchInternationalNews = async () => {
-    setLoading(prev => ({ ...prev, international: true }));
-    setError(prev => ({ ...prev, international: null }));
-    
-    try {
-      console.log('Fetching international news...');
-      const response = await axios.get(`${baseUrl}/api/news/category/international`);
-      const news = processApiResponseWithVideos(response, 'international');
-      console.log('International news:', news);
-      setInternationalNews(news);
-    } catch (err) {
-      console.error('Error fetching international news:', err);
-      setError(prev => ({ 
-        ...prev, 
-        international: err.response?.data?.message || err.message || 'Failed to fetch international news' 
-      }));
-    } finally {
-      setLoading(prev => ({ ...prev, international: false }));
-    }
-  };
-
-  // Fetch sports news
-  const fetchSportsNews = async () => {
-    setLoading(prev => ({ ...prev, sports: true }));
-    setError(prev => ({ ...prev, sports: null }));
-    
-    try {
-      console.log('Fetching sports news...');
-      const response = await axios.get(`${baseUrl}/api/news/category/sports`);
-      const news = processApiResponseWithVideos(response, 'sports');
-      console.log('Sports news:', news);
-      setSportsNews(news);
-    } catch (err) {
-      console.error('Error fetching sports news:', err);
-      setError(prev => ({ 
-        ...prev, 
-        sports: err.response?.data?.message || err.message || 'Failed to fetch sports news' 
-      }));
-    } finally {
-      setLoading(prev => ({ ...prev, sports: false }));
-    }
-  };
-
-  // Fetch entertainment news
-  const fetchEntertainmentNews = async () => {
-    setLoading(prev => ({ ...prev, entertainment: true }));
-    setError(prev => ({ ...prev, entertainment: null }));
-    
-    try {
-      console.log('Fetching entertainment news...');
-      const response = await axios.get(`${baseUrl}/api/news/category/entertainment`);
-      const news = processApiResponseWithVideos(response, 'entertainment');
-      console.log('Entertainment news:', news);
-      setEntertainmentNews(news);
-    } catch (err) {
-      console.error('Error fetching entertainment news:', err);
-      setError(prev => ({ 
-        ...prev, 
-        entertainment: err.response?.data?.message || err.message || 'Failed to fetch entertainment news' 
-      }));
-    } finally {
-      setLoading(prev => ({ ...prev, entertainment: false }));
-    }
-  };
-
-  // Fetch state news
-  const fetchStateNews = async () => {
-    try {
-      setLoading(prev => ({ ...prev, state: true }));
-      setError(prev => ({ ...prev, state: null }));
-
-      // Fetch news from all three states
-      const [biharNews, jharkhandNews, upNews] = await Promise.all([
-        axios.get('https://api.newztok.in/api/news/state/bihar'),
-        axios.get('https://api.newztok.in/api/news/state/jharkhand'),
-        axios.get('https://api.newztok.in/api/news/state/up')
-      ]);
-
-      // Combine and sort all news by date
-      const allStateNews = [
-        ...(biharNews.data.data || []),
-        ...(jharkhandNews.data.data || []),
-        ...(upNews.data.data || [])
-      ].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-      // Process each news item to check for videos
-      const processedStateNews = allStateNews.map(item => {
-        const hasVideo = 
-          item.hasVideo || 
-          item.video || 
-          item.videoPath || 
-          (item.featuredImage && typeof item.featuredImage === 'string' && item.featuredImage.includes('/uploads/videos/video-')) ||
-          (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-'));
-
-        console.log(`[state] Item "${item.title || 'Unknown'}" has video: ${hasVideo}`);
-        
-        return {
-          ...item,
-          hasVideo
-        };
-      });
-
-      // Take the most recent 2 news items
-      setStateNews(processedStateNews.slice(0, 2));
-    } catch (err) {
-      console.error('Error fetching state news:', err);
-      setError(prev => ({ ...prev, state: 'Failed to load state news' }));
-    } finally {
-      setLoading(prev => ({ ...prev, state: false }));
-    }
-  };
-
-  // Fetch all news on component mount and when selectedState changes
-  useEffect(() => {
-    fetchTrendingNews();
-    fetchNationalNews();
-    fetchInternationalNews();
-    fetchSportsNews();
-    fetchEntertainmentNews();
-    fetchStateNews();
-  }, [selectedState]); // Re-fetch when selected state changes
-
-  // News card component (single card with specific styling)
-  const NewsCard = ({ item, categoryLabel, categoryColor = '#FF5722', isLarge = false }) => {
+  // News card component
+  const NewsCard = ({ item }) => {
     const [imageError, setImageError] = useState(false);
-    
-    if (!item) return null;
+    const navigate = useNavigate(); // Add this line to use navigation
     
     const handleImageError = () => {
       console.error(`Error loading image for "${item.title}"`);
       setImageError(true);
     };
     
-    // Get actual category
-    const category = categoryLabel || capitalizeFirstLetter(item.category) || "NEWS";
-    
-    // Check if item has video - exactly like TrendingNews.jsx
-    const hasVideo = item.hasVideo || item.video || item.videoPath ||
-      (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) ||
-      (item.image && item.image.includes('/uploads/videos/video-'));
-    
-    // Get image URL with proper handling - exactly like TrendingNews.jsx
+    // Get image URL with proper handling
     const getImageUrl = () => {
-      console.log(`Getting image URL for item with title "${item.title || 'Unknown'}":`, {
-        id: item._id || item.id,
+      console.log(`Getting image URL for item with title "${item.title}":`, {
+        id: item.id,
         featuredImage: item.featuredImage,
         image: item.image,
         images: item.images,
@@ -581,7 +354,7 @@ const HomeScreen = () => {
           return item.featuredImage;
         } else {
           // Add base URL for relative paths
-          const fullUrl = `${baseUrl}${item.featuredImage}`;
+          const fullUrl = `https://api.newztok.in${item.featuredImage}`;
           console.log(`Using relative featuredImage with base URL for "${item.title}": ${fullUrl}`);
           return fullUrl;
         }
@@ -595,7 +368,7 @@ const HomeScreen = () => {
           return item.image;
         } else {
           // Add base URL for relative paths
-          const fullUrl = `${baseUrl}${item.image}`;
+          const fullUrl = `https://api.newztok.in${item.image}`;
           console.log(`Using relative image with base URL for "${item.title}": ${fullUrl}`);
           return fullUrl;
         }
@@ -606,7 +379,12 @@ const HomeScreen = () => {
       return 'https://via.placeholder.com/400x300?text=No+Image';
     };
     
-    // Get video URL if present - exactly like TrendingNews.jsx
+    // Check if item has video - either directly set hasVideo flag or check paths
+    const hasVideo = item.hasVideo || item.video || item.videoPath ||
+      (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) ||
+      (item.image && item.image.includes('/uploads/videos/video-'));
+    
+    // Get video URL if present
     const getVideoUrl = () => {
       // First, check if video property is already set (from our processing)
       if (item.video) {
@@ -617,20 +395,20 @@ const HomeScreen = () => {
       if (item.videoPath) {
         return item.videoPath.startsWith('http') 
           ? item.videoPath 
-          : `${baseUrl}${item.videoPath}`;
+          : `https://api.newztok.in${item.videoPath}`;
       }
       
       // Check other fields for video paths
       if (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) {
         return item.featuredImage.startsWith('http') 
           ? item.featuredImage 
-          : `${baseUrl}${item.featuredImage}`;
+          : `https://api.newztok.in${item.featuredImage}`;
       }
       
       if (item.image && item.image.includes('/uploads/videos/video-')) {
         return item.image.startsWith('http') 
           ? item.image 
-          : `${baseUrl}${item.image}`;
+          : `https://api.newztok.in${item.image}`;
       }
       
       return null;
@@ -641,221 +419,222 @@ const HomeScreen = () => {
     
     // Check if it's a YouTube video
     const isYouTubeVideo = !!item.youtubeUrl;
-    
-    console.log(`Rendering NewsCard for "${item.title || 'Unknown'}" - hasVideo: ${hasVideo}, videoUrl: ${videoUrl}`);
-    
-    const title = item.title || "No Title";
-    const time = formatDate(item.createdAt || item.publishedAt || item.updatedAt);
+
+    // Function to track view when card is clicked
+    const trackView = async (id) => {
+      try {
+        console.log(`Tracking view for news item with ID: ${id}`);
+        await axios.post(`https://api.newztok.in/api/interaction/${id}/view`);
+        console.log(`Successfully tracked view for news ID: ${id}`);
+      } catch (err) {
+        console.error(`Error tracking view for news ID: ${id}:`, err);
+      }
+    };
+
+    // Handle card click to track view and navigate
+    const handleCardClick = (e) => {
+      e.preventDefault();
+      trackView(item.id);
+      // Navigate to the news detail page
+      navigate(`/news/${item.id}`);
+    };
     
     return (
-      <Box
-        component={Link}
-        to={`/news/${item.id || item._id}`}
-        sx={{
-          display: 'block',
-          height: isLarge ? { xs: 350, md: 400 } : { xs: 200, md: 240 },
-          borderRadius: '4px',
-          overflow: 'hidden',
-          position: 'relative',
-          textDecoration: 'none',
-          '&:hover': {
-            '& .news-bg': {
-              transform: 'scale(1.05)',
-              transition: 'transform 0.5s ease'
-            }
-          }
-        }}
-      >
-        {/* Show video for video items, image for others - exactly like TrendingNews.jsx */}
-        {hasVideo ? (
-          <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
+      <Box sx={{ position: 'relative', height: '100%', mb: 2 }}>
+        <Box 
+          onClick={handleCardClick}
+          sx={{ 
+            cursor: 'pointer',
+            textDecoration: 'none', 
+            color: 'inherit',
+            display: 'block'
+          }}
+        >
+          <Card 
+            sx={{
+              position: 'relative',
+              borderRadius: 2,
+              overflow: 'hidden',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              height: 360,
+              display: 'flex',
+              flexDirection: 'column',
+              cursor: 'pointer',
+              backgroundColor: 'white',
+              transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+              '&:hover': {
+                transform: 'translateY(-5px)',
+                boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
+              }
+            }}
+          >
+            {hasVideo ? (
+              <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
+                <Box
+                  component="video"
+                  src={videoUrl}
+                  controls
+                  preload="metadata"
+                  controlsList="nodownload"
+                  onClick={(e) => e.stopPropagation()}
+                  playsInline
+                  muted
+                  sx={{
+                    width: '100%',
+                    height: '360px',
+                    objectFit: 'cover',
+                  }}
+                  onError={(e) => {
+                    console.error('Video failed to load:', videoUrl);
+                    e.target.onerror = null;
+                    e.target.style.display = 'none';
+                  }}
+                />
+              </Box>
+            ) : !imageError ? (
+              <Box sx={{ position: 'relative' }}>
+                <CardMedia
+                  component="img"
+                  height="360"
+                  image={imageUrl}
+                  alt={item.title}
+                  onError={handleImageError}
+                  sx={{
+                    objectFit: 'cover',
+                  }}
+                />
+                {isYouTubeVideo && (
+                  <Box
+                    sx={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: '60px',
+                      height: '60px',
+                      backgroundColor: 'rgba(255, 0, 0, 0.8)',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white',
+                      zIndex: 2,
+                    }}
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </Box>
+                )}
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  height: 360,
+                  backgroundColor: '#f0f0f0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#999'
+                }}
+              >
+                Image not available
+              </Box>
+            )}
             <Box
-              component="video"
-              src={videoUrl}
-              controls
-              preload="metadata"
-              controlsList="nodownload"
-              onClick={(e) => e.stopPropagation()}
-              playsInline
-              muted
               sx={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
+                position: 'absolute',
+                top: 16,
+                left: 16,
+                zIndex: 2,
+                backgroundColor: hasVideo ? '#E53E3E' : '#0039CB',
+                color: 'white',
+                fontWeight: 'bold',
+                fontSize: '0.75rem',
+                padding: '6px 16px',
+                borderRadius: '4px',
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
               }}
-              onError={(e) => {
-                console.error('Video failed to load:', videoUrl);
-                e.target.onerror = null;
-                e.target.style.display = 'none';
+            >
+              {hasVideo && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+              {capitalize(item.category || 'TRENDING')}
+              {hasVideo && ' VIDEO'}
+            </Box>
+          </Card>
+        
+          <Box sx={{ pt: 2 }}>
+            <Typography
+              variant="h6"
+              sx={{
+                color: 'black',
+                fontWeight: '700',
+                mb: 1,
+                lineHeight: 1.3,
+                fontSize: '1rem',
               }}
-            />
-          </Box>
-        ) : !imageError ? (
-          <Box
-            className="news-bg"
-            sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              backgroundImage: `url(${imageUrl})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              transition: 'transform 0.3s ease',
-            }}
-            onError={handleImageError}
-          />
-        ) : (
-          <Box
-            className="news-bg"
-            sx={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: '#f0f0f0',
-              color: '#999',
-              transition: 'transform 0.3s ease',
-            }}
-          >
-            Image not available
-          </Box>
-        )}
-        
-        {/* YouTube play button overlay for videos */}
-        {isYouTubeVideo && !hasVideo && (
-          <Box
-            sx={{
-              position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: isLarge ? '70px' : '60px',
-              height: isLarge ? '70px' : '60px',
-              backgroundColor: 'rgba(255, 0, 0, 0.8)',
-              borderRadius: '50%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 2,
-            }}
-          >
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </Box>
-        )}
-        
-        {/* Dark overlay */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(0,0,0,0.4)',
-            zIndex: 1,
-          }}
-        />
-        
-        {/* Category label */}
-        <Box
-          sx={{
-            position: 'absolute',
-            top: 16,
-            left: 16,
-            zIndex: 2,
-            backgroundColor: hasVideo ? '#E53E3E' : categoryColor,
-            color: 'white',
-            fontWeight: 'bold',
-            fontSize: '0.75rem',
-            padding: '6px 16px',
-            borderRadius: '4px',
-            letterSpacing: '0.5px',
-            textTransform: 'uppercase',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px'
-          }}
-        >
-          {hasVideo && (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          )}
-          {category}
-          {hasVideo && " VIDEO"}
-        </Box>
-        
-        {/* News content */}
-        <Box
-          sx={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            width: '100%',
-            padding: '16px',
-            background: 'linear-gradient(transparent, rgba(0,0,0,0.7) 30%, rgba(0,0,0,0.9))',
-            zIndex: 2,
-          }}
-        >
-          <Typography
-            variant={isLarge ? "h5" : "h6"}
-            sx={{
-              color: 'white',
-              fontWeight: '600',
-              mb: 2,
-              lineHeight: 1.3,
-              fontSize: isLarge ? '1.3rem' : '1rem',
-            }}
-          >
-            {title}
-          </Typography>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+            >
+              {item.title}
+            </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <AccessTimeIcon 
-                sx={{ 
-                  fontSize: '16px', 
-                  mr: 1, 
-                  color: 'rgba(255,255,255,0.8)' 
-                }} 
-              />
+              <Box
+                component="span"
+                sx={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mr: 1.5,
+                  color: '#777',
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 2C6.5 2 2 6.5 2 12C2 17.5 6.5 22 12 22C17.5 22 22 17.5 22 12C22 6.5 17.5 2 12 2ZM12 20C7.59 20 4 16.41 4 12C4 7.59 7.59 4 12 4C16.41 4 20 7.59 20 12C20 16.41 16.41 20 12 20Z" fill="#888888"/>
+                  <path d="M12.5 7H11V13L16.2 16.2L17 14.9L12.5 12.2V7Z" fill="#888888"/>
+                </svg>
+              </Box>
               <Typography
                 variant="caption"
                 sx={{
-                  color: 'rgba(255,255,255,0.8)',
+                  color: '#666',
                   fontSize: '0.8rem',
                 }}
               >
-                {time}
+                {formatDate(item.createdAt || item.publishedAt || item.updatedAt)}
               </Typography>
             </Box>
             
             {/* Show state and district if available */}
             {(item.state || item.district) && (
               <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                <LocationOnIcon 
-                  sx={{ 
-                    fontSize: '16px', 
-                    mr: 1, 
-                    color: 'rgba(255,255,255,0.8)' 
-                  }} 
-                />
+                <Box
+                  component="span"
+                  sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mr: 1.5,
+                    color: '#777',
+                  }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#888888"/>
+                  </svg>
+                </Box>
                 <Typography
                   variant="caption"
                   sx={{
-                    color: 'rgba(255,255,255,0.8)',
+                    color: '#666',
                     fontSize: '0.8rem',
                   }}
                 >
-                  {[item.state, item.district].filter(Boolean).map(capitalizeFirstLetter).join(', ')}
+                  {[item.state ? capitalize(item.state) : '', item.district ? capitalize(item.district) : ''].filter(Boolean).join(', ')}
                 </Typography>
               </Box>
             )}
@@ -865,345 +644,57 @@ const HomeScreen = () => {
     );
   };
 
-  // Secondary news card component (for the second section)
-  const SecondSectionNewsCard = ({ item, categoryLabel, categoryColor = '#FF5722' }) => {
-    const [imageError, setImageError] = useState(false);
-    
-    if (!item) return null;
+  // Loading component
+  const LoadingSpinner = () => (
+    <Box 
+      sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '300px',
+        width: '100%'
+      }}
+    >
+      <CircularProgress sx={{ color: '#0039CB' }} />
+    </Box>
+  );
 
-    const handleImageError = () => {
-      console.error(`Error loading image for "${item.title}"`);
-      setImageError(true);
-    };
-
-    // Get actual category
-    const category = categoryLabel || capitalizeFirstLetter(item.category) || "NEWS";
-    
-    // Check if item has video - exactly like TrendingNews.jsx
-    const hasVideo = item.hasVideo || item.video || item.videoPath ||
-      (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) ||
-      (item.image && item.image.includes('/uploads/videos/video-'));
-    
-    // Get image URL with proper handling - exactly like TrendingNews.jsx
-    const getImageUrl = () => {
-      // If item has YouTube URL, use YouTube thumbnail
-      if (item.youtubeUrl) {
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-        const match = item.youtubeUrl.match(regExp);
-        if (match && match[2].length === 11) {
-          const videoId = match[2];
-          return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-        }
-      }
-      
-      // If item has images array with content
-      if (item.images && item.images.length > 0) {
-        return item.images[0];
-      }
-      
-      // If item has featuredImage
-      if (item.featuredImage) {
-        // Check if it's a full URL or just a path
-        if (item.featuredImage.startsWith('http')) {
-          return item.featuredImage;
-        } else {
-          // Add base URL for relative paths
-          return `${baseUrl}${item.featuredImage}`;
-        }
-      }
-      
-      // If item has image property
-      if (item.image) {
-        // Check if it's a full URL or just a path
-        if (item.image.startsWith('http')) {
-          return item.image;
-        } else {
-          // Add base URL for relative paths
-          return `${baseUrl}${item.image}`;
-        }
-      }
-      
-      // Fallback to placeholder
-      return 'https://via.placeholder.com/400x300?text=No+Image';
-    };
-    
-    // Get video URL if present - exactly like TrendingNews.jsx
-    const getVideoUrl = () => {
-      // First, check if video property is already set (from our processing)
-      if (item.video) {
-        return item.video;
-      }
-      
-      // Next, check for videoPath property
-      if (item.videoPath) {
-        return item.videoPath.startsWith('http') 
-          ? item.videoPath 
-          : `${baseUrl}${item.videoPath}`;
-      }
-      
-      // Check other fields for video paths
-      if (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) {
-        return item.featuredImage.startsWith('http') 
-          ? item.featuredImage 
-          : `${baseUrl}${item.featuredImage}`;
-      }
-      
-      if (item.image && item.image.includes('/uploads/videos/video-')) {
-        return item.image.startsWith('http') 
-          ? item.image 
-          : `${baseUrl}${item.image}`;
-      }
-      
-      return null;
-    };
-    
-    const videoUrl = hasVideo ? getVideoUrl() : null;
-    const imageUrl = !hasVideo ? getImageUrl() : null;
-    
-    // Check if it's a YouTube video
-    const isYouTubeVideo = !!item.youtubeUrl;
-
-    console.log(`Rendering SecondSectionNewsCard for "${item.title || 'Unknown'}" - hasVideo: ${hasVideo}, videoUrl: ${videoUrl}`);
-
-    return (
-      <Card 
-        component={Link} 
-        to={`/news/${item.id || item._id}`}
-        sx={{
+  // Error component
+  const ErrorMessage = () => (
+    <Box 
+      sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '300px',
+        width: '100%',
+        color: 'red',
+        flexDirection: 'column'
+      }}
+    >
+      <Typography variant="h6" gutterBottom>
+        {error}
+      </Typography>
+      <Typography 
+        variant="body2" 
+        component="button"
+        onClick={fetchTrendingNews}
+        sx={{ 
+          background: 'none', 
+          border: 'none', 
+          color: '#0039CB', 
           cursor: 'pointer',
-          width: '100%',
-          position: 'relative',
-          boxShadow: 'none',
-          borderRadius: '8px',
-          overflow: 'hidden',
-          transition: 'transform 0.3s ease',
-          textDecoration: 'none',
-          '&:hover': {
-            transform: 'translateY(-3px)',
-            '& .news-card-img': {
-              transform: 'scale(1.05)',
-            }
-          },
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100%',
+          textDecoration: 'underline',
+          mt: 2
         }}
       >
-        <Box sx={{ 
-          position: 'relative', 
-          overflow: 'hidden', 
-          paddingTop: '56.25%', // 16:9 aspect ratio
-          backgroundColor: '#f0f0f0'
-        }}>
-          {hasVideo ? (
-            <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
-              <Box
-                component="video"
-                src={videoUrl}
-                controls
-                preload="metadata"
-                controlsList="nodownload"
-                onClick={(e) => e.stopPropagation()}
-                playsInline
-                muted
-                sx={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                }}
-                onError={(e) => {
-                  console.error('Video failed to load:', videoUrl);
-                  e.target.onerror = null;
-                  e.target.style.display = 'none';
-                }}
-              />
-            </Box>
-          ) : !imageError ? (
-            <CardMedia
-              className="news-card-img"
-              component="img"
-              image={imageUrl}
-              alt={item.title || "News image"}
-              onError={handleImageError}
-              sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                transition: 'transform 0.4s ease',
-              }}
-            />
-          ) : (
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: '#f0f0f0',
-                color: '#999'
-              }}
-            >
-              Image not available
-            </Box>
-          )}
-          
-          {/* YouTube play button overlay for videos */}
-          {isYouTubeVideo && !hasVideo && (
-            <Box
-              sx={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: '60px',
-                height: '60px',
-                backgroundColor: 'rgba(255, 0, 0, 0.8)',
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 2,
-              }}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            </Box>
-          )}
-          
-          {/* Category badge */}
-          <Box 
-            sx={{ 
-              position: 'absolute',
-              top: 10,
-              left: 10,
-              bgcolor: hasVideo ? '#E53E3E' : categoryColor,
-              color: 'white',
-              py: 0.5,
-              px: 1.5,
-              borderRadius: '4px',
-              fontSize: '0.75rem',
-              fontWeight: 'bold',
-              zIndex: 2,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}
-          >
-            {hasVideo && (
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="white">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            )}
-            {category}
-            {hasVideo && " VIDEO"}
-          </Box>
-        </Box>
-      </Card>
-    );
-  };
-
-  // Loading section component
-  const LoadingSection = () => (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
-      <CircularProgress />
+        Try Again
+      </Typography>
     </Box>
   );
 
-  // Error section component
-  const ErrorSection = ({ message }) => (
-    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200, color: 'error.main' }}>
-      <Typography variant="body1">{message}</Typography>
-    </Box>
-  );
-
-  // // Category tab component
-  // const CategoryTab = ({ name, count }) => (
-  //   <Box 
-  //     sx={{ 
-  //       display: 'flex', 
-  //       justifyContent: 'space-between', 
-  //       alignItems: 'center',
-  //       backgroundColor: '#000',
-  //       color: 'white',
-  //       p: 2,
-  //       borderRadius: 2,
-  //       mb: 2,
-  //       cursor: 'pointer',
-  //       '&:hover': {
-  //         opacity: 0.9
-  //       }
-  //     }}
-  //   >
-  //     <Typography fontWeight="medium">{name}</Typography>
-  //     <Box 
-  //       sx={{ 
-  //         backgroundColor: 'white', 
-  //         color: 'black', 
-  //         width: 30, 
-  //         height: 30, 
-  //         borderRadius: '50%',
-  //         display: 'flex',
-  //         alignItems: 'center',
-  //         justifyContent: 'center',
-  //         fontWeight: 'bold',
-  //         fontSize: '0.9rem'
-  //       }}
-  //     >
-  //       {count}
-  //     </Box>
-  //   </Box>
-  // );
-
-  // 970 x 100 Advertisement component
-  const LargeAd = () => {
-    const [bannerAd, setBannerAd] = useState(null);
-    const [bannerError, setBannerError] = useState(null);
-    const [bannerLoading, setBannerLoading] = useState(true);
-
-    useEffect(() => {
-      const fetchBannerAd = async () => {
-        try {
-          setBannerLoading(true);
-          setBannerError(null);
-          console.log('Fetching banner ad from API...');
-          
-          const response = await axios.get(`${baseUrl}/api/ads/public/web/banner`);
-          console.log('Banner ad API response:', response.data);
-          
-          if (response.data && response.data.data && Array.isArray(response.data.data) && response.data.data.length > 0) {
-            // Take the first ad from the array
-            const ad = response.data.data[0];
-            // Log the redirect URL for debugging
-            console.log('Banner ad redirect URL:', ad.redirectUrl);
-            setBannerAd(ad);
-          } else if (response.data && !Array.isArray(response.data)) {
-            setBannerAd(response.data);
-          } else {
-            setBannerError('No ads available');
-          }
-        } catch (err) {
-          console.error('Error fetching banner ad:', err);
-          setBannerError(err.message || 'Failed to load advertisement');
-        } finally {
-          setBannerLoading(false);
-        }
-      };
-
-      fetchBannerAd();
-    }, []);
-
-    // Handle ad click
+  // Banner Ad component
+  const BannerAd = () => {
     const handleAdClick = (e) => {
       e.preventDefault();
       if (bannerAd && bannerAd.redirectUrl) {
@@ -1219,11 +710,11 @@ const HomeScreen = () => {
             width: '100%', 
             height: 100, 
             bgcolor: '#f5f5f5', 
-            mb: 2, 
+            mb: 4, 
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            borderRadius: 1,
+            borderRadius: 0,
           }}
         >
           <CircularProgress size={24} />
@@ -1238,12 +729,12 @@ const HomeScreen = () => {
             width: '100%', 
             height: 100, 
             bgcolor: '#E0E0E0', 
-            mb: 2, 
+            mb: 4, 
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: '#999',
-            borderRadius: 1,
+            borderRadius: 0,
             position: 'relative',
           }}
         >
@@ -1264,7 +755,6 @@ const HomeScreen = () => {
       );
     }
 
-    // If we have a valid banner ad, display it
     return (
       <Box 
         component="a"
@@ -1275,11 +765,11 @@ const HomeScreen = () => {
         sx={{ 
           width: '100%', 
           height: 100, 
-          mb: 2, 
+          mb: 4, 
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          borderRadius: 1,
+          borderRadius: 0,
           overflow: 'hidden',
           textDecoration: 'none',
           position: 'relative',
@@ -1337,45 +827,8 @@ const HomeScreen = () => {
     );
   };
 
-  // 380 x 350 Advertisement component
+  // Side Ad component
   const SideAd = () => {
-    const [sideAd, setSideAd] = useState(null);
-    const [sideError, setSideError] = useState(null);
-    const [sideLoading, setSideLoading] = useState(true);
-
-    useEffect(() => {
-      const fetchSideAd = async () => {
-        try {
-          setSideLoading(true);
-          setSideError(null);
-          console.log('Fetching side ad from API...');
-          
-          const response = await axios.get(`${baseUrl}/api/ads/public/web/side`);
-          console.log('Side ad API response:', response.data);
-          
-          if (response.data && response.data.data && Array.isArray(response.data.data) && response.data.data.length > 0) {
-            // Take the first ad from the array
-            const ad = response.data.data[0];
-            // Log the redirect URL for debugging
-            console.log('Side ad redirect URL:', ad.redirectUrl);
-            setSideAd(ad);
-          } else if (response.data && !Array.isArray(response.data)) {
-            setSideAd(response.data);
-          } else {
-            setSideError('No ads available');
-          }
-        } catch (err) {
-          console.error('Error fetching side ad:', err);
-          setSideError(err.message || 'Failed to load advertisement');
-        } finally {
-          setSideLoading(false);
-        }
-      };
-
-      fetchSideAd();
-    }, []);
-
-    // Handle ad click
     const handleAdClick = (e) => {
       e.preventDefault();
       if (sideAd && sideAd.redirectUrl) {
@@ -1437,7 +890,6 @@ const HomeScreen = () => {
       );
     }
 
-    // If we have a valid side ad, display it
     return (
       <Box 
         component="a"
@@ -1511,556 +963,320 @@ const HomeScreen = () => {
     );
   };
 
+  // Social media stats
+  const socialStats = [
+    { platform: 'facebook', icon: 'https://cdn.iconscout.com/icon/free/png-256/free-facebook-logo-2019-1597680-1350125.png', count: '32.4k', label: 'likes' },
+    { platform: 'instagram', icon: 'https://static.vecteezy.com/system/resources/previews/017/743/717/original/instagram-icon-logo-free-png.png', count: '25.6k', label: 'followers' },
+    { platform: 'x', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/X_icon_2.svg/2048px-X_icon_2.svg.png', count: '14.2k', label: 'followers' },
+    { platform: 'youtube', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/1024px-YouTube_full-color_icon_%282017%29.svg.png', count: '9.2k', label: 'subscribers' },
+    { platform: 'whatsapp', icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/WhatsApp.svg/767px-WhatsApp.svg.png', count: '43.8k', label: 'members' },
+  ];
+
+  // Social Media Section component
+  const SocialMediaSection = () => (
+    <Box 
+      sx={{ 
+        p: 2,
+        backgroundColor: 'white',
+        borderRadius: 0,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+      }}
+    >
+      <Grid container spacing={1}>
+        {socialStats.map((stat) => (
+          <Grid item xs={stat.platform === 'whatsapp' ? 12 : 6} sm={stat.platform === 'whatsapp' ? 12 : 6} md={stat.platform === 'whatsapp' ? 12 : 6} lg={stat.platform === 'whatsapp' ? 12 : 3} key={stat.platform} sx={{ textAlign: 'center', p: 1.5 }}>
+            <Box 
+              component="img" 
+              src={stat.icon} 
+              alt={stat.platform} 
+              sx={{ 
+                width: 24, 
+                height: 24,
+                mb: 0.5,
+                objectFit: 'contain'
+              }}
+            />
+            <Typography variant="h6" sx={{ fontSize: '1rem', fontWeight: 'bold', mb: 0 }}>
+              {stat.count}
+            </Typography>
+            <Typography variant="caption" sx={{ color: '#666', fontSize: '0.7rem' }}>
+              {stat.label}
+            </Typography>
+          </Grid>
+        ))}
+      </Grid>
+    </Box>
+  );
+
   return (
     <Box sx={{ width: '100%', backgroundColor: '#f5f5f5' }}>
-      <Container maxWidth="xl" sx={{ py: 3, px: { xs: 2, md: 4 } }}>
-        {/* TRENDING SECTION - Moved to the top */}
-        <Typography 
-          variant="h5" 
-          component="h2" 
-          sx={{ 
-            mb: 3, 
-            fontWeight: 'bold',
-            position: 'relative',
-            pl: 4,
-            '&:before': {
-              content: '""',
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 5,
-              backgroundColor: '#FF5722',
-              borderRadius: 1
-            }
+      {/* Home Header Banner */}
+      <Box 
+        sx={{ 
+          width: '100%', 
+          position: 'relative',
+          py: 5,
+          color: 'white',
+          textAlign: 'center',
+          mb: 8,
+          overflow: 'hidden',
+          background: 'linear-gradient(135deg, #0039CB, #1E88E5)',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.15) 2px, transparent 2px)',
+            backgroundSize: '40px 40px',
+            opacity: 0.5,
+            zIndex: 1
+          },
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cpolygon fill='%23ffffff' fill-opacity='0.15' points='0,0 15,0 0,15'/%3E%3Cpolygon fill='%23ffffff' fill-opacity='0.15' points='100,100 85,100 100,85'/%3E%3C/svg%3E")`,
+            zIndex: 1
+          }
+        }}
+      >
+        {/* Trending Arrows (Left Side) */}
+        <Box 
+          sx={{
+            position: 'absolute',
+            left: '5%',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 2,
+            display: { xs: 'none', md: 'block' }
           }}
         >
-          TRENDING NEWS
-        </Typography>
+          <svg width="60" height="120" viewBox="0 0 60 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M30 0L60 30H45V120H15V30H0L30 0Z" fill="rgba(255,255,255,0.3)" />
+          </svg>
+        </Box>
+        
+        {/* Trending Arrows (Right Side) */}
+        <Box 
+          sx={{
+            position: 'absolute',
+            right: '5%',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            zIndex: 2,
+            display: { xs: 'none', md: 'block' }
+          }}
+        >
+          <svg width="60" height="120" viewBox="0 0 60 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M30 0L60 30H45V120H15V30H0L30 0Z" fill="rgba(255,255,255,0.3)" />
+          </svg>
+        </Box>
+        
+        {/* Wave Pattern */}
+        <Box
+          sx={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            width: '100%',
+            height: '18px',
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' preserveAspectRatio='none'%3E%3Cpath d='M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z' opacity='.25' fill='%23ffffff'%3E%3C/path%3E%3Cpath d='M0,0V15.81C13,36.92,27.64,56.86,47.69,72.05,99.41,111.27,165,111,224.58,91.58c31.15-10.15,60.09-26.07,89.67-39.8,40.92-19,84.73-46,130.83-49.67,36.26-2.85,70.9,9.42,98.6,31.56,31.77,25.39,62.32,62,103.63,73,40.44,10.79,81.35-6.69,119.13-24.28s75.16-39,116.92-43.05c59.73-5.85,113.28,22.88,168.9,38.84,30.2,8.66,59,6.17,87.09-7.5,22.43-10.89,48-26.93,60.65-49.24V0Z' opacity='.5' fill='%23ffffff'%3E%3C/path%3E%3C/svg%3E")`,
+            backgroundSize: '100% 18px',
+            backgroundRepeat: 'no-repeat',
+            zIndex: 2
+          }}
+        />
+        
+        <Container maxWidth="xl" sx={{ position: 'relative', zIndex: 3 }}>
+          <Box sx={{ 
+            display: 'inline-block',
+            px: 5, 
+            py: 2, 
+            position: 'relative',
+          }}>
+            <Typography 
+              variant="h3" 
+              component="h1" 
+              fontWeight="bold" 
+              sx={{ 
+                mb: 0.5,
+                textShadow: '2px 2px 4px rgba(0,0,0,0.2)',
+                position: 'relative',
+                display: 'inline-block'
+              }}
+            >
+              Home
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: '-12px',
+                  right: '-24px',
+                  backgroundColor: '#fff',
+                  color: '#0039CB',
+                  fontSize: '0.9rem',
+                  padding: '2px 6px',
+                  borderRadius: '12px',
+                  fontWeight: 'bold',
+                  transform: 'rotate(12deg)',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+              >
+                NEW!
+              </Box>
+            </Typography>
+            <Typography 
+              variant="subtitle1" 
+              sx={{ 
+                opacity: 0.9,
+                maxWidth: '600px',
+                mx: 'auto',
+                textShadow: '1px 1px 2px rgba(0,0,0,0.2)'
+              }}
+            >
+              Stay updated with the latest news from across the nation
+            </Typography>
+          </Box>
+        </Container>
+      </Box>
 
-        {loading.trending ? (
-          <LoadingSection />
-        ) : error.trending ? (
-          <ErrorSection message={error.trending} />
+      {/* Main Content - First Section */}
+      <Container 
+        sx={{ 
+          maxWidth: { xs: '95%', sm: '90%', md: '1200px' }, 
+          mx: 'auto',
+          mb: 8
+        }}
+      >
+        {loading ? (
+          <LoadingSpinner />
+        ) : error ? (
+          <ErrorMessage />
         ) : (
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 }, mb: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 } }}>
             {/* Left Side - News Cards */}
             <Box sx={{ flex: 7, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
-              {trendingNews.length > 0 && (
+              {newsItems.length >= 1 && (
                 <Box sx={{ flex: 1 }}>
-                  <NewsCard 
-                    item={trendingNews[0]} 
-                    categoryLabel="TRENDING"
-                    categoryColor="#FF5722"
-                    isLarge={true}
-                  />
+                  <NewsCard item={newsItems[0]} />
                 </Box>
               )}
               
-              {trendingNews.length > 1 && (
+              {newsItems.length >= 2 && (
                 <Box sx={{ flex: 1 }}>
-                  <NewsCard 
-                    item={trendingNews[1]}
-                    categoryLabel="TRENDING"
-                    categoryColor="#FF5722" 
-                    isLarge={true}
-                  />
+                  <NewsCard item={newsItems[1]} />
                 </Box>
               )}
             </Box>
-            
-            {/* Right Side - Sidebar */}
-            <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {/* Advertisement */}
+
+            {/* Right Side - Side Ad and Social Media */}
+            <Box sx={{ flex: 3 }}>
               <SideAd />
-              
-              {/* Category Tabs
-              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                {categoryTabs.map((tab, index) => (
-                  <CategoryTab key={index} name={tab.name} count={tab.count} />
-                ))}
-              </Box> */}
+              <SocialMediaSection />
             </Box>
           </Box>
         )}
+      </Container>
 
-        {/* Second row of trending news cards */}
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3, mt: 3, mb: 3 }}>
-          {trendingNews.length > 2 && (
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                item={trendingNews[2]} 
-                categoryLabel="TRENDING"
-                categoryColor="#FF5722"
-                isLarge={true}
-              />
-            </Box>
-          )}
-          
-          {trendingNews.length > 3 && (
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                item={trendingNews[3]}
-                categoryLabel="TRENDING"
-                categoryColor="#FF5722" 
-                isLarge={true}
-              />
-            </Box>
-          )}
-        </Box>
+      {/* Banner Ad after first section */}
+      <Container 
+        sx={{ 
+          maxWidth: { xs: '95%', sm: '90%', md: '1200px' }, 
+          mx: 'auto',
+          mb: 8
+        }}
+      >
+        <BannerAd />
+      </Container>
 
-        {/* Advertisement after Trending */}
-        <LargeAd />
-        
-        {/* NATIONAL SECTION */}
-        <Typography 
-          variant="h5" 
-          component="h2" 
+      {/* Second Section - Additional News */}
+      {!loading && !error && (
+        <Container 
           sx={{ 
-            mb: 2, 
-            fontWeight: 'bold',
+            maxWidth: { xs: '95%', sm: '90%', md: '1200px' }, 
+            mx: 'auto',
             position: 'relative',
-            pl: 2,
-            '&:before': {
-              content: '""',
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 5,
-              backgroundColor: '#D32F2F',
-              borderRadius: 1
-            }
+            mb: 8
           }}
         >
-          NATIONAL NEWS
-        </Typography>
-
-        {loading.national ? (
-          <LoadingSection />
-        ) : error.national ? (
-          <ErrorSection message={error.national} />
-        ) : (
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 }, mb: 1 }}>
-            {/* Left Side - News Cards */}
-            <Box sx={{ flex: 7, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
-              {nationalNews.length > 1 && (
-                <Box sx={{ flex: 1 }}>
-                  <NewsCard 
-                    item={nationalNews[1]}
-                    categoryLabel="NATIONAL"
-                    categoryColor="#D32F2F"
-                    isLarge={true}
-                  />
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 } }}>
+            {/* Left Side - Scrollable News Cards */}
+            <Box 
+              sx={{ 
+                flex: 7, 
+                maxHeight: { md: '1200px' },
+                overflowY: { md: 'auto' },
+                pr: { md: 2 },
+                msOverflowStyle: 'none',
+                scrollbarWidth: 'none',
+                '&::-webkit-scrollbar': {
+                  display: 'none',
+                }
+              }}
+            >
+              {secondSectionNews.length > 0 && (
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3, mb: 5 }}>
+                  {secondSectionNews.map((news, index) => (
+                    <Box sx={{ flex: 1 }} key={news.id || index}>
+                      <NewsCard item={news} />
+                    </Box>
+                  ))}
                 </Box>
               )}
               
-              {nationalNews.length > 2 && (
-                <Box sx={{ flex: 1 }}>
-                  <NewsCard 
-                    item={nationalNews[2]}
-                    categoryLabel="NATIONAL"
-                    categoryColor="#D32F2F"
-                    isLarge={true}
-                  />
-                </Box>
-              )}
-            </Box>
-            
-            {/* Right Side - Advertisement */}
-            <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <SideAd />
-            </Box>
-          </Box>
-        )}
-        
-        {/* Second row of national news cards */}
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3, mt: 3, mb: 3 }}>
-          {nationalNews.length > 3 && (
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                item={nationalNews[3]} 
-                categoryLabel="NATIONAL"
-                categoryColor="#D32F2F"
-                isLarge={true}
-              />
-            </Box>
-          )}
-          
-          {nationalNews.length > 4 && (
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                item={nationalNews[4]}
-                categoryLabel="NATIONAL"
-                categoryColor="#D32F2F" 
-                isLarge={true}
-              />
-            </Box>
-          )}
-        </Box>
-
-        {/* Advertisement after National */}
-        <LargeAd />
-
-        {/* INTERNATIONAL SECTION */}
-        <Typography 
-          variant="h5" 
-          component="h2" 
-          sx={{ 
-            mb: 3, 
-            fontWeight: 'bold',
-            position: 'relative',
-            pl: 2,
-            '&:before': {
-              content: '""',
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 5,
-              backgroundColor: '#1976D2',
-              borderRadius: 1
-            }
-          }}
-        >
-          INTERNATIONAL NEWS
-        </Typography>
-
-        {loading.international ? (
-          <LoadingSection />
-        ) : error.international ? (
-          <ErrorSection message={error.international} />
-        ) : (
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 }, mb: 3 }}>
-            {/* Left Side - News Cards */}
-            <Box sx={{ flex: 7, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
-              {internationalNews.length > 0 && (
-                <Box sx={{ flex: 1 }}>
-                  <NewsCard 
-                    item={internationalNews[0]}
-                    categoryLabel="INTERNATIONAL"
-                    categoryColor="#1976D2"
-                    isLarge={true}
-                  />
+              {additionalNews.length > 0 && (
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3, mb: 5 }}>
+                  {additionalNews.map((news, index) => (
+                    <Box sx={{ flex: 1 }} key={news.id || index}>
+                      <NewsCard item={news} />
+                    </Box>
+                  ))}
                 </Box>
               )}
               
-              {internationalNews.length > 1 && (
-                <Box sx={{ flex: 1 }}>
-                  <NewsCard 
-                    item={internationalNews[1]}
-                    categoryLabel="INTERNATIONAL"
-                    categoryColor="#1976D2"
-                    isLarge={true}
-                  />
-                </Box>
-              )}
-            </Box>
-            
-            {/* Right Side - Advertisement */}
-            <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <SideAd />
-            </Box>
-          </Box>
-        )}
-        
-        {/* Second row of international news cards */}
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3, mt: 3, mb: 3 }}>
-          {internationalNews.length > 2 && (
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                item={internationalNews[2]} 
-                categoryLabel="INTERNATIONAL"
-                categoryColor="#1976D2"
-                isLarge={true}
-              />
-            </Box>
-          )}
-          
-          {internationalNews.length > 3 && (
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                item={internationalNews[3]}
-                categoryLabel="INTERNATIONAL"
-                categoryColor="#1976D2" 
-                isLarge={true}
-              />
-            </Box>
-          )}
-        </Box>
-
-        {/* Advertisement after International */}
-        <LargeAd />
-
-        {/* SPORTS SECTION */}
-        <Typography 
-          variant="h5" 
-          component="h2" 
-          sx={{ 
-            mb: 3, 
-            fontWeight: 'bold',
-            position: 'relative',
-            pl: 2,
-            '&:before': {
-              content: '""',
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 5,
-              backgroundColor: '#4CAF50',
-              borderRadius: 1
-            }
-          }}
-        >
-          SPORTS NEWS
-        </Typography>
-
-        {loading.sports ? (
-          <LoadingSection />
-        ) : error.sports ? (
-          <ErrorSection message={error.sports} />
-        ) : (
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 }, mb: 3 }}>
-            {/* Left Side - News Cards */}
-            <Box sx={{ flex: 7, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
-              {sportsNews.length > 2 && (
-                <Box sx={{ flex: 1 }}>
-                  <NewsCard 
-                    item={sportsNews[2]}
-                    categoryLabel="SPORTS"
-                    categoryColor="#4CAF50"
-                    isLarge={true}
-                  />
+              {fourthSectionNews.length > 0 && (
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3, mb: 5 }}>
+                  {fourthSectionNews.map((news, index) => (
+                    <Box sx={{ flex: 1 }} key={news.id || index}>
+                      <NewsCard item={news} />
+                    </Box>
+                  ))}
                 </Box>
               )}
               
-              {sportsNews.length > 3 && (
-                <Box sx={{ flex: 1 }}>
-                  <NewsCard 
-                    item={sportsNews[3]}
-                    categoryLabel="SPORTS"
-                    categoryColor="#4CAF50"
-                    isLarge={true}
-                  />
+              {fifthSectionNews.length > 0 && (
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3, mb: 5 }}>
+                  {fifthSectionNews.map((news, index) => (
+                    <Box sx={{ flex: 1 }} key={news.id || index}>
+                      <NewsCard item={news} />
+                    </Box>
+                  ))}
                 </Box>
               )}
             </Box>
-            
-            {/* Right Side - Advertisement */}
-            <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
+
+            {/* Right Side - Side Ad and Social Media */}
+            <Box sx={{ flex: 3 }}>
               <SideAd />
+              <SocialMediaSection />
             </Box>
           </Box>
-        )}
-        
-        {/* Second row of sports news cards */}
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3, mt: 3, mb: 3 }}>
-          {sportsNews.length > 0 && (
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                item={sportsNews[0]} 
-                categoryLabel="SPORTS"
-                categoryColor="#4CAF50"
-                isLarge={true}
-              />
-            </Box>
-          )}
-          
-          {sportsNews.length > 1 && (
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                item={sportsNews[1]}
-                categoryLabel="SPORTS"
-                categoryColor="#4CAF50" 
-                isLarge={true}
-              />
-            </Box>
-          )}
-        </Box>
+        </Container>
+      )}
 
-        {/* Advertisement after Sports */}
-        <LargeAd />
-
-        {/* STATE NEWS SECTION */}
-        <Typography 
-          variant="h5" 
-          component="h2"
-          sx={{ 
-            mb: 3, 
-            fontWeight: 'bold',
-            position: 'relative',
-            pl: 2,
-            '&:before': {
-              content: '""',
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 5,
-              backgroundColor: '#FFC107',
-              borderRadius: 1
-            }
-          }}
-        >
-          STATE NEWS
-        </Typography>
-
-        {loading.state ? (
-          <LoadingSection />
-        ) : error.state ? (
-          <ErrorSection message={error.state} />
-        ) : (
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 }, mb: 3 }}>
-            {/* Left Side - News Cards */}
-            <Box sx={{ flex: 7, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
-              {stateNews.length > 0 && (
-                <Box sx={{ flex: 1 }}>
-                  <NewsCard 
-                    item={stateNews[0]}
-                    categoryLabel="STATE"
-                    categoryColor="#FFC107"
-                    isLarge={true}
-                  />
-                </Box>
-              )}
-              
-              {stateNews.length > 1 && (
-                <Box sx={{ flex: 1 }}>
-                  <NewsCard 
-                    item={stateNews[1]}
-                    categoryLabel="STATE"
-                    categoryColor="#FFC107"
-                    isLarge={true}
-                  />
-                </Box>
-              )}
-            </Box>
-            
-            {/* Right Side - Advertisement */}
-            <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <SideAd />
-            </Box>
-          </Box>
-        )}
-        
-        {/* Second row of state news cards (these may not show if only 2 items exist) */}
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3, mt: 3, mb: 3 }}>
-          {stateNews.length > 2 && (
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                item={stateNews[2]} 
-                categoryLabel="STATE"
-                categoryColor="#FFC107"
-                isLarge={true}
-              />
-            </Box>
-          )}
-          
-          {stateNews.length > 3 && (
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                item={stateNews[3]}
-                categoryLabel="STATE"
-                categoryColor="#FFC107" 
-                isLarge={true}
-              />
-            </Box>
-          )}
-        </Box>
-
-        {/* Last Advertisement */}
-        <LargeAd />
-
-        {/* ENTERTAINMENT SECTION - Keeping as the last section */}
-        <Typography 
-          variant="h5" 
-          component="h2" 
-          sx={{ 
-            mb: 3, 
-            fontWeight: 'bold',
-            position: 'relative',
-            pl: 2,
-            '&:before': {
-              content: '""',
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 5,
-              backgroundColor: '#9C27B0',
-              borderRadius: 1
-            }
-          }}
-        >
-          ENTERTAINMENT NEWS
-        </Typography>
-
-        {loading.entertainment ? (
-          <LoadingSection />
-        ) : error.entertainment ? (
-          <ErrorSection message={error.entertainment} />
-        ) : (
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 3 }, mb: 3 }}>
-            {/* Left Side - News Cards */}
-            <Box sx={{ flex: 7, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3 }}>
-              {entertainmentNews.length > 0 && (
-                <Box sx={{ flex: 1 }}>
-                  <NewsCard 
-                    item={entertainmentNews[0]}
-                    categoryLabel="ENTERTAINMENT"
-                    categoryColor="#9C27B0"
-                    isLarge={true}
-                  />
-                </Box>
-              )}
-              
-              {entertainmentNews.length > 1 && (
-                <Box sx={{ flex: 1 }}>
-                  <NewsCard 
-                    item={entertainmentNews[1]}
-                    categoryLabel="ENTERTAINMENT"
-                    categoryColor="#9C27B0"
-                    isLarge={true}
-                  />
-                </Box>
-              )}
-            </Box>
-            
-            {/* Right Side - Advertisement */}
-            <Box sx={{ flex: 3, display: 'flex', flexDirection: 'column', gap: 3 }}>
-              <SideAd />
-            </Box>
-          </Box>
-        )}
-        
-        {/* Second row of entertainment news cards */}
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 3, mt: 3, mb: 3 }}>
-          {entertainmentNews.length > 2 && (
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                item={entertainmentNews[2]} 
-                categoryLabel="ENTERTAINMENT"
-                categoryColor="#9C27B0"
-                isLarge={true}
-              />
-            </Box>
-          )}
-          
-          {entertainmentNews.length > 3 && (
-            <Box sx={{ flex: 1 }}>
-              <NewsCard 
-                item={entertainmentNews[3]}
-                categoryLabel="ENTERTAINMENT"
-                categoryColor="#9C27B0" 
-                isLarge={true}
-              />
-            </Box>
-          )}
-        </Box>
-
-        {/* Final Advertisement */}
-        <LargeAd />
+      {/* Banner Ad at bottom */}
+      <Container 
+        sx={{ 
+          maxWidth: { xs: '95%', sm: '90%', md: '1200px' }, 
+          mx: 'auto',
+          mb: 8
+        }}
+      >
+        <BannerAd />
       </Container>
     </Box>
   );
