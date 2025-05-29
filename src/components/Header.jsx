@@ -698,15 +698,19 @@ const Header = () => {
               <IconButton size="small" sx={{ color: '#25D366' }} component="a" href="https://whatsapp.com/channel/0029VbA2TzqG8l5AxszzsJ0E" target="_blank">
                 <WhatsAppIcon fontSize="small" />
               </IconButton>
-              {/* Search icon commented out
-              <IconButton 
-                size="small" 
-                sx={{ color: '#333' }}
-                onClick={handleSearchOpen}
-              >
-                <SearchIcon fontSize="small" />
+              <IconButton size="small" sx={{ color: '#000000' }} component="a" href="https://play.google.com/store/apps/details?id=com.newztok" target="_blank">
+                <Box
+                  component="svg"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  sx={{ width: 18, height: 18 }}
+                >
+                  <path
+                    fill="currentColor"
+                    d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.5,12.92 20.16,13.19L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"
+                  />
+                </Box>
               </IconButton>
-              */}
               <IconButton 
                 size="small" 
                 edge="end" 
@@ -1108,6 +1112,34 @@ const Header = () => {
               }}
             >
               <WhatsAppIcon fontSize="small" />
+            </Box>
+            <Box 
+              component="a"
+              href="https://play.google.com/store/apps/details?id=com.newztok"
+              target="_blank"
+              sx={{ 
+                bgcolor: '#000000',
+                color: 'white',
+                width: 40,
+                height: 40,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '50%',
+                textDecoration: 'none'
+              }}
+            >
+              <Box
+                component="svg"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                sx={{ width: 16, height: 16 }}
+              >
+                <path
+                  fill="currentColor"
+                  d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.5,12.92 20.16,13.19L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"
+                />
+              </Box>
             </Box>
           </Box>
         </Box>

@@ -6,6 +6,7 @@ import LinkedInIcon from '@mui/icons-material/LinkedIn';
 import FacebookIcon from '@mui/icons-material/Facebook';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import axios from 'axios';
+import QRCode from '../assets/images/newztok_qr.jpg';
 
 const Footer = () => {
   const [loading, setLoading] = useState({
@@ -356,7 +357,7 @@ const Footer = () => {
             </Box>
           </Grid>
 
-          {/* Categories Section */}
+          {/* Categories Section - Moved next to Recent Posts */}
           <Grid item xs={12} md={4}>
             <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 4 }}>
               Categories
@@ -395,6 +396,79 @@ const Footer = () => {
                 ))}
               </Stack>
             )}
+          </Grid>
+
+          {/* App Available Section */}
+          <Grid item xs={12} md={4} sx={{ ml: 'auto' }}>
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 4 }}>
+              Download Our App
+            </Typography>
+            <Box sx={{ 
+              bgcolor: 'rgba(255,255,255,0.05)', 
+              p: 3, 
+              borderRadius: 2,
+              textAlign: 'center'
+            }}>
+              <Typography variant="h6" sx={{ mb: 2, color: '#fff' }}>
+                App is Available Now at the PlayStore
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                <Link 
+                  href="https://play.google.com/store/apps/details?id=com.newztok"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{ 
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    bgcolor: '#414141',
+                    color: '#fff',
+                    px: 3,
+                    py: 1.5,
+                    borderRadius: 2,
+                    textDecoration: 'none',
+                    '&:hover': {
+                      bgcolor: '#4a4a4a'
+                    }
+                  }}
+                >
+                  <Box
+                    component="svg"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    sx={{ 
+                      width: 24, 
+                      height: 24, 
+                      mr: 1,
+                      color: '#fff'
+                    }}
+                  >
+                    <path
+                      fill="currentColor"
+                      d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.5,12.92 20.16,13.19L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"
+                    />
+                  </Box>
+                  <Typography sx={{ 
+                    color: '#fff',
+                    fontWeight: 500,
+                    fontSize: '0.9rem'
+                  }}>
+                    Get it on Play Store
+                  </Typography>
+                </Link>
+                <Typography sx={{ color: '#fff', fontWeight: 'bold' }}>OR</Typography>
+                <Box
+                  component="img"
+                  src={QRCode}
+                  alt="NewzTok QR Code"
+                  sx={{
+                    width: 100,
+                    height: 100,
+                    borderRadius: 1,
+                    border: '2px solid rgba(255,255,255,0.1)'
+                  }}
+                />
+              </Box>
+            </Box>
           </Grid>
         </Grid>
 
