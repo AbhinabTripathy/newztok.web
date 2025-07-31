@@ -235,16 +235,87 @@ const NationalNews = () => {
               }
             }}
           >
-            {isYouTubeVideo && youtubeEmbedUrl ? (
-              <iframe
-                width="100%"
-                height="360"
-                src={youtubeEmbedUrl}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={item.title}
-              />
+            {isYouTubeVideo ? (
+              <Box sx={{ position: 'relative', height: '360px' }}>
+                {(() => {
+                  // Function to extract YouTube video ID from various URL formats
+                  const getYouTubeVideoId = (url) => {
+                    if (!url) return null;
+                    
+                    try {
+                      const urlObj = new URL(url);
+                      
+                      // Handle YouTube Shorts
+                      if (urlObj.pathname.includes('/shorts/')) {
+                        const shortsId = urlObj.pathname.split('/shorts/')[1];
+                        return shortsId.split('?')[0];
+                      }
+                      
+                      // Handle regular YouTube URLs
+                      if (urlObj.searchParams.get('v')) {
+                        return urlObj.searchParams.get('v');
+                      }
+                      
+                      // Handle youtu.be URLs
+                      if (urlObj.hostname === 'youtu.be') {
+                        return urlObj.pathname.slice(1);
+                      }
+                      
+                      // Handle embed URLs
+                      if (urlObj.pathname.includes('/embed/')) {
+                        return urlObj.pathname.split('/embed/')[1];
+                      }
+                    } catch (err) {
+                      console.error('Error parsing YouTube URL:', err);
+                    }
+                    
+                    return null;
+                  };
+
+                  const videoId = getYouTubeVideoId(item.youtubeUrl);
+                  
+                  if (!videoId) {
+                    return (
+                      <Box
+                        sx={{
+                          width: '100%',
+                          height: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          bgcolor: '#f5f5f5',
+                          color: '#666',
+                        }}
+                      >
+                        Video not available
+                      </Box>
+                    );
+                  }
+
+                  return (
+                    <Box
+                      component="iframe"
+                      src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`}
+                      title={item.title}
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      onClick={(e) => e.stopPropagation()}
+                      sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        border: 'none',
+                      }}
+                      onError={(e) => {
+                        console.error('YouTube iframe error:', e);
+                      }}
+                    />
+                  );
+                })()}
+              </Box>
             ) : hasVideo && videoUrl ? (
               <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
                 <Box
@@ -550,16 +621,87 @@ const NationalNews = () => {
               }
             }}
           >
-            {isYouTubeVideo && youtubeEmbedUrl ? (
-              <iframe
-                width="100%"
-                height="280"
-                src={youtubeEmbedUrl}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={item.title}
-              />
+            {isYouTubeVideo ? (
+              <Box sx={{ position: 'relative', height: '280px' }}>
+                {(() => {
+                  // Function to extract YouTube video ID from various URL formats
+                  const getYouTubeVideoId = (url) => {
+                    if (!url) return null;
+                    
+                    try {
+                      const urlObj = new URL(url);
+                      
+                      // Handle YouTube Shorts
+                      if (urlObj.pathname.includes('/shorts/')) {
+                        const shortsId = urlObj.pathname.split('/shorts/')[1];
+                        return shortsId.split('?')[0];
+                      }
+                      
+                      // Handle regular YouTube URLs
+                      if (urlObj.searchParams.get('v')) {
+                        return urlObj.searchParams.get('v');
+                      }
+                      
+                      // Handle youtu.be URLs
+                      if (urlObj.hostname === 'youtu.be') {
+                        return urlObj.pathname.slice(1);
+                      }
+                      
+                      // Handle embed URLs
+                      if (urlObj.pathname.includes('/embed/')) {
+                        return urlObj.pathname.split('/embed/')[1];
+                      }
+                    } catch (err) {
+                      console.error('Error parsing YouTube URL:', err);
+                    }
+                    
+                    return null;
+                  };
+
+                  const videoId = getYouTubeVideoId(item.youtubeUrl);
+                  
+                  if (!videoId) {
+                    return (
+                      <Box
+                        sx={{
+                          width: '100%',
+                          height: '100%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          bgcolor: '#f5f5f5',
+                          color: '#666',
+                        }}
+                      >
+                        Video not available
+                      </Box>
+                    );
+                  }
+
+                  return (
+                    <Box
+                      component="iframe"
+                      src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`}
+                      title={item.title}
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      onClick={(e) => e.stopPropagation()}
+                      sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        border: 'none',
+                      }}
+                      onError={(e) => {
+                        console.error('YouTube iframe error:', e);
+                      }}
+                    />
+                  );
+                })()}
+              </Box>
             ) : hasVideo && videoUrl ? (
               <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
                 <Box

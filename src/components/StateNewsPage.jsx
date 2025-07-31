@@ -639,16 +639,7 @@ const StateNewsPage = () => {
     const videoUrl = hasVideo ? getVideoUrl() : null;
     
     // Extract YouTube video ID if available
-    const getYoutubeEmbedUrl = (url) => {
-      if (!url) return null;
-      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-      const match = url.match(regExp);
-      return (match && match[2].length === 11)
-        ? `https://www.youtube.com/embed/${match[2]}`
-        : null;
-    };
-    
-    const youtubeEmbedUrl = getYoutubeEmbedUrl(item.youtubeUrl);
+    // YouTube URL handling is now done directly in the render logic
 
     // Generate appropriate location display
     const getLocationDisplay = () => {
@@ -688,17 +679,94 @@ const StateNewsPage = () => {
               boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
             }
           }}>
-            {isYouTubeVideo && youtubeEmbedUrl ? (
-              <iframe
-                width="100%"
-                height="360"
-                src={youtubeEmbedUrl}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={item.title}
-              />
-            ) : hasVideo && videoUrl ? (
+                      {isYouTubeVideo ? (
+            <Box sx={{ position: 'relative', height: '360px' }}>
+              {(() => {
+                // Function to extract YouTube video ID from various URL formats
+                const getYouTubeVideoId = (url) => {
+                  if (!url) return null;
+                  
+                  try {
+                    const urlObj = new URL(url);
+                    
+                    // Handle YouTube Shorts
+                    if (urlObj.pathname.includes('/shorts/')) {
+                      const shortsId = urlObj.pathname.split('/shorts/')[1];
+                      return shortsId.split('?')[0];
+                    }
+                    
+                    // Handle regular YouTube URLs
+                    if (urlObj.searchParams.get('v')) {
+                      return urlObj.searchParams.get('v');
+                    }
+                    
+                    // Handle youtu.be URLs
+                    if (urlObj.hostname === 'youtu.be') {
+                      return urlObj.pathname.slice(1);
+                    }
+                    
+                    // Handle embed URLs
+                    if (urlObj.pathname.includes('/embed/')) {
+                      return urlObj.pathname.split('/embed/')[1];
+                    }
+                    
+                    // Handle direct video IDs
+                    if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
+                      return url;
+                    }
+                  } catch (err) {
+                    console.error('Error parsing YouTube URL:', err);
+                  }
+                  
+                  return null;
+                };
+
+                const videoId = getYouTubeVideoId(item.youtubeUrl);
+                
+                if (!videoId) {
+                  console.error('Invalid YouTube URL:', item.youtubeUrl);
+                  return (
+                    <Box
+                      sx={{
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        bgcolor: '#f5f5f5',
+                        color: '#666',
+                      }}
+                    >
+                      Video not available
+                    </Box>
+                  );
+                }
+
+                return (
+                  <Box
+                    component="iframe"
+                    src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`}
+                    title={item.title}
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    onClick={(e) => e.stopPropagation()}
+                    sx={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      border: 'none',
+                    }}
+                    onError={(e) => {
+                      console.error('YouTube iframe error:', e);
+                    }}
+                  />
+                );
+              })()}
+            </Box>
+          ) : hasVideo && videoUrl ? (
               <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
                 <Box
                   component="video"

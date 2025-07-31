@@ -109,14 +109,21 @@ const TrendingNews = () => {
       fetchedNews = fetchedNews.map(item => {
         // Check all possible properties for video paths
         const checkForVideoPath = (obj) => {
-          // Define properties to check for video paths
+          // Define properties to check for video paths and YouTube URLs
           const propertiesToCheck = [
-            'video', 'videoPath', 'featuredImage', 'image', 'media', 'url', 'source'
+            'video', 'videoPath', 'featuredImage', 'image', 'media', 'url', 'source', 'youtubeUrl'
           ];
           
           let foundVideoPath = null;
+          let foundYoutubeUrl = null;
           
-          // Check each property for a video path
+          // First check for YouTube URL
+          if (obj.youtubeUrl && typeof obj.youtubeUrl === 'string') {
+            foundYoutubeUrl = obj.youtubeUrl;
+            console.log(`Found YouTube URL: ${foundYoutubeUrl}`);
+          }
+          
+          // Then check each property for a video path
           propertiesToCheck.forEach(prop => {
             if (obj[prop] && typeof obj[prop] === 'string' && obj[prop].includes('/uploads/videos/video-')) {
               foundVideoPath = obj[prop];
@@ -130,11 +137,18 @@ const TrendingNews = () => {
             console.log(`Found direct videoPath property: ${foundVideoPath}`);
           }
           
-          return foundVideoPath;
+          return { videoPath: foundVideoPath, youtubeUrl: foundYoutubeUrl };
         };
         
-        // Get video path from the item
-        const videoPath = checkForVideoPath(item);
+        // Get video path and YouTube URL from the item
+        const { videoPath, youtubeUrl } = checkForVideoPath(item);
+        
+        // Create the processed item
+        const processedItem = {
+          ...item,
+          hasVideo: false,
+          youtubeUrl: youtubeUrl
+        };
         
         if (videoPath) {
           console.log(`Found video for news item "${item.title}": ${videoPath}`);
@@ -146,14 +160,16 @@ const TrendingNews = () => {
           
           console.log(`Full video URL for "${item.title}": ${fullVideoUrl}`);
           
-          return {
-            ...item,
-            video: fullVideoUrl,
-            hasVideo: true
-          };
+          processedItem.video = fullVideoUrl;
+          processedItem.hasVideo = true;
         }
         
-        return item;
+        if (youtubeUrl) {
+          console.log(`Found YouTube URL for "${item.title}": ${youtubeUrl}`);
+          processedItem.hasVideo = true;
+        }
+        
+        return processedItem;
       });
       
       // Sort news items by date (most recent first)
@@ -419,26 +435,109 @@ const TrendingNews = () => {
           >
             {hasVideo ? (
               <Box sx={{ position: 'relative', height: '100%', width: '100%' }}>
-                <Box
-                  component="video"
-                  src={videoUrl}
-                  controls
-                  preload="metadata"
-                  controlsList="nodownload"
-                  onClick={(e) => e.stopPropagation()}
-                  playsInline
-                  muted
-                  sx={{
-                    width: '100%',
-                    height: '360px',
-                    objectFit: 'cover',
-                  }}
-                  onError={(e) => {
-                    console.error('Video failed to load:', videoUrl);
-                    e.target.onerror = null;
-                    e.target.style.display = 'none';
-                  }}
-                />
+                {item.youtubeUrl ? (
+                  <Box sx={{ position: 'relative', height: '360px' }}>
+                    {(() => {
+                      // Function to extract YouTube video ID from various URL formats
+                      const getYouTubeVideoId = (url) => {
+                        if (!url) return null;
+                        
+                        try {
+                          const urlObj = new URL(url);
+                          
+                          // Handle YouTube Shorts
+                          if (urlObj.pathname.includes('/shorts/')) {
+                            const shortsId = urlObj.pathname.split('/shorts/')[1];
+                            return shortsId.split('?')[0];
+                          }
+                          
+                          // Handle regular YouTube URLs
+                          if (urlObj.searchParams.get('v')) {
+                            return urlObj.searchParams.get('v');
+                          }
+                          
+                          // Handle youtu.be URLs
+                          if (urlObj.hostname === 'youtu.be') {
+                            return urlObj.pathname.slice(1);
+                          }
+                          
+                          // Handle embed URLs
+                          if (urlObj.pathname.includes('/embed/')) {
+                            return urlObj.pathname.split('/embed/')[1];
+                          }
+                        } catch (err) {
+                          console.error('Error parsing YouTube URL:', err);
+                        }
+                        
+                        return null;
+                      };
+
+                      const videoId = getYouTubeVideoId(item.youtubeUrl);
+                      
+                      if (!videoId) {
+                        return (
+                          <Box
+                            sx={{
+                              width: '100%',
+                              height: '100%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              bgcolor: '#f5f5f5',
+                              color: '#666',
+                            }}
+                          >
+                            Video not available
+                          </Box>
+                        );
+                      }
+
+                      return (
+                        <Box
+                          component="iframe"
+                          src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`}
+                          title={item.title}
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          onClick={(e) => e.stopPropagation()}
+                          sx={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            width: '100%',
+                            height: '100%',
+                            border: 'none',
+                          }}
+                          onError={(e) => {
+                            console.error('YouTube iframe error:', e);
+                          }}
+                        />
+                      );
+                    })()}
+                  </Box>
+                ) : (
+                  <Box
+                    component="video"
+                    src={videoUrl}
+                    controls
+                    preload="metadata"
+                    controlsList="nodownload"
+                    onClick={(e) => e.stopPropagation()}
+                    playsInline
+                    muted
+                    sx={{
+                      width: '100%',
+                      height: '360px',
+                      objectFit: 'cover',
+                    }}
+                    onError={(e) => {
+                      console.error('Video failed to load:', videoUrl);
+                      e.target.onerror = null;
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                )}
               </Box>
             ) : !imageError ? (
               <Box sx={{ position: 'relative' }}>
