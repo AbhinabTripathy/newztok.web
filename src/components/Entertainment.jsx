@@ -255,6 +255,7 @@ const Entertainment = () => {
     const hasVideo = item.hasVideo || 
                     item.video || 
                     item.videoPath || 
+                    item.youtubeUrl ||
                     (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) ||
                     (item.image && item.image.includes('/uploads/videos/video-'));
     
@@ -262,35 +263,48 @@ const Entertainment = () => {
     
     // Get video URL with proper handling
     const getVideoUrl = () => {
+      // First check for YouTube video
       if (item.video && item.video.includes('youtube.com')) {
-        return getYoutubeEmbedUrl(item.video);
+        const youtubeData = getYoutubeEmbedUrl(item.video);
+        if (youtubeData) {
+          return youtubeData;
+        }
       }
       
+      // Check for YouTube URL in other fields
+      if (item.youtubeUrl) {
+        const youtubeData = getYoutubeEmbedUrl(item.youtubeUrl);
+        if (youtubeData) {
+          return youtubeData;
+        }
+      }
+      
+      // Handle regular video paths
       if (item.videoPath) {
         if (item.videoPath.startsWith('http')) {
-          return item.videoPath;
+          return { url: item.videoPath };
         } else {
-          return `${baseUrl}${item.videoPath}`;
+          return { url: `${baseUrl}${item.videoPath}` };
         }
       }
       
       if (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) {
         if (item.featuredImage.startsWith('http')) {
-          return item.featuredImage;
+          return { url: item.featuredImage };
         } else {
-          return `${baseUrl}${item.featuredImage}`;
+          return { url: `${baseUrl}${item.featuredImage}` };
         }
       }
       
       if (item.image && item.image.includes('/uploads/videos/video-')) {
         if (item.image.startsWith('http')) {
-          return item.image;
+          return { url: item.image };
         } else {
-          return `${baseUrl}${item.image}`;
+          return { url: `${baseUrl}${item.image}` };
         }
       }
       
-      return '';
+      return null;
     };
     
     // Get image URL with proper handling
@@ -360,16 +374,22 @@ const Entertainment = () => {
     
     // Function to get YouTube embed URL
     const getYoutubeEmbedUrl = (url) => {
-      if (!url) return '';
+      if (!url) return null;
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
+      const match = url.match(regExp);
       
-      const regex = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-      const match = url.match(regex);
-      
-      if (match && match[1]) {
-        return `https://www.youtube.com/embed/${match[1]}`;
+      if (match && match[2].length === 11) {
+        const videoId = match[2];
+        console.log(`Found YouTube video ID: ${videoId} from URL: ${url}`);
+        return {
+          embedUrl: `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`,
+          thumbnailUrl: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+          videoId: videoId
+        };
       }
       
-      return '';
+      console.log(`Invalid YouTube URL format: ${url}`);
+      return null;
     };
     
     const imageUrl = getImageUrl();
@@ -404,32 +424,73 @@ const Entertainment = () => {
           }}
         >
           {hasVideo && videoUrl && !videoError ? (
-            item.video && item.video.includes('youtube.com') ? (
-              <iframe
-                width="100%"
-                height="360"
-                src={videoUrl}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={item.title}
-                onClick={(e) => e.stopPropagation()}
-              />
+            videoUrl.embedUrl ? (
+              <Box sx={{ position: 'relative', height: '360px' }}>
+                <iframe
+                  width="100%"
+                  height="360"
+                  src={videoUrl.embedUrl}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title={item.title}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    border: 'none',
+                  }}
+                />
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: '60px',
+                    height: '60px',
+                    backgroundColor: 'rgba(255, 0, 0, 0.8)',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    zIndex: 2,
+                  }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </Box>
+              </Box>
             ) : (
-              <video
-                width="100%"
-                height="360"
-                controls
-                preload="metadata"
-                controlsList="nodownload"
-                onClick={(e) => e.stopPropagation()}
-                onError={handleVideoError}
-                playsInline
-                muted
-              >
-                <source src={videoUrl} type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
+              <Box sx={{ position: 'relative', height: '360px' }}>
+                <video
+                  width="100%"
+                  height="360"
+                  controls
+                  preload="metadata"
+                  controlsList="nodownload"
+                  onClick={(e) => e.stopPropagation()}
+                  onError={handleVideoError}
+                  playsInline
+                  muted
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  }}
+                >
+                  <source src={videoUrl.url} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+              </Box>
             )
           ) : !imageError ? (
             <CardMedia
@@ -558,6 +619,7 @@ const Entertainment = () => {
     const hasVideo = item.hasVideo || 
                     item.video || 
                     item.videoPath || 
+                    item.youtubeUrl ||
                     (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) ||
                     (item.image && item.image.includes('/uploads/videos/video-'));
     
@@ -565,35 +627,48 @@ const Entertainment = () => {
     
     // Get video URL with proper handling
     const getVideoUrl = () => {
+      // First check for YouTube video
       if (item.video && item.video.includes('youtube.com')) {
-        return getYoutubeEmbedUrl(item.video);
+        const youtubeData = getYoutubeEmbedUrl(item.video);
+        if (youtubeData) {
+          return youtubeData;
+        }
       }
       
+      // Check for YouTube URL in other fields
+      if (item.youtubeUrl) {
+        const youtubeData = getYoutubeEmbedUrl(item.youtubeUrl);
+        if (youtubeData) {
+          return youtubeData;
+        }
+      }
+      
+      // Handle regular video paths
       if (item.videoPath) {
         if (item.videoPath.startsWith('http')) {
-          return item.videoPath;
+          return { url: item.videoPath };
         } else {
-          return `${baseUrl}${item.videoPath}`;
+          return { url: `${baseUrl}${item.videoPath}` };
         }
       }
       
       if (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) {
         if (item.featuredImage.startsWith('http')) {
-          return item.featuredImage;
+          return { url: item.featuredImage };
         } else {
-          return `${baseUrl}${item.featuredImage}`;
+          return { url: `${baseUrl}${item.featuredImage}` };
         }
       }
       
       if (item.image && item.image.includes('/uploads/videos/video-')) {
         if (item.image.startsWith('http')) {
-          return item.image;
+          return { url: item.image };
         } else {
-          return `${baseUrl}${item.image}`;
+          return { url: `${baseUrl}${item.image}` };
         }
       }
       
-      return '';
+      return null;
     };
     
     // Get image URL with proper handling
@@ -656,16 +731,22 @@ const Entertainment = () => {
     
     // Function to get YouTube embed URL
     const getYoutubeEmbedUrl = (url) => {
-      if (!url) return '';
+      if (!url) return null;
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
+      const match = url.match(regExp);
       
-      const regex = /(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-      const match = url.match(regex);
-      
-      if (match && match[1]) {
-        return `https://www.youtube.com/embed/${match[1]}`;
+      if (match && match[2].length === 11) {
+        const videoId = match[2];
+        console.log(`Found YouTube video ID: ${videoId} from URL: ${url}`);
+        return {
+          embedUrl: `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`,
+          thumbnailUrl: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+          videoId: videoId
+        };
       }
       
-      return '';
+      console.log(`Invalid YouTube URL format: ${url}`);
+      return null;
     };
     
     const imageUrl = getImageUrl();
@@ -684,32 +765,73 @@ const Entertainment = () => {
           }}
         >
           {hasVideo && videoUrl && !videoError ? (
-            item.video && item.video.includes('youtube.com') ? (
-              <iframe
-                width="100%"
-                height="360"
-                src={videoUrl}
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                title={item.title}
-                onClick={(e) => e.stopPropagation()}
-              />
+            videoUrl.embedUrl ? (
+              <Box sx={{ position: 'relative', height: '360px' }}>
+                <iframe
+                  width="100%"
+                  height="360"
+                  src={videoUrl.embedUrl}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title={item.title}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    border: 'none',
+                  }}
+                />
+                <Box
+                  sx={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    width: '60px',
+                    height: '60px',
+                    backgroundColor: 'rgba(255, 0, 0, 0.8)',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    zIndex: 2,
+                  }}
+                >
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </Box>
+              </Box>
             ) : (
-              <video
-                width="100%"
-                height="360"
-                controls
-                preload="metadata"
-                controlsList="nodownload"
-                onClick={(e) => e.stopPropagation()}
-                onError={handleVideoError}
-                playsInline
-                muted
-              >
-                <source src={videoUrl} type="video/mp4" />
-                Your browser does not support the video tag.
-              </video>
+              <Box sx={{ position: 'relative', height: '360px' }}>
+                <video
+                  width="100%"
+                  height="360"
+                  controls
+                  preload="metadata"
+                  controlsList="nodownload"
+                  onClick={(e) => e.stopPropagation()}
+                  onError={handleVideoError}
+                  playsInline
+                  muted
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  }}
+                >
+                  <source src={videoUrl.url} type="video/mp4" />
+                  Your browser does not support the video tag.
+                </video>
+              </Box>
             )
           ) : !imageError ? (
             <CardMedia
