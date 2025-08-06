@@ -234,6 +234,14 @@ const SportsNewsDetails = () => {
         if (response.data) {
           const articleData = response.data.data || response.data;
           console.log("Setting sports news data:", articleData);
+          
+          // Log additional images specifically
+          if (articleData.additionalImage && Array.isArray(articleData.additionalImage)) {
+            console.log("Additional images found in sports news:", articleData.additionalImage.length, articleData.additionalImage);
+          } else {
+            console.log("No additional images found in sports news or not an array:", articleData.additionalImage);
+          }
+          
           setNewsData(articleData);
           
           // If comments are included in the API response
@@ -678,6 +686,54 @@ const SportsNewsDetails = () => {
       type: 'image',
       url: 'https://via.placeholder.com/800x400?text=Sports+News+Image'
     };
+  };
+
+  // Function to process content and insert additional images after h2 tags
+  const processContentWithAdditionalImages = (content, additionalImages) => {
+    if (!content || !additionalImages || !Array.isArray(additionalImages) || additionalImages.length === 0) {
+      return content;
+    }
+
+    // Split content by h2 tags while preserving the tags
+    const h2Regex = /<h2[^>]*>.*?<\/h2>/gi;
+    const parts = content.split(h2Regex);
+    const h2Tags = content.match(h2Regex) || [];
+
+    let processedContent = '';
+    let imageIndex = 0;
+
+    // Process each part
+    for (let i = 0; i < parts.length; i++) {
+      processedContent += parts[i];
+      
+      // Add h2 tag if it exists
+      if (i < h2Tags.length) {
+        processedContent += h2Tags[i];
+        
+        // Add additional image after the h2 tag if available
+        if (imageIndex < additionalImages.length) {
+          const imageUrl = additionalImages[imageIndex];
+          const fullImageUrl = imageUrl.startsWith('http') 
+            ? imageUrl 
+            : `${baseURL}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+          
+          processedContent += `
+            <div style="text-align: center; margin: 20px 0;">
+              <img 
+                src="${fullImageUrl}" 
+                alt="Additional content image ${imageIndex + 1}" 
+                style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);"
+                onerror="this.src='https://via.placeholder.com/800x400?text=Image+Not+Available'; this.onerror=null;"
+              />
+            </div>
+          `;
+          
+          imageIndex++;
+        }
+      }
+    }
+
+    return processedContent;
   };
 
   // Capitalize text - Enhanced to handle multiple word capitalization
@@ -1134,7 +1190,10 @@ const SportsNewsDetails = () => {
         <Box 
           sx={{ lineHeight: 1.8, mb: 4 }}
           dangerouslySetInnerHTML={{ 
-            __html: newsData.content || "No content available for this sports article." 
+            __html: processContentWithAdditionalImages(
+              newsData.content || "No content available for this sports article.",
+              newsData.additionalImage
+            )
           }}
         />
         

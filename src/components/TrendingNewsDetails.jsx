@@ -372,6 +372,14 @@ const TrendingNewsDetails = () => {
         if (response.data) {
           const articleData = response.data.data || response.data;
           console.log("Setting trending news data:", articleData);
+          
+          // Log additional images specifically
+          if (articleData.additionalImage && Array.isArray(articleData.additionalImage)) {
+            console.log("Additional images found in trending news:", articleData.additionalImage.length, articleData.additionalImage);
+          } else {
+            console.log("No additional images found in trending news or not an array:", articleData.additionalImage);
+          }
+          
           setNewsData(articleData);
           
           // If comments are included in the API response
@@ -900,6 +908,52 @@ const TrendingNewsDetails = () => {
     };
   };
 
+  // Function to process content and insert additional images after h2 tags
+  const processContentWithAdditionalImages = (content, additionalImages) => {
+    if (!content || !additionalImages || !Array.isArray(additionalImages) || additionalImages.length === 0) {
+      return content;
+    }
+
+    // Split content by h2 tags while preserving the tags
+    const h2Regex = /<h2[^>]*>.*?<\/h2>/gi;
+    const parts = content.split(h2Regex);
+    const h2Tags = content.match(h2Regex) || [];
+
+    let processedContent = '';
+    let imageIndex = 0;
+
+    // Process each part
+    for (let i = 0; i < parts.length; i++) {
+      processedContent += parts[i];
+      
+      // Add h2 tag if it exists
+      if (h2Tags[i]) {
+        processedContent += h2Tags[i];
+        
+        // Add additional image after h2 tag if available
+        if (imageIndex < additionalImages.length) {
+          const imageUrl = additionalImages[imageIndex].startsWith('http') 
+            ? additionalImages[imageIndex]
+            : `${baseURL}${additionalImages[imageIndex].startsWith('/') ? '' : '/'}${additionalImages[imageIndex]}`;
+          
+          processedContent += `
+            <div style="margin: 20px 0; text-align: center;">
+              <img 
+                src="${imageUrl}" 
+                alt="Additional Image ${imageIndex + 1}" 
+                style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"
+                onerror="this.onerror=null; this.src='https://placehold.co/800x400/000000/FFFFFF/png?text=Image+Not+Available';"
+              />
+            </div>
+          `;
+          imageIndex++;
+        }
+      }
+    }
+
+    return processedContent;
+  };
+
   // Capitalize text
   const capitalizeFirstLetter = (string) => {
     if (!string) return '';
@@ -1217,7 +1271,10 @@ const TrendingNewsDetails = () => {
         <Box 
           sx={{ lineHeight: 1.8, mb: 4 }}
           dangerouslySetInnerHTML={{ 
-            __html: newsData.content || "No content available for this trending article." 
+            __html: processContentWithAdditionalImages(
+              newsData.content || "No content available for this trending article.",
+              newsData.additionalImage
+            )
           }}
         />
         
