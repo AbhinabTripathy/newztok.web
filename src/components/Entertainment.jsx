@@ -85,6 +85,7 @@ const Entertainment = () => {
           title: item.title,
           featuredImage: item.featuredImage,
           image: item.image,
+          additionalImage: item.additionalImage,
           images: item.images,
           category: item.category,
           hasVideo: item.hasVideo,
@@ -257,7 +258,8 @@ const Entertainment = () => {
                     item.videoPath || 
                     item.youtubeUrl ||
                     (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) ||
-                    (item.image && item.image.includes('/uploads/videos/video-'));
+                    (item.image && item.image.includes('/uploads/videos/video-')) ||
+                    (item.additionalImage && item.additionalImage.includes('/uploads/videos/video-'));
     
     console.log(`Item "${item.title}" has video:`, hasVideo);
     
@@ -304,6 +306,14 @@ const Entertainment = () => {
         }
       }
       
+      if (item.additionalImage && item.additionalImage.includes('/uploads/videos/video-')) {
+        if (item.additionalImage.startsWith('http')) {
+          return { url: item.additionalImage };
+        } else {
+          return { url: `${baseUrl}${item.additionalImage}` };
+        }
+      }
+      
       return null;
     };
     
@@ -313,6 +323,7 @@ const Entertainment = () => {
         id: item.id,
         featuredImage: item.featuredImage,
         image: item.image,
+        additionalImage: item.additionalImage,
         images: item.images,
         youtubeUrl: item.youtubeUrl,
         hasVideo: hasVideo
@@ -363,6 +374,20 @@ const Entertainment = () => {
           // Add base URL for relative paths
           const fullUrl = `${baseUrl}${item.image}`;
           console.log(`Using relative image with base URL for "${item.title}": ${fullUrl}`);
+          return fullUrl;
+        }
+      }
+      
+      // If item has additionalImage property
+      if (item.additionalImage && !item.additionalImage.includes('/uploads/videos/video-')) {
+        // Check if it's a full URL or just a path
+        if (item.additionalImage.startsWith('http')) {
+          console.log(`Using full additionalImage URL for "${item.title}": ${item.additionalImage}`);
+          return item.additionalImage;
+        } else {
+          // Add base URL for relative paths
+          const fullUrl = `${baseUrl}${item.additionalImage}`;
+          console.log(`Using relative additionalImage with base URL for "${item.title}": ${fullUrl}`);
           return fullUrl;
         }
       }
@@ -621,7 +646,8 @@ const Entertainment = () => {
                     item.videoPath || 
                     item.youtubeUrl ||
                     (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) ||
-                    (item.image && item.image.includes('/uploads/videos/video-'));
+                    (item.image && item.image.includes('/uploads/videos/video-')) ||
+                    (item.additionalImage && item.additionalImage.includes('/uploads/videos/video-'));
     
     console.log(`Item "${item.title}" has video:`, hasVideo);
     
@@ -665,6 +691,14 @@ const Entertainment = () => {
           return { url: item.image };
         } else {
           return { url: `${baseUrl}${item.image}` };
+        }
+      }
+      
+      if (item.additionalImage && item.additionalImage.includes('/uploads/videos/video-')) {
+        if (item.additionalImage.startsWith('http')) {
+          return { url: item.additionalImage };
+        } else {
+          return { url: `${baseUrl}${item.additionalImage}` };
         }
       }
       
@@ -720,6 +754,20 @@ const Entertainment = () => {
           // Add base URL for relative paths
           const fullUrl = `${baseUrl}${item.image}`;
           console.log(`Using relative image with base URL: ${fullUrl}`);
+          return fullUrl;
+        }
+      }
+      
+      // If item has additionalImage property
+      if (item.additionalImage && !item.additionalImage.includes('/uploads/videos/video-')) {
+        // Check if it's a full URL or just a path
+        if (item.additionalImage.startsWith('http')) {
+          console.log(`Using full additionalImage URL: ${item.additionalImage}`);
+          return item.additionalImage;
+        } else {
+          // Add base URL for relative paths
+          const fullUrl = `${baseUrl}${item.additionalImage}`;
+          console.log(`Using relative additionalImage with base URL: ${fullUrl}`);
           return fullUrl;
         }
       }

@@ -71,14 +71,20 @@ const NationalNews = () => {
       
       // Preload images to improve performance
       fetchedNews.forEach(item => {
-        if (item.featuredImage || item.image) {
+        if (item.featuredImage || item.image || item.additionalImage) {
           const getFullImageUrl = (imagePath) => {
             if (!imagePath) return null;
+            // Handle array (like additionalImage)
+            if (Array.isArray(imagePath) && imagePath.length > 0) {
+              imagePath = imagePath[0];
+            }
+            // Handle non-string values
+            if (typeof imagePath !== 'string') return null;
             if (imagePath.startsWith('http')) return imagePath;
             return `https://api.newztok.in${imagePath}`;
           };
           
-          const imageUrl = getFullImageUrl(item.featuredImage || item.image);
+          const imageUrl = getFullImageUrl(item.featuredImage || item.image || item.additionalImage);
           if (imageUrl) {
             const img = new Image();
             img.src = imageUrl;
@@ -125,7 +131,8 @@ const NationalNews = () => {
       item.video || 
       item.videoPath || 
       (item.featuredImage && typeof item.featuredImage === 'string' && item.featuredImage.includes('/uploads/videos/video-')) ||
-      (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-'));
+      (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-')) ||
+      (item.additionalImage && typeof item.additionalImage === 'string' && item.additionalImage.includes('/uploads/videos/video-'));
     
     // Check if item has youtubeUrl for video content
     const isYouTubeVideo = !!item.youtubeUrl;
@@ -133,6 +140,12 @@ const NationalNews = () => {
     // Add base URL to image path if it's a relative path
     const getFullImageUrl = (imagePath) => {
       if (!imagePath) return 'https://via.placeholder.com/400x300?text=No+Image';
+      // Handle array (like additionalImage)
+      if (Array.isArray(imagePath) && imagePath.length > 0) {
+        imagePath = imagePath[0];
+      }
+      // Handle non-string values
+      if (typeof imagePath !== 'string') return 'https://via.placeholder.com/400x300?text=No+Image';
       if (imagePath.startsWith('http')) return imagePath;
       return `${baseUrl}${imagePath}`;
     };
@@ -164,11 +177,17 @@ const NationalNews = () => {
           : `${baseUrl}${item.image}`;
       }
       
+      if (item.additionalImage && item.additionalImage.includes('/uploads/videos/video-')) {
+        return item.additionalImage.startsWith('http') 
+          ? item.additionalImage 
+          : `${baseUrl}${item.additionalImage}`;
+      }
+      
       return null;
     };
     
     const videoUrl = hasVideo ? getVideoUrl() : null;
-    const mediaUrl = getFullImageUrl(item.featuredImage || item.image);
+    const mediaUrl = getFullImageUrl(item.featuredImage || item.image || item.additionalImage);
     
     // State for image loading and errors
     const [imageError, setImageError] = useState(false);
@@ -514,7 +533,8 @@ const NationalNews = () => {
       item.video || 
       item.videoPath || 
       (item.featuredImage && typeof item.featuredImage === 'string' && item.featuredImage.includes('/uploads/videos/video-')) ||
-      (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-'));
+      (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-')) ||
+      (item.additionalImage && typeof item.additionalImage === 'string' && item.additionalImage.includes('/uploads/videos/video-'));
     
     // Check if item has youtubeUrl for video content
     const isYouTubeVideo = !!item.youtubeUrl;
@@ -522,6 +542,12 @@ const NationalNews = () => {
     // Add base URL to image path if it's a relative path
     const getFullImageUrl = (imagePath) => {
       if (!imagePath) return 'https://via.placeholder.com/400x300?text=No+Image';
+      // Handle array (like additionalImage)
+      if (Array.isArray(imagePath) && imagePath.length > 0) {
+        imagePath = imagePath[0];
+      }
+      // Handle non-string values
+      if (typeof imagePath !== 'string') return 'https://via.placeholder.com/400x300?text=No+Image';
       if (imagePath.startsWith('http')) return imagePath;
       return `${baseUrl}${imagePath}`;
     };
@@ -553,11 +579,17 @@ const NationalNews = () => {
           : `${baseUrl}${item.image}`;
       }
       
+      if (item.additionalImage && item.additionalImage.includes('/uploads/videos/video-')) {
+        return item.additionalImage.startsWith('http') 
+          ? item.additionalImage 
+          : `${baseUrl}${item.additionalImage}`;
+      }
+      
       return null;
     };
     
     const videoUrl = hasVideo ? getVideoUrl() : null;
-    const mediaUrl = getFullImageUrl(item.featuredImage || item.image);
+    const mediaUrl = getFullImageUrl(item.featuredImage || item.image || item.additionalImage);
     
     // State for image loading and errors
     const [imageError, setImageError] = useState(false);

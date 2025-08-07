@@ -111,7 +111,7 @@ const TrendingNews = () => {
         const checkForVideoPath = (obj) => {
           // Define properties to check for video paths and YouTube URLs
           const propertiesToCheck = [
-            'video', 'videoPath', 'featuredImage', 'image', 'media', 'url', 'source', 'youtubeUrl'
+            'video', 'videoPath', 'featuredImage', 'image', 'additionalImage', 'media', 'url', 'source', 'youtubeUrl'
           ];
           
           let foundVideoPath = null;
@@ -192,6 +192,7 @@ const TrendingNews = () => {
           date: item.createdAt || item.publishedAt || item.updatedAt,
           featuredImage: item.featuredImage,
           image: item.image,
+          additionalImage: item.additionalImage,
           images: item.images,
           video: item.video,
           videoPath: item.videoPath,
@@ -294,6 +295,7 @@ const TrendingNews = () => {
         id: item.id,
         featuredImage: item.featuredImage,
         image: item.image,
+        additionalImage: item.additionalImage,
         images: item.images,
         youtubeUrl: item.youtubeUrl
       });
@@ -343,6 +345,20 @@ const TrendingNews = () => {
         }
       }
       
+      // If item has additionalImage property
+      if (item.additionalImage) {
+        // Check if it's a full URL or just a path
+        if (item.additionalImage.startsWith('http')) {
+          console.log(`Using full additionalImage URL for "${item.title}": ${item.additionalImage}`);
+          return item.additionalImage;
+        } else {
+          // Add base URL for relative paths
+          const fullUrl = `https://api.newztok.in${item.additionalImage}`;
+          console.log(`Using relative additionalImage with base URL for "${item.title}": ${fullUrl}`);
+          return fullUrl;
+        }
+      }
+      
       // Fallback to placeholder
       console.log(`No image found for "${item.title}", using placeholder`);
       return 'https://via.placeholder.com/400x300?text=No+Image';
@@ -351,7 +367,8 @@ const TrendingNews = () => {
     // Check if item has video - either directly set hasVideo flag or check paths
     const hasVideo = item.hasVideo || item.video || item.videoPath ||
       (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) ||
-      (item.image && item.image.includes('/uploads/videos/video-'));
+      (item.image && item.image.includes('/uploads/videos/video-')) ||
+      (item.additionalImage && item.additionalImage.includes('/uploads/videos/video-'));
     
     // Get video URL if present
     const getVideoUrl = () => {
@@ -378,6 +395,12 @@ const TrendingNews = () => {
         return item.image.startsWith('http') 
           ? item.image 
           : `https://api.newztok.in${item.image}`;
+      }
+      
+      if (item.additionalImage && item.additionalImage.includes('/uploads/videos/video-')) {
+        return item.additionalImage.startsWith('http') 
+          ? item.additionalImage 
+          : `https://api.newztok.in${item.additionalImage}`;
       }
       
       return null;
@@ -703,6 +726,15 @@ const TrendingNews = () => {
     
     // Get image URL with proper handling
     const getImageUrl = () => {
+      console.log(`Getting image URL for SecondSection item with title "${item.title}":`, {
+        id: item.id,
+        featuredImage: item.featuredImage,
+        image: item.image,
+        additionalImage: item.additionalImage,
+        images: item.images,
+        youtubeUrl: item.youtubeUrl
+      });
+      
       // If item has YouTube URL, use YouTube thumbnail
       if (item.youtubeUrl) {
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -740,6 +772,17 @@ const TrendingNews = () => {
         }
       }
       
+      // If item has additionalImage property
+      if (item.additionalImage) {
+        // Check if it's a full URL or just a path
+        if (item.additionalImage.startsWith('http')) {
+          return item.additionalImage;
+        } else {
+          // Add base URL for relative paths
+          return `https://api.newztok.in${item.additionalImage}`;
+        }
+      }
+      
       // Fallback to placeholder
       return 'https://via.placeholder.com/400x300?text=No+Image';
     };
@@ -747,7 +790,8 @@ const TrendingNews = () => {
     // Check if item has video - either directly set hasVideo flag or check paths
     const hasVideo = item.hasVideo || item.video || item.videoPath ||
       (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) ||
-      (item.image && item.image.includes('/uploads/videos/video-'));
+      (item.image && item.image.includes('/uploads/videos/video-')) ||
+      (item.additionalImage && item.additionalImage.includes('/uploads/videos/video-'));
     
     // Get video URL if present
     const getVideoUrl = () => {
@@ -774,6 +818,12 @@ const TrendingNews = () => {
         return item.image.startsWith('http') 
           ? item.image 
           : `https://api.newztok.in${item.image}`;
+      }
+      
+      if (item.additionalImage && item.additionalImage.includes('/uploads/videos/video-')) {
+        return item.additionalImage.startsWith('http') 
+          ? item.additionalImage 
+          : `https://api.newztok.in${item.additionalImage}`;
       }
       
       return null;

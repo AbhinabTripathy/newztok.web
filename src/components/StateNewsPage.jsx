@@ -74,6 +74,12 @@ const SideAd = () => {
 
   const getFullImageUrl = (imageUrl) => {
     if (!imageUrl) return null;
+    // Handle array (like additionalImage)
+    if (Array.isArray(imageUrl) && imageUrl.length > 0) {
+      imageUrl = imageUrl[0];
+    }
+    // Handle non-string values
+    if (typeof imageUrl !== 'string') return null;
     if (imageUrl.startsWith('http')) return imageUrl;
     return `${baseUrl}${imageUrl}`;
   };
@@ -211,6 +217,12 @@ const BannerAd = () => {
 
   const getFullImageUrl = (imageUrl) => {
     if (!imageUrl) return null;
+    // Handle array (like additionalImage)
+    if (Array.isArray(imageUrl) && imageUrl.length > 0) {
+      imageUrl = imageUrl[0];
+    }
+    // Handle non-string values
+    if (typeof imageUrl !== 'string') return null;
     if (imageUrl.startsWith('http')) return imageUrl;
     return `${baseUrl}${imageUrl}`;
   };
@@ -595,13 +607,20 @@ const StateNewsPage = () => {
       item.video || 
       item.videoPath || 
       (item.featuredImage && typeof item.featuredImage === 'string' && item.featuredImage.includes('/uploads/videos/video-')) ||
-      (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-'));
+      (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-')) ||
+      (item.additionalImage && typeof item.additionalImage === 'string' && item.additionalImage.includes('/uploads/videos/video-'));
     
     // Check if item has youtubeUrl for video content
     const isYouTubeVideo = !!item.youtubeUrl;
 
     const getFullImageUrl = (imagePath) => {
       if (!imagePath) return 'https://via.placeholder.com/380x350?text=No+Image';
+      // Handle array (like additionalImage)
+      if (Array.isArray(imagePath) && imagePath.length > 0) {
+        imagePath = imagePath[0];
+      }
+      // Handle non-string values
+      if (typeof imagePath !== 'string') return 'https://via.placeholder.com/380x350?text=No+Image';
       if (imagePath.startsWith('http')) return imagePath;
       return `${baseUrl}${imagePath}`;
     };
@@ -631,6 +650,12 @@ const StateNewsPage = () => {
         return item.image.startsWith('http') 
           ? item.image 
           : `${baseUrl}${item.image}`;
+      }
+      
+      if (item.additionalImage && item.additionalImage.includes('/uploads/videos/video-')) {
+        return item.additionalImage.startsWith('http') 
+          ? item.additionalImage 
+          : `${baseUrl}${item.additionalImage}`;
       }
       
       return null;
@@ -793,7 +818,7 @@ const StateNewsPage = () => {
               <CardMedia
                 component="img"
                 height="360"
-                image={getFullImageUrl(item.image || item.featuredImage)}
+                image={getFullImageUrl(item.image || item.featuredImage || item.additionalImage)}
                 alt={item.title || ''}
                 sx={{ objectFit: 'cover' }}
               />

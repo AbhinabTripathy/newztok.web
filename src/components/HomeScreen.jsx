@@ -125,19 +125,19 @@ const HomeScreen = () => {
     setError(null);
     
     try {
-      console.log('Fetching trending news from endpoint...');
-      const response = await axios.get('https://api.newztok.in/api/news/trending');
+      console.log('Fetching news from public endpoint...');
+      const response = await axios.get('https://api.newztok.in/api/news/public');
       console.log('API Response:', response);
       
       let fetchedNews = [];
       if (response.data && Array.isArray(response.data)) {
-        console.log(`Successfully fetched ${response.data.length} trending news items`);
+        console.log(`Successfully fetched ${response.data.length} public news items`);
         fetchedNews = response.data;
       } else if (response.data && response.data.data && Array.isArray(response.data.data)) {
-        console.log(`Successfully fetched ${response.data.data.length} trending news items from data property`);
+        console.log(`Successfully fetched ${response.data.data.length} public news items from data property`);
         fetchedNews = response.data.data;
       } else if (response.data && response.data.posts && Array.isArray(response.data.posts)) {
-        console.log(`Successfully fetched ${response.data.posts.length} trending news items from posts property`);
+        console.log(`Successfully fetched ${response.data.posts.length} public news items from posts property`);
         fetchedNews = response.data.posts;
       } else {
         console.warn('Unexpected API response structure:', response.data);
@@ -147,7 +147,7 @@ const HomeScreen = () => {
       
       // Filter news by selected state if one is selected
       if (selectedState) {
-        console.log(`Filtering trending news by state: ${selectedState}`);
+        console.log(`Filtering public news by state: ${selectedState}`);
         
         // First, try to match exact state name
         let filteredNews = fetchedNews.filter(item => 
@@ -164,10 +164,10 @@ const HomeScreen = () => {
         
         // If we found filtered results, use them; otherwise, fall back to all news
         if (filteredNews.length > 0) {
-          console.log(`Found ${filteredNews.length} trending news items for state: ${selectedState}`);
+          console.log(`Found ${filteredNews.length} public news items for state: ${selectedState}`);
           fetchedNews = filteredNews;
         } else {
-          console.log(`No trending news items found for state: ${selectedState}, showing all trending news`);
+          console.log(`No public news items found for state: ${selectedState}, showing all public news`);
         }
       }
       
@@ -177,7 +177,7 @@ const HomeScreen = () => {
         const checkForVideoPath = (obj) => {
           // Define properties to check for video paths
           const propertiesToCheck = [
-            'video', 'videoPath', 'featuredImage', 'image', 'media', 'url', 'source', 'youtubeUrl'
+            'video', 'videoPath', 'featuredImage', 'image', 'additionalImage', 'media', 'url', 'source', 'youtubeUrl'
           ];
           
           let foundVideoPath = null;
@@ -258,6 +258,7 @@ const HomeScreen = () => {
           date: item.createdAt || item.publishedAt || item.updatedAt,
           featuredImage: item.featuredImage,
           image: item.image,
+          additionalImage: item.additionalImage,
           images: item.images,
           video: item.video,
           videoPath: item.videoPath,
@@ -341,6 +342,7 @@ const HomeScreen = () => {
         id: item.id,
         featuredImage: item.featuredImage,
         image: item.image,
+        additionalImage: item.additionalImage,
         images: item.images,
         youtubeUrl: item.youtubeUrl
       });
@@ -390,6 +392,20 @@ const HomeScreen = () => {
         }
       }
       
+      // If item has additionalImage property
+      if (item.additionalImage) {
+        // Check if it's a full URL or just a path
+        if (item.additionalImage.startsWith('http')) {
+          console.log(`Using full additionalImage URL for "${item.title}": ${item.additionalImage}`);
+          return item.additionalImage;
+        } else {
+          // Add base URL for relative paths
+          const fullUrl = `https://api.newztok.in${item.additionalImage}`;
+          console.log(`Using relative additionalImage with base URL for "${item.title}": ${fullUrl}`);
+          return fullUrl;
+        }
+      }
+      
       // Fallback to placeholder
       console.log(`No image found for "${item.title}", using placeholder`);
       return 'https://via.placeholder.com/400x300?text=No+Image';
@@ -398,7 +414,8 @@ const HomeScreen = () => {
     // Check if item has video - either directly set hasVideo flag or check paths
     const hasVideo = item.hasVideo || item.video || item.videoPath ||
       (item.featuredImage && item.featuredImage.includes('/uploads/videos/video-')) ||
-      (item.image && item.image.includes('/uploads/videos/video-'));
+      (item.image && item.image.includes('/uploads/videos/video-')) ||
+      (item.additionalImage && item.additionalImage.includes('/uploads/videos/video-'));
     
     // Get video URL if present
     const getVideoUrl = () => {
@@ -425,6 +442,12 @@ const HomeScreen = () => {
         return item.image.startsWith('http') 
           ? item.image 
           : `https://api.newztok.in${item.image}`;
+      }
+      
+      if (item.additionalImage && item.additionalImage.includes('/uploads/videos/video-')) {
+        return item.additionalImage.startsWith('http') 
+          ? item.additionalImage 
+          : `https://api.newztok.in${item.additionalImage}`;
       }
       
       return null;

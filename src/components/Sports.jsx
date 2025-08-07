@@ -118,7 +118,8 @@ const Sports = () => {
       item.video || 
       item.videoPath || 
       (item.featuredImage && typeof item.featuredImage === 'string' && item.featuredImage.includes('/uploads/videos/video-')) ||
-      (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-'));
+      (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-')) ||
+      (item.additionalImage && typeof item.additionalImage === 'string' && item.additionalImage.includes('/uploads/videos/video-'));
     
     // Check if item has youtubeUrl for video content
     const isYouTubeVideo = !!item.youtubeUrl;
@@ -128,11 +129,17 @@ const Sports = () => {
     };
     
     // Add base URL to image path if it's a relative path
-    const getFullImageUrl = (imagePath) => {
-      if (!imagePath) return 'https://via.placeholder.com/400x300?text=No+Image';
-      if (imagePath.startsWith('http')) return imagePath;
-      return `${baseUrl}${imagePath}`;
-    };
+      const getFullImageUrl = (imagePath) => {
+    if (!imagePath) return 'https://via.placeholder.com/400x300?text=No+Image';
+    // Handle array (like additionalImage)
+    if (Array.isArray(imagePath) && imagePath.length > 0) {
+      imagePath = imagePath[0];
+    }
+    // Handle non-string values
+    if (typeof imagePath !== 'string') return 'https://via.placeholder.com/400x300?text=No+Image';
+    if (imagePath.startsWith('http')) return imagePath;
+    return `${baseUrl}${imagePath}`;
+  };
     
     // Function to get video URL if present
     const getVideoUrl = () => {
@@ -161,11 +168,17 @@ const Sports = () => {
           : `${baseUrl}${item.image}`;
       }
       
+      if (item.additionalImage && item.additionalImage.includes('/uploads/videos/video-')) {
+        return item.additionalImage.startsWith('http') 
+          ? item.additionalImage 
+          : `${baseUrl}${item.additionalImage}`;
+      }
+      
       return null;
     };
     
     const videoUrl = hasVideo ? getVideoUrl() : null;
-    const mediaUrl = getFullImageUrl(item.featuredImage || item.image);
+    const mediaUrl = getFullImageUrl(item.featuredImage || item.image || item.additionalImage);
     
     // YouTube URL handling is now done directly in the render logic
     
@@ -392,7 +405,8 @@ const Sports = () => {
       item.video || 
       item.videoPath || 
       (item.featuredImage && typeof item.featuredImage === 'string' && item.featuredImage.includes('/uploads/videos/video-')) ||
-      (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-'));
+      (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-')) ||
+      (item.additionalImage && typeof item.additionalImage === 'string' && item.additionalImage.includes('/uploads/videos/video-'));
     
     // Check if item has youtubeUrl for video content
     const isYouTubeVideo = !!item.youtubeUrl;
@@ -402,11 +416,17 @@ const Sports = () => {
     };
     
     // Add base URL to image path if it's a relative path
-    const getFullImageUrl = (imagePath) => {
-      if (!imagePath) return 'https://via.placeholder.com/400x300?text=No+Image';
-      if (imagePath.startsWith('http')) return imagePath;
-      return `${baseUrl}${imagePath}`;
-    };
+      const getFullImageUrl = (imagePath) => {
+    if (!imagePath) return 'https://via.placeholder.com/400x300?text=No+Image';
+    // Handle array (like additionalImage)
+    if (Array.isArray(imagePath) && imagePath.length > 0) {
+      imagePath = imagePath[0];
+    }
+    // Handle non-string values
+    if (typeof imagePath !== 'string') return 'https://via.placeholder.com/400x300?text=No+Image';
+    if (imagePath.startsWith('http')) return imagePath;
+    return `${baseUrl}${imagePath}`;
+  };
     
     // Function to get video URL if present
     const getVideoUrl = () => {
@@ -435,11 +455,17 @@ const Sports = () => {
           : `${baseUrl}${item.image}`;
       }
       
+      if (item.additionalImage && item.additionalImage.includes('/uploads/videos/video-')) {
+        return item.additionalImage.startsWith('http') 
+          ? item.additionalImage 
+          : `${baseUrl}${item.additionalImage}`;
+      }
+      
       return null;
     };
     
     const videoUrl = hasVideo ? getVideoUrl() : null;
-    const mediaUrl = getFullImageUrl(item.featuredImage || item.image);
+    const mediaUrl = getFullImageUrl(item.featuredImage || item.image || item.additionalImage);
     
     // YouTube URL handling is now done directly in the render logic
     
