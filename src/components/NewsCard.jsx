@@ -4,6 +4,49 @@ import { Link } from 'react-router-dom';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 
 const NewsCard = ({ item, isMain = false, articleStyle = false, showFullTitle = false }) => {
+  // Get image URL with proper handling
+  const getImageUrl = () => {
+    if (!item) return '';
+    
+    // If item has YouTube URL, use YouTube thumbnail
+    if (item.youtubeUrl) {
+      const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+      const match = item.youtubeUrl.match(regExp);
+      if (match && match[2].length === 11) {
+        const videoId = match[2];
+        return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+      }
+    }
+    
+    // If item has images array with content
+    if (item.images && Array.isArray(item.images) && item.images.length > 0) {
+      return item.images[0];
+    }
+    
+    // If item has featuredImage
+    if (item.featuredImage && typeof item.featuredImage === 'string') {
+      return item.featuredImage.startsWith('http') 
+        ? item.featuredImage 
+        : `https://api.newztok.in${item.featuredImage}`;
+    }
+    
+    // If item has image property
+    if (item.image && typeof item.image === 'string') {
+      return item.image.startsWith('http') 
+        ? item.image 
+        : `https://api.newztok.in${item.image}`;
+    }
+    
+    // If item has additionalImage
+    if (item.additionalImage && typeof item.additionalImage === 'string') {
+      return item.additionalImage.startsWith('http') 
+        ? item.additionalImage 
+        : `https://api.newztok.in${item.additionalImage}`;
+    }
+    
+    // Return empty string if no valid image found
+    return '';
+  };
   return (
     <Card
       component={Link}
@@ -36,7 +79,7 @@ const NewsCard = ({ item, isMain = false, articleStyle = false, showFullTitle = 
           left: 0,
           width: '100%',
           height: '100%',
-          backgroundImage: `url(${item.image})`,
+          backgroundImage: `url(${getImageUrl()})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           transition: 'transform 0.3s ease',

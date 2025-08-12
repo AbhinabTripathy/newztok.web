@@ -102,7 +102,7 @@ const VideoPost = () => {
   const [title, setTitle] = useState('');
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [videoFile, setVideoFile] = useState(null);
-  const [additionalImages, setAdditionalImages] = useState([null, null, null, null, null]);
+  const [additionalImages, setAdditionalImages] = useState([null, null, null, null]);
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('');
   const [state, setState] = useState('');
@@ -671,7 +671,7 @@ const VideoPost = () => {
       setTitle('');
       setYoutubeUrl('');
       setVideoFile(null);
-      setAdditionalImages([null, null, null, null, null]);
+      setAdditionalImages([null, null, null, null]);
       setContent('');
       setCategory('');
       setState('');

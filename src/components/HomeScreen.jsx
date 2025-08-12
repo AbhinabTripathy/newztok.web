@@ -359,13 +359,13 @@ const HomeScreen = () => {
       }
       
       // If item has images array with content
-      if (item.images && item.images.length > 0) {
+      if (item.images && Array.isArray(item.images) && item.images.length > 0 && typeof item.images[0] === 'string') {
         console.log(`Using images[0] from array for "${item.title}": ${item.images[0]}`);
         return item.images[0];
       }
       
       // If item has featuredImage
-      if (item.featuredImage) {
+      if (item.featuredImage && typeof item.featuredImage === 'string') {
         // Check if it's a full URL or just a path
         if (item.featuredImage.startsWith('http')) {
           console.log(`Using full featuredImage URL for "${item.title}": ${item.featuredImage}`);
@@ -379,7 +379,7 @@ const HomeScreen = () => {
       }
       
       // If item has image property
-      if (item.image) {
+      if (item.image && typeof item.image === 'string') {
         // Check if it's a full URL or just a path
         if (item.image.startsWith('http')) {
           console.log(`Using full image URL for "${item.title}": ${item.image}`);
@@ -393,7 +393,7 @@ const HomeScreen = () => {
       }
       
       // If item has additionalImage property
-      if (item.additionalImage) {
+      if (item.additionalImage && typeof item.additionalImage === 'string') {
         // Check if it's a full URL or just a path
         if (item.additionalImage.startsWith('http')) {
           console.log(`Using full additionalImage URL for "${item.title}": ${item.additionalImage}`);
