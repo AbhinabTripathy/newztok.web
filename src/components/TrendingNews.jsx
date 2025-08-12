@@ -312,13 +312,13 @@ const TrendingNews = () => {
       }
       
       // If item has images array with content
-      if (item.images && item.images.length > 0) {
+      if (item.images && Array.isArray(item.images) && item.images.length > 0 && typeof item.images[0] === 'string') {
         console.log(`Using images[0] from array for "${item.title}": ${item.images[0]}`);
         return item.images[0];
       }
       
       // If item has featuredImage
-      if (item.featuredImage) {
+      if (item.featuredImage && typeof item.featuredImage === 'string') {
         // Check if it's a full URL or just a path
         if (item.featuredImage.startsWith('http')) {
           console.log(`Using full featuredImage URL for "${item.title}": ${item.featuredImage}`);
@@ -332,7 +332,7 @@ const TrendingNews = () => {
       }
       
       // If item has image property
-      if (item.image) {
+      if (item.image && typeof item.image === 'string') {
         // Check if it's a full URL or just a path
         if (item.image.startsWith('http')) {
           console.log(`Using full image URL for "${item.title}": ${item.image}`);
@@ -346,7 +346,7 @@ const TrendingNews = () => {
       }
       
       // If item has additionalImage property
-      if (item.additionalImage) {
+      if (item.additionalImage && typeof item.additionalImage === 'string') {
         // Check if it's a full URL or just a path
         if (item.additionalImage.startsWith('http')) {
           console.log(`Using full additionalImage URL for "${item.title}": ${item.additionalImage}`);
@@ -746,40 +746,50 @@ const TrendingNews = () => {
       }
       
       // If item has images array with content
-      if (item.images && item.images.length > 0) {
+      if (item.images && Array.isArray(item.images) && item.images.length > 0 && typeof item.images[0] === 'string') {
+        console.log(`Using images[0] from array for SecondSection "${item.title}": ${item.images[0]}`);
         return item.images[0];
       }
       
       // If item has featuredImage
-      if (item.featuredImage) {
+      if (item.featuredImage && typeof item.featuredImage === 'string') {
         // Check if it's a full URL or just a path
         if (item.featuredImage.startsWith('http')) {
+          console.log(`Using full featuredImage URL for SecondSection "${item.title}": ${item.featuredImage}`);
           return item.featuredImage;
         } else {
           // Add base URL for relative paths
-          return `https://api.newztok.in${item.featuredImage}`;
+          const fullUrl = `https://api.newztok.in${item.featuredImage}`;
+          console.log(`Using relative featuredImage with base URL for SecondSection "${item.title}": ${fullUrl}`);
+          return fullUrl;
         }
       }
       
       // If item has image property
-      if (item.image) {
+      if (item.image && typeof item.image === 'string') {
         // Check if it's a full URL or just a path
         if (item.image.startsWith('http')) {
+          console.log(`Using full image URL for SecondSection "${item.title}": ${item.image}`);
           return item.image;
         } else {
           // Add base URL for relative paths
-          return `https://api.newztok.in${item.image}`;
+          const fullUrl = `https://api.newztok.in${item.image}`;
+          console.log(`Using relative image with base URL for SecondSection "${item.title}": ${fullUrl}`);
+          return fullUrl;
         }
       }
       
       // If item has additionalImage property
-      if (item.additionalImage) {
+      if (item.additionalImage && typeof item.additionalImage === 'string') {
         // Check if it's a full URL or just a path
         if (item.additionalImage.startsWith('http')) {
+          console.log(`Using full additionalImage URL for SecondSection "${item.title}": ${item.additionalImage}`);
           return item.additionalImage;
         } else {
           // Add base URL for relative paths
-          return `https://api.newztok.in${item.additionalImage}`;
+          const fullUrl = `https://api.newztok.in${item.additionalImage}`;
+          console.log(`Using relative additionalImage with base URL for SecondSection "${item.title}": ${fullUrl}`);
+          return fullUrl;
         }
       }
       

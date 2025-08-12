@@ -75,7 +75,7 @@ const SideAd = () => {
   const getFullImageUrl = (imageUrl) => {
     if (!imageUrl) return null;
     // Handle array (like additionalImage)
-    if (Array.isArray(imageUrl) && imageUrl.length > 0) {
+    if (Array.isArray(imageUrl) && imageUrl.length > 0 && typeof imageUrl[0] === 'string') {
       imageUrl = imageUrl[0];
     }
     // Handle non-string values
@@ -218,7 +218,7 @@ const BannerAd = () => {
   const getFullImageUrl = (imageUrl) => {
     if (!imageUrl) return null;
     // Handle array (like additionalImage)
-    if (Array.isArray(imageUrl) && imageUrl.length > 0) {
+    if (Array.isArray(imageUrl) && imageUrl.length > 0 && typeof imageUrl[0] === 'string') {
       imageUrl = imageUrl[0];
     }
     // Handle non-string values
@@ -608,7 +608,8 @@ const StateNewsPage = () => {
       item.videoPath || 
       (item.featuredImage && typeof item.featuredImage === 'string' && item.featuredImage.includes('/uploads/videos/video-')) ||
       (item.image && typeof item.image === 'string' && item.image.includes('/uploads/videos/video-')) ||
-      (item.additionalImage && typeof item.additionalImage === 'string' && item.additionalImage.includes('/uploads/videos/video-'));
+      (item.additionalImage && typeof item.additionalImage === 'string' && item.additionalImage.includes('/uploads/videos/video-')) ||
+      (item.additionalImage && Array.isArray(item.additionalImage) && item.additionalImage.some(img => typeof img === 'string' && img.includes('/uploads/videos/video-')));
     
     // Check if item has youtubeUrl for video content
     const isYouTubeVideo = !!item.youtubeUrl;
@@ -616,7 +617,7 @@ const StateNewsPage = () => {
     const getFullImageUrl = (imagePath) => {
       if (!imagePath) return 'https://via.placeholder.com/380x350?text=No+Image';
       // Handle array (like additionalImage)
-      if (Array.isArray(imagePath) && imagePath.length > 0) {
+      if (Array.isArray(imagePath) && imagePath.length > 0 && typeof imagePath[0] === 'string') {
         imagePath = imagePath[0];
       }
       // Handle non-string values
@@ -652,7 +653,19 @@ const StateNewsPage = () => {
           : `${baseUrl}${item.image}`;
       }
       
-      if (item.additionalImage && item.additionalImage.includes('/uploads/videos/video-')) {
+      // Check additionalImage array for videos
+      if (item.additionalImage && Array.isArray(item.additionalImage) && item.additionalImage.length > 0) {
+        for (const addImg of item.additionalImage) {
+          if (typeof addImg === 'string' && addImg.includes('/uploads/videos/video-')) {
+            return addImg.startsWith('http') 
+              ? addImg 
+              : `${baseUrl}${addImg}`;
+          }
+        }
+      }
+      
+      // Check single additionalImage string for videos
+      if (item.additionalImage && typeof item.additionalImage === 'string' && item.additionalImage.includes('/uploads/videos/video-')) {
         return item.additionalImage.startsWith('http') 
           ? item.additionalImage 
           : `${baseUrl}${item.additionalImage}`;
