@@ -39,13 +39,28 @@ const NewsDetail = () => {
   // API base URL
   const baseURL = 'https://api.newztok.in';
   
-  // Check if user is logged in (has auth token)
-  const isLoggedIn = !!localStorage.getItem('userAuthToken');
-  
-  // Get the user token for API requests
+  // Enhanced function to get user token from multiple storage locations
   const getUserToken = () => {
-    return localStorage.getItem('userAuthToken');
+    // Check multiple possible token storage locations
+    const tokenKeys = ['userAuthToken', 'authToken', 'token', 'jwtToken', 'userToken', 'accessToken'];
+    const storageOptions = [localStorage, sessionStorage];
+    
+    for (const storage of storageOptions) {
+      for (const key of tokenKeys) {
+        const token = storage.getItem(key);
+        if (token && token.trim()) {
+          console.log(`Found user token with key '${key}'`);
+          return token.trim();
+        }
+      }
+    }
+    
+    console.log('No user authentication token found');
+    return null;
   };
+  
+  // Check if user is logged in (has auth token)
+  const isLoggedIn = !!getUserToken();
 
   // Add a debug helper
   const debug = (message, data) => {
@@ -59,11 +74,8 @@ const NewsDetail = () => {
     fetchNewsDetail();
     fetchComments();
     
-    // Check like status if user is logged in
-    const token = getUserToken();
-    if (token) {
-      checkLikeStatus();
-    }
+    // Check like status (no authentication required)
+    checkLikeStatus();
   }, [id]);
 
   // Update meta tags when news data is loaded
@@ -126,33 +138,16 @@ const NewsDetail = () => {
     }
   }, [commentSuccess]);
 
-  // Re-check like status whenever login state changes
-  useEffect(() => {
-    if (isLoggedIn) {
-      debug('User login state changed, checking like status');
-      checkLikeStatus();
-    } else {
-      // Reset like status if user logs out
-      setIsLiked(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoggedIn]);
+  // Note: Like functionality no longer requires authentication
 
-  // Add function to check if user has already liked the article
+  // Add function to check if user has already liked the article (no auth required)
   const checkLikeStatus = async () => {
     try {
-      const token = getUserToken();
-      
-      if (!token) {
-        debug('No token found for like status check');
-        return;
-      }
+      debug('Checking like status without authentication');
 
-      debug('Checking like status with token');
-
-      // Create request headers
+      // Create request headers without auth token
       const myHeaders = new Headers();
-      myHeaders.append("Authorization", `Bearer ${token}`);
+      myHeaders.append("Content-Type", "application/json");
       
       const requestOptions = {
         method: "GET",
@@ -193,6 +188,8 @@ const NewsDetail = () => {
       
     } catch (error) {
       console.error("Error checking like status:", error);
+      // Set default values if API fails
+      setIsLiked(false);
     }
   };
 
@@ -451,38 +448,43 @@ const NewsDetail = () => {
     }
   };
 
-  const handleLikeToggle = async () => {
-    if (!isLoggedIn) {
-      // Prompt user to login
-      navigate('/user/login');
-      return;
-    }
-
-    // If already liked, don't allow re-liking
-    if (isLiked) {
-      debug('User already liked this article, ignoring click');
-      // You can show a message to the user if you want
-      // alert('You have already liked this article');
-      return;
+  const handleLikeToggle = async (event) => {
+    console.log('🔥 LIKE BUTTON CLICKED - NO AUTH REQUIRED');
+    debug('Like button clicked - no authentication required');
+    
+    // Prevent any default behavior
+    event?.preventDefault();
+    event?.stopPropagation();
+    
+    // Toggle like state (like/unlike)
+    const newLikeState = !isLiked;
+    console.log('🔥 Current like state:', isLiked, 'New like state:', newLikeState);
+    setIsLiked(newLikeState);
+    
+    // Update like count optimistically
+    if (newLikeState) {
+      setLikeCount(prevCount => prevCount + 1);
+      console.log('🔥 LIKED - incremented count');
+      debug('Liked article - incremented count');
+    } else {
+      setLikeCount(prevCount => Math.max(0, prevCount - 1));
+      console.log('🔥 UNLIKED - decremented count');
+      debug('Unliked article - decremented count');
     }
 
     try {
-      // Get the auth token
-      const token = getUserToken();
-      debug('Toggling like with token');
+      console.log('🔥 Making API call without authentication');
       
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
+      // Determine the correct endpoint based on action
+      const endpoint = newLikeState 
+        ? `${baseURL}/api/interaction/news/${id}/like`
+        : `${baseURL}/api/interaction/news/${id}/unlike`;
       
-      // Optimistically update UI - only allow liking, not unliking
-      setIsLiked(true);
-      setLikeCount(prevCount => prevCount + 1);
-      debug('Optimistically updated like state to liked');
-
-      // Create headers with auth token
+      console.log('🔥 Using endpoint:', endpoint);
+      
+      // Create headers without auth token
       const myHeaders = new Headers();
-      myHeaders.append("Authorization", `Bearer ${token}`);
+      myHeaders.append("Content-Type", "application/json");
       
       const requestOptions = {
         method: "POST",
@@ -490,18 +492,17 @@ const NewsDetail = () => {
         redirect: "follow"
       };
 
-      // Make the API call
-      debug('Sending like request to API');
-      const response = await fetch(
-        `${baseURL}/api/interaction/news/${id}/like`,
-        requestOptions
-      );
+      // Make the API call without authentication
+      debug(`Sending ${newLikeState ? 'like' : 'unlike'} request to API without authentication`);
+      const response = await fetch(endpoint, requestOptions);
 
+      console.log('🔥 API Response status:', response.status);
       if (!response.ok) {
         throw new Error(`Like request failed with status: ${response.status}`);
       }
       
       const resultText = await response.text();
+      console.log('🔥 API Response:', resultText);
       debug('Received like response', resultText);
       
       try {
@@ -517,21 +518,22 @@ const NewsDetail = () => {
             debug('Setting like count from API response', result.likeCount);
             setLikeCount(result.likeCount);
           }
-          
-          // Always set isLiked to true after a successful like request
-          setIsLiked(true);
         }
       } catch (parseError) {
         debug('Response is not valid JSON, keeping optimistic update', parseError.message);
       }
       
     } catch (error) {
-      console.error("Error liking article:", error);
+      console.error("🔥 Error liking/unliking article:", error);
       // If there was an error, revert to the previous state
-      setIsLiked(false);
-      setLikeCount(prevCount => Math.max(0, prevCount - 1));
-      // Alert the user of the failure
-      alert('Failed to like the article. Please try again.');
+      setIsLiked(!newLikeState);
+      if (newLikeState) {
+        setLikeCount(prevCount => Math.max(0, prevCount - 1));
+      } else {
+        setLikeCount(prevCount => prevCount + 1);
+      }
+      // Show error message
+      alert('Failed to update like status. Please try again.');
     }
   };
 
@@ -688,6 +690,14 @@ const NewsDetail = () => {
     const token = getUserToken();
     
     if (!token) {
+      debug('No token found for comment submission, redirecting to login');
+      navigate('/user/login');
+      return;
+    }
+    
+    // Validate token format
+    if (token.split('.').length !== 3) {
+      debug('Invalid token format for comment submission, redirecting to login');
       navigate('/user/login');
       return;
     }
@@ -1540,26 +1550,31 @@ const NewsDetail = () => {
             sx={{ 
               display: 'flex', 
               alignItems: 'center', 
-              cursor: isLiked ? 'default' : 'pointer',
-              opacity: isLiked ? 1 : 0.9,
+              cursor: 'pointer',
               '&:hover': {
-                opacity: isLiked ? 1 : 1
+                opacity: 0.8
               }
             }} 
-            onClick={handleLikeToggle}
+            onClick={(e) => {
+              console.log('🔥 LIKE BOX CLICKED');
+              e.preventDefault();
+              e.stopPropagation();
+              handleLikeToggle(e);
+            }}
           >
             <IconButton 
               color={isLiked ? 'error' : 'default'} 
               size="small"
-              disabled={isLiked}
+              onClick={(e) => {
+                console.log('🔥 LIKE ICON CLICKED');
+                e.preventDefault();
+                e.stopPropagation();
+                handleLikeToggle(e);
+              }}
               sx={{
                 transition: 'all 0.2s ease-in-out',
                 '&:hover': {
-                  transform: isLiked ? 'none' : 'scale(1.1)',
-                },
-                '&.Mui-disabled': {
-                  opacity: 1,
-                  color: 'error.main'
+                  transform: 'scale(1.1)',
                 }
               }}
             >

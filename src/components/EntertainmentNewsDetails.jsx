@@ -66,10 +66,8 @@ const EntertainmentNewsDetails = () => {
     fetchComments();
     fetchInteractionStats();
     
-    // Check if user has already liked the article when component mounts
-    if (isLoggedIn) {
-      checkLikeStatus();
-    }
+    // Check like status (no authentication required)
+    checkLikeStatus();
   }, [id]);
 
   // Update meta tags when news data is loaded
@@ -132,17 +130,7 @@ const EntertainmentNewsDetails = () => {
     }
   }, [commentSuccess]);
 
-  // Re-check like status whenever login state changes
-  useEffect(() => {
-    if (isLoggedIn) {
-      debug('User login state changed, checking like status');
-      checkLikeStatus();
-      fetchComments();
-    } else {
-      // Reset like status if user logs out
-      setIsLiked(false);
-    }
-  }, [isLoggedIn]);
+  // Note: Like functionality no longer requires authentication
 
   const fetchEntertainmentNewsDetail = async () => {
     try {
@@ -308,40 +296,43 @@ const EntertainmentNewsDetails = () => {
     }
   };
 
-  const handleLikeToggle = async () => {
-    if (!isLoggedIn) {
-      // Prompt user to login
-      navigate('/user/login');
-      return;
+  const handleLikeToggle = async (event) => {
+    console.log('🔥 ENTERTAINMENT LIKE BUTTON CLICKED - NO AUTH REQUIRED');
+    debug('Like button clicked - no authentication required');
+    
+    // Prevent any default behavior
+    event?.preventDefault();
+    event?.stopPropagation();
+    
+    // Toggle like state (like/unlike)
+    const newLikeState = !isLiked;
+    console.log('🔥 Current like state:', isLiked, 'New like state:', newLikeState);
+    setIsLiked(newLikeState);
+    
+    // Update like count optimistically
+    if (newLikeState) {
+      setLikeCount(prevCount => prevCount + 1);
+      console.log('🔥 LIKED - incremented count');
+      debug('Liked article - incremented count');
+    } else {
+      setLikeCount(prevCount => Math.max(0, prevCount - 1));
+      console.log('🔥 UNLIKED - decremented count');
+      debug('Unliked article - decremented count');
     }
 
-    // Store current state before any async operations
-    let prevLikeState = isLiked;
-    let prevLikeCount = likeCount;
-
     try {
-      // Get the auth token
-      const token = getUserToken();
-      debug('Toggling like with token');
+      console.log('🔥 Making API call without authentication');
       
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
+      // Determine the correct endpoint based on action
+      const endpoint = newLikeState 
+        ? `${baseURL}/api/interaction/news/${id}/like`
+        : `${baseURL}/api/interaction/news/${id}/unlike`;
       
-      // Optimistically update UI for both like and unlike
-      const newLikedState = !isLiked;
-      setIsLiked(newLikedState);
-      setLikeCount(prevCount => newLikedState ? prevCount + 1 : Math.max(0, prevCount - 1));
-      debug(`Optimistically updated like state to ${newLikedState ? 'liked' : 'unliked'}`);
-
-      // Create headers with auth token
+      console.log('🔥 Using endpoint:', endpoint);
+      
+      // Create headers without auth token
       const myHeaders = new Headers();
-      myHeaders.append("Authorization", `Bearer ${token}`);
-      
-      // Determine which endpoint to use based on the action (like or unlike)
-      const likeEndpoint = isLiked 
-        ? `http://13.234.42.114:3333/api/interaction/news/${id}/unlike`
-        : `http://13.234.42.114:3333/api/interaction/news/${id}/like`;
+      myHeaders.append("Content-Type", "application/json");
       
       const requestOptions = {
         method: "POST",
@@ -349,21 +340,23 @@ const EntertainmentNewsDetails = () => {
         redirect: "follow"
       };
 
-      // Make the API call
-      debug(`Sending ${isLiked ? 'unlike' : 'like'} request to API`);
-      const response = await fetch(likeEndpoint, requestOptions);
+      // Make the API call without authentication
+      debug(`Sending ${newLikeState ? 'like' : 'unlike'} request to API without authentication`);
+      const response = await fetch(endpoint, requestOptions);
 
+      console.log('🔥 API Response status:', response.status);
       if (!response.ok) {
-        throw new Error(`${isLiked ? 'Unlike' : 'Like'} request failed with status: ${response.status}`);
+        throw new Error(`Like request failed with status: ${response.status}`);
       }
       
       const resultText = await response.text();
-      debug('Received like/unlike response', resultText);
+      console.log('🔥 API Response:', resultText);
+      debug('Received like response', resultText);
       
       try {
         if (resultText && resultText.trim()) {
           const result = JSON.parse(resultText);
-          debug('Parsed like/unlike response', result);
+          debug('Parsed like response', result);
           
           // Update like count from server response if available
           if (result && typeof result.likesCount !== 'undefined') {
@@ -379,12 +372,16 @@ const EntertainmentNewsDetails = () => {
       }
       
     } catch (error) {
-      console.error(`Error ${isLiked ? 'unliking' : 'liking'} article:`, error);
+      console.error("🔥 Error liking/unliking article:", error);
       // If there was an error, revert to the previous state
-      setIsLiked(prevLikeState);
-      setLikeCount(prevLikeCount);
-      // Alert the user of the failure
-      alert(`Failed to ${isLiked ? 'unlike' : 'like'} the article. Please try again.`);
+      setIsLiked(!newLikeState);
+      if (newLikeState) {
+        setLikeCount(prevCount => Math.max(0, prevCount - 1));
+      } else {
+        setLikeCount(prevCount => prevCount + 1);
+      }
+      // Show error message
+      alert('Failed to update like status. Please try again.');
     }
   };
 
@@ -945,21 +942,14 @@ const EntertainmentNewsDetails = () => {
     }
   };
 
-  // Add function to check if user has already liked the article
+  // Add function to check if user has already liked the article (no auth required)
   const checkLikeStatus = async () => {
     try {
-      const token = getUserToken();
-      
-      if (!token) {
-        debug('No token found for like status check');
-        return;
-      }
+      debug('Checking like status without authentication');
 
-      debug('Checking like status with token');
-
-      // Create request headers
+      // Create request headers without auth token
       const myHeaders = new Headers();
-      myHeaders.append("Authorization", `Bearer ${token}`);
+      myHeaders.append("Content-Type", "application/json");
       
       const requestOptions = {
         method: "GET",
@@ -969,7 +959,7 @@ const EntertainmentNewsDetails = () => {
 
       // Make the API call to check like status
       const response = await fetch(
-        `http://13.234.42.114:3333/api/interaction/news/${id}/like/status`,
+        `${baseURL}/api/interaction/news/${id}/like/status`,
         requestOptions
       );
 
@@ -1000,6 +990,8 @@ const EntertainmentNewsDetails = () => {
       
     } catch (error) {
       console.error("Error checking like status:", error);
+      // Set default values if API fails
+      setIsLiked(false);
     }
   };
 
@@ -1300,16 +1292,26 @@ const EntertainmentNewsDetails = () => {
               display: 'flex', 
               alignItems: 'center', 
               cursor: 'pointer',
-              opacity: 0.9,
               '&:hover': {
-                opacity: 1
+                opacity: 0.8
               }
             }} 
-            onClick={handleLikeToggle}
+            onClick={(e) => {
+              console.log('🔥 ENTERTAINMENT LIKE BOX CLICKED');
+              e.preventDefault();
+              e.stopPropagation();
+              handleLikeToggle(e);
+            }}
           >
             <IconButton 
               color={isLiked ? 'error' : 'default'} 
               size="small"
+              onClick={(e) => {
+                console.log('🔥 ENTERTAINMENT LIKE ICON CLICKED');
+                e.preventDefault();
+                e.stopPropagation();
+                handleLikeToggle(e);
+              }}
               sx={{
                 transition: 'all 0.2s ease-in-out',
                 '&:hover': {
